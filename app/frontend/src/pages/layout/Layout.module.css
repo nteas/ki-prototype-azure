@@ -1,78 +1,85 @@
 .layout {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
 }
 
 .header {
-    background-color: #222222;
-    color: #f2f2f2;
+	background-color: #fff;
+	color: #28292c;
+	font-size: 20px;
+	line-height: 26px; /* 130% */
+	border-bottom: 1px solid #ededed;
+	background: #fff;
 }
 
 .headerContainer {
-    display: flex;
-    align-items: center;
-    justify-content: space-around;
-    margin-right: 12px;
-    margin-left: 12px;
+	display: flex;
+	max-width: 1020px;
+	margin: 0 auto;
+	padding: 25px 12px;
+	justify-content: space-between;
+	align-items: center;
 }
 
 .headerTitleContainer {
-    display: flex;
-    align-items: center;
-    margin-right: 40px;
-    color: #f2f2f2;
-    text-decoration: none;
+	display: flex;
+	align-items: center;
+	margin-right: 40px;
+	text-decoration: none;
 }
 
 .headerLogo {
-    height: 40px;
+	height: 50px;
+	width: 105px;
+	fill: black;
+	stroke: black;
 }
 
 .headerTitle {
-    margin-left: 12px;
-    font-weight: 600;
+	margin-left: 12px;
+	font-weight: 600;
 }
 
 .headerNavList {
-    display: flex;
-    list-style: none;
-    padding-left: 0;
+	display: flex;
+	list-style: none;
+	padding-left: 0;
 }
 
 .headerNavPageLink {
-    color: #f2f2f2;
-    text-decoration: none;
-    opacity: 0.75;
+	color: #28292c;
+	text-decoration: none;
+	opacity: 0.75;
 
-    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-    transition-duration: 500ms;
-    transition-property: opacity;
+	transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+	transition-duration: 500ms;
+	transition-property: opacity;
 }
 
 .headerNavPageLink:hover {
-    opacity: 1;
+	opacity: 1;
 }
 
 .headerNavPageLinkActive {
-    color: #f2f2f2;
-    text-decoration: none;
+	color: #28292c;
+	text-decoration: none;
 }
 
 .headerNavLeftMargin {
-    margin-left: 20px;
+	margin-left: 20px;
 }
 
 .headerRightText {
-    font-weight: normal;
-    margin-left: 40px;
+	font-weight: normal;
+	margin-left: 40px;
 }
 
 .microsoftLogo {
-    height: 23px;
-    font-weight: 600;
+	height: 23px;
+	font-weight: 600;
 }
 
 .githubLogo {
-    height: 20px;
+	height: 20px;
 }

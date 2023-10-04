@@ -25,6 +25,8 @@ export default defineConfig({
     },
     server: {
         proxy: {
+            "/auth_setup": "http://localhost:50505",
+            "/chat_stream": "http://localhost:50505",
             "/ask": "http://localhost:50505",
             "/chat": "http://localhost:50505"
         }
