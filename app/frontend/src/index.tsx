@@ -1,18 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { createHashRouter, RouterProvider } from 'react-router-dom';
+import { createHashRouter, Outlet, RouterProvider } from 'react-router-dom';
 import { initializeIcons } from '@fluentui/react';
-import { MsalProvider } from '@azure/msal-react';
-import {
-	PublicClientApplication,
-	EventType,
-	AccountInfo,
-} from '@azure/msal-browser';
-import { msalConfig, useLogin } from './authConfig';
 
 import './index.css';
 
-import Layout from './pages/layout/Layout';
+import Layout from './components/Layout/Layout';
 import Chat from './pages/chat/Chat';
 
 initializeIcons();
@@ -20,7 +13,7 @@ initializeIcons();
 const router = createHashRouter([
 	{
 		path: '/',
-		element: <Layout />,
+		element: <Outlet />,
 		children: [
 			{
 				index: true,

@@ -75,11 +75,10 @@
 	margin-left: 40px;
 }
 
-.microsoftLogo {
-	height: 23px;
-	font-weight: 600;
-}
-
-.githubLogo {
-	height: 20px;
+.main {
+	flex: 1;
+	max-width: 1020px;
+	margin: 0 auto;
+	padding: 25px 12px;
+	display: flex;
 }
