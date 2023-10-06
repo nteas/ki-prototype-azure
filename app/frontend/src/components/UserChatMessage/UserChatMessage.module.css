@@ -3,7 +3,6 @@
 	justify-content: flex-end;
 	margin-bottom: 20px;
 	margin-left: auto;
-	box-shadow: 0px 2px 4px 0px rgba(58, 58, 58, 0.1);
 }
 
 .message {
@@ -18,4 +17,5 @@
 	font-size: 17px;
 	font-weight: 400;
 	letter-spacing: 0.255px;
+	box-shadow: 0px 2px 4px 0px rgba(58, 58, 58, 0.1);
 }
