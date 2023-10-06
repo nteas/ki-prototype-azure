@@ -24,9 +24,17 @@
 
 .headerTitleContainer {
 	display: flex;
-	align-items: center;
+	align-items: flex-end;
 	margin-right: 40px;
 	text-decoration: none;
+}
+
+.headerTitleContainer span {
+	color: #28292c;
+	font-size: 17px;
+	font-weight: 500;
+	line-height: 20px; /* 117.647% */
+	margin-left: 5px;
 }
 
 .headerLogo {

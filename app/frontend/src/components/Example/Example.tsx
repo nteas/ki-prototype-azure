@@ -3,13 +3,11 @@ import { ChatRegular } from '@fluentui/react-icons';
 
 interface Props {
 	text: string;
-	value: string;
-	onClick: (value: string) => void;
 }
 
-export const Example = ({ text, value, onClick }: Props) => {
+export const Example = ({ text }: Props) => {
 	return (
-		<div className={styles.example} onClick={() => onClick(value)}>
+		<div className={styles.example}>
 			<p className={styles.exampleText}>{text}</p>
 			<ChatRegular
 				className={styles.chatIcon}

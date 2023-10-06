@@ -30,12 +30,11 @@ export const ExampleList = ({ onExampleClicked }: Props) => {
 	return (
 		<ul className={styles.examplesNavList}>
 			{EXAMPLES.map((x, i) => (
-				<li key={i} className={styles.examplesListItem}>
-					<Example
-						text={x.text}
-						value={x.value}
-						onClick={onExampleClicked}
-					/>
+				<li
+					key={i}
+					className={styles.examplesListItem}
+					onClick={() => onExampleClicked(x.value)}>
+					<Example text={x.text} />
 				</li>
 			))}
 		</ul>

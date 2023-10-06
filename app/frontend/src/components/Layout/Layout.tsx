@@ -18,6 +18,8 @@ const Layout = ({ headerActions, children }: Props) => {
 							alt="Gå til forsiden til NTE.no"
 							className={styles.headerLogo}
 						/>
+
+						<span>| KS BETA</span>
 					</Link>
 
 					<nav>
