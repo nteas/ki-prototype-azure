@@ -22,7 +22,7 @@ const Layout = ({ headerActions, children }: Props) => {
 						<span>| KS BETA</span>
 					</Link>
 
-					<nav>
+					<nav className={styles.headerNav}>
 						<NavLink
 							to="/"
 							className={({ isActive }) =>

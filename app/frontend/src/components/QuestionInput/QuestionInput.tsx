@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Stack, TextField } from '@fluentui/react';
 import { Button, Tooltip } from '@fluentui/react-components';
-import { Send28Filled } from '@fluentui/react-icons';
+import { Send28Filled, Search28Filled } from '@fluentui/react-icons';
 
 import styles from './QuestionInput.module.css';
 
@@ -10,6 +10,7 @@ interface Props {
 	disabled: boolean;
 	placeholder?: string;
 	clearOnSend?: boolean;
+	search?: boolean;
 }
 
 export const QuestionInput = ({
@@ -17,6 +18,7 @@ export const QuestionInput = ({
 	disabled,
 	placeholder,
 	clearOnSend,
+	search = false,
 }: Props) => {
 	const [question, setQuestion] = useState<string>('');
 
@@ -68,9 +70,7 @@ export const QuestionInput = ({
 				<Tooltip content="Ask question button" relationship="label">
 					<Button
 						size="large"
-						icon={
-							<Send28Filled primaryFill="rgba(115, 118, 225, 1)" />
-						}
+						icon={search ? <Search28Filled /> : <Send28Filled />}
 						disabled={sendQuestionDisabled}
 						onClick={sendQuestion}
 					/>

@@ -214,20 +214,28 @@ export function Component(): JSX.Element {
 			}>
 			<div className={styles.oneshotContainer}>
 				<div className={styles.oneshotTopSection}>
-					<h2 className={styles.oneshotTitle}>Spør innholdet ditt</h2>
+					<h2 className={styles.oneshotTitle}>
+						Søk i spørsmål og svar
+					</h2>
+
+					<p className={styles.oneshotSubTitle}>
+						Bot’en vil kun søke i alle FAQ-innleggene på nte.no
+					</p>
+
 					<div className={styles.oneshotQuestionInput}>
 						<QuestionInput
 							placeholder="Skriv et nytt spørsmål. For eksempel “Er det bindingstid på Spotpris?”"
 							disabled={isLoading}
 							onSend={question => makeApiRequest(question)}
+							search
 						/>
 					</div>
 				</div>
 				<div className={styles.oneshotBottomSection}>
 					{isLoading && <Spinner label="Generating answer" />}
-					{!lastQuestionRef.current && (
+					{/* {!lastQuestionRef.current && (
 						<ExampleList onExampleClicked={onExampleClicked} />
-					)}
+					)} */}
 					{!isLoading && answer && !error && (
 						<div className={styles.oneshotAnswerContainer}>
 							<Answer

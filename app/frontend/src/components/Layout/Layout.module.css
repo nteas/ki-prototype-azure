@@ -23,6 +23,7 @@
 }
 
 .headerTitleContainer {
+	flex: 1;
 	display: flex;
 	align-items: flex-end;
 	margin-right: 40px;
@@ -47,6 +48,16 @@
 .headerTitle {
 	margin-left: 12px;
 	font-weight: 600;
+}
+
+.headerNav {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.headerNav a {
+	margin: 0 10px;
 }
 
 .headerNavList {
@@ -81,6 +92,12 @@
 .headerRightText {
 	font-weight: normal;
 	margin-left: 40px;
+}
+
+.headerActions {
+	flex: 1;
+	display: flex;
+	justify-content: flex-end;
 }
 
 .main {
