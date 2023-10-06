@@ -23,7 +23,7 @@ echo ""
 echo "Restoring backend python packages"
 echo ""
 
-cd backend
+cd app/backend
 ./backend_env/bin/python -m pip install -r requirements.txt
 if [ $? -ne 0 ]; then
     echo "Failed to restore backend python packages"
