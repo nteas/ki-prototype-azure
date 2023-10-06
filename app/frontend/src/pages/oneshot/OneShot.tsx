@@ -205,14 +205,16 @@ export function Component(): JSX.Element {
 	};
 
 	return (
-		<Layout>
+		<Layout
+			headerActions={
+				<SettingsButton
+					className={styles.settingsButton}
+					onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
+				/>
+			}>
 			<div className={styles.oneshotContainer}>
 				<div className={styles.oneshotTopSection}>
-					<SettingsButton
-						className={styles.settingsButton}
-						onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
-					/>
-					<h1 className={styles.oneshotTitle}>Ask your data</h1>
+					<h2 className={styles.oneshotTitle}>Spør innholdet ditt</h2>
 					<div className={styles.oneshotQuestionInput}>
 						<QuestionInput
 							placeholder="Example: Does my plan cover annual eye exams?"
