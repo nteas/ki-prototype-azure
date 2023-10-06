@@ -77,8 +77,11 @@
 
 .main {
 	flex: 1;
-	max-width: 1020px;
-	margin: 0 auto;
 	padding: 25px 12px;
 	display: flex;
+	justify-content: center;
+}
+
+.main > * {
+	flex: 0 1 1020px;
 }

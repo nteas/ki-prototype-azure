@@ -217,7 +217,7 @@ export function Component(): JSX.Element {
 					<h2 className={styles.oneshotTitle}>Spør innholdet ditt</h2>
 					<div className={styles.oneshotQuestionInput}>
 						<QuestionInput
-							placeholder="Example: Does my plan cover annual eye exams?"
+							placeholder="Skriv et nytt spørsmål. For eksempel “Er det bindingstid på Spotpris?”"
 							disabled={isLoading}
 							onSend={question => makeApiRequest(question)}
 						/>

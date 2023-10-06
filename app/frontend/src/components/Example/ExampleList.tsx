@@ -9,16 +9,16 @@ export type ExampleModel = {
 
 const EXAMPLES: ExampleModel[] = [
 	{
-		text: 'What is included in my Northwind Health Plus plan that is not in standard?',
-		value: 'What is included in my Northwind Health Plus plan that is not in standard?',
+		text: 'Hvor mye koster HBO Max?',
+		value: 'Hvor mye koster HBO Max?',
 	},
 	{
-		text: 'What happens in a performance review?',
-		value: 'What happens in a performance review?',
+		text: 'Hvorfor får jeg svart skjerm når jeg prøver å se på HBO Max?',
+		value: 'Hvorfor får jeg svart skjerm når jeg prøver å se på HBO Max?',
 	},
 	{
-		text: 'What does a Product Manager do?',
-		value: 'What does a Product Manager do?',
+		text: 'Hvordan får jeg tilgang til TV 2 Play?',
+		value: 'Hvordan får jeg tilgang til TV 2 Play?',
 	},
 ];
 
