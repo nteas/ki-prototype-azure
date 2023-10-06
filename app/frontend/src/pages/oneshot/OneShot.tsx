@@ -14,13 +14,7 @@ import {
 
 import styles from './OneShot.module.css';
 
-import {
-	askApi,
-	Approaches,
-	AskResponse,
-	AskRequest,
-	RetrievalMode,
-} from '../../api';
+import { askApi, ChatAppResponse, AskRequest, RetrievalMode } from '../../api';
 import { Answer, AnswerError } from '../../components/Answer';
 import { QuestionInput } from '../../components/QuestionInput';
 import { ExampleList } from '../../components/Example';
@@ -36,9 +30,6 @@ import Layout from '../../components/Layout/Layout';
 
 export function Component(): JSX.Element {
 	const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
-	const [approach, setApproach] = useState<Approaches>(
-		Approaches.RetrieveThenRead
-	);
 	const [promptTemplate, setPromptTemplate] = useState<string>('');
 	const [promptTemplatePrefix, setPromptTemplatePrefix] =
 		useState<string>('');
@@ -61,7 +52,7 @@ export function Component(): JSX.Element {
 
 	const [isLoading, setIsLoading] = useState<boolean>(false);
 	const [error, setError] = useState<unknown>();
-	const [answer, setAnswer] = useState<AskResponse>();
+	const [answer, setAnswer] = useState<ChatAppResponse>();
 
 	const [activeCitation, setActiveCitation] = useState<string>();
 	const [activeAnalysisPanelTab, setActiveAnalysisPanelTab] = useState<
@@ -83,7 +74,6 @@ export function Component(): JSX.Element {
 		try {
 			const request: AskRequest = {
 				question,
-				approach,
 				overrides: {
 					promptTemplate:
 						promptTemplate.length === 0
@@ -155,13 +145,6 @@ export function Component(): JSX.Element {
 		setRetrievalMode(option?.data || RetrievalMode.Hybrid);
 	};
 
-	const onApproachChange = (
-		_ev?: React.FormEvent<HTMLElement | HTMLInputElement>,
-		option?: IChoiceGroupOption
-	) => {
-		setApproach((option?.key as Approaches) || Approaches.RetrieveThenRead);
-	};
-
 	const onUseSemanticRankerChange = (
 		_ev?: React.FormEvent<HTMLElement | HTMLInputElement>,
 		checked?: boolean
@@ -220,21 +203,6 @@ export function Component(): JSX.Element {
 	) => {
 		setUseGroupsSecurityFilter(!!checked);
 	};
-
-	const approaches: IChoiceGroupOption[] = [
-		{
-			key: Approaches.RetrieveThenRead,
-			text: 'Retrieve-Then-Read',
-		},
-		{
-			key: Approaches.ReadRetrieveRead,
-			text: 'Read-Retrieve-Read',
-		},
-		{
-			key: Approaches.ReadDecomposeAsk,
-			text: 'Read-Decompose-Ask',
-		},
-	];
 
 	return (
 		<Layout>
@@ -312,46 +280,14 @@ export function Component(): JSX.Element {
 						</DefaultButton>
 					)}
 					isFooterAtBottom={true}>
-					<ChoiceGroup
+					<TextField
 						className={styles.oneshotSettingsSeparator}
-						label="Approach"
-						options={approaches}
-						defaultSelectedKey={approach}
-						onChange={onApproachChange}
+						defaultValue={promptTemplate}
+						label="Override prompt template"
+						multiline
+						autoAdjustHeight
+						onChange={onPromptTemplateChange}
 					/>
-
-					{(approach === Approaches.RetrieveThenRead ||
-						approach === Approaches.ReadDecomposeAsk) && (
-						<TextField
-							className={styles.oneshotSettingsSeparator}
-							defaultValue={promptTemplate}
-							label="Override prompt template"
-							multiline
-							autoAdjustHeight
-							onChange={onPromptTemplateChange}
-						/>
-					)}
-
-					{approach === Approaches.ReadRetrieveRead && (
-						<>
-							<TextField
-								className={styles.oneshotSettingsSeparator}
-								defaultValue={promptTemplatePrefix}
-								label="Override prompt prefix template"
-								multiline
-								autoAdjustHeight
-								onChange={onPromptTemplatePrefixChange}
-							/>
-							<TextField
-								className={styles.oneshotSettingsSeparator}
-								defaultValue={promptTemplateSuffix}
-								label="Override prompt suffix template"
-								multiline
-								autoAdjustHeight
-								onChange={onPromptTemplateSuffixChange}
-							/>
-						</>
-					)}
 
 					<SpinButton
 						className={styles.oneshotSettingsSeparator}
