@@ -6,6 +6,7 @@
 	padding: 20px;
 	align-items: center;
 	gap: 20px;
+	width: 100%;
 }
 
 .questionInputTextArea {
@@ -28,9 +29,15 @@
 	background: #b5b7bb;
 	max-width: none;
 }
+
+.questionInputButtonsContainer .searchButton {
+	background: #0079ad;
+}
+
 .questionInputButtonsContainer button:hover {
 	background: #b5b7bb;
 }
+
 .questionInputButtonsContainer button svg path {
 	fill: white;
 }

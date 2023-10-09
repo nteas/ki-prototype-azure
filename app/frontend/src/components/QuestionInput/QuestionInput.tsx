@@ -73,6 +73,9 @@ export const QuestionInput = ({
 						icon={search ? <Search28Filled /> : <Send28Filled />}
 						disabled={sendQuestionDisabled}
 						onClick={sendQuestion}
+						className={
+							search ? styles.searchButton : styles.sendButton
+						}
 					/>
 				</Tooltip>
 			</div>

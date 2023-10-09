@@ -34,6 +34,8 @@ import { useLogin, getToken } from '../../authConfig';
 import { useMsal } from '@azure/msal-react';
 import { TokenClaimsDisplay } from '../../components/TokenClaimsDisplay';
 import Layout from '../../components/Layout/Layout';
+import { FinishChatButton } from '../../components/FinishChat/FinishChatButton';
+import analytics from '../../libs/analytics';
 
 const Chat = () => {
 	const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
@@ -339,15 +341,29 @@ const Chat = () => {
 		setSelectedAnswer(index);
 	};
 
+	const handleFinishedClick = async (data: {
+		feedback: string;
+		comment?: string;
+	}) => {
+		await analytics.track('Feedback Submitted', {
+			properties: {
+				feedback: data.feedback,
+				comment: data.comment,
+			},
+		});
+
+		clearChat();
+	};
+
 	return (
 		<Layout
 			headerActions={
 				<div className={styles.commandsContainer}>
-					<ClearChatButton
+					<FinishChatButton
 						className={styles.commandButton}
-						onClick={clearChat}
-						disabled={!lastQuestionRef.current || isLoading}
+						onSubmit={handleFinishedClick}
 					/>
+
 					<SettingsButton
 						className={styles.commandButton}
 						onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
@@ -362,6 +378,7 @@ const Chat = () => {
 								<h2 className={styles.chatEmptyStateTitle}>
 									Forslag til åpningsspørsmål
 								</h2>
+
 								<p className={styles.chatEmptyStateSubtitle}>
 									Du kan også starte samtalen med egne
 									spørsmål under...
@@ -508,6 +525,11 @@ const Chat = () => {
 						)}
 
 						<div className={styles.chatInput}>
+							<ClearChatButton
+								onClick={clearChat}
+								disabled={!lastQuestionRef.current || isLoading}
+							/>
+
 							<QuestionInput
 								clearOnSend
 								placeholder="Skriv et nytt spørsmål. For eksempel “Er det bindingstid på Spotpris?”"
