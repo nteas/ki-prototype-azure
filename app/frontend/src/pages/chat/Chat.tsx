@@ -211,7 +211,7 @@ const Chat = () => {
 					);
 
 				await analytics.track('Question Replied', {
-					reply: parsedResponse,
+					reply: parsedResponse.choices[0].message.content,
 					timestamp: Math.round(new Date().getTime() / 1000),
 				});
 
@@ -222,6 +222,7 @@ const Chat = () => {
 				if (response.status > 299 || !response.ok) {
 					throw Error(parsedResponse.error || 'Unknown error');
 				}
+
 				setAnswers([
 					...answers,
 					[question, parsedResponse as ChatAppResponse],
