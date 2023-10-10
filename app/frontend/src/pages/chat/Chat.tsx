@@ -363,15 +363,16 @@ const Chat = () => {
 		feedback: string;
 		comment?: string;
 	}) => {
-		timer.current = 0;
-
 		await analytics.track('Chat Completed', {
 			time_to_complete: Math.round(
 				(new Date().getTime() - timer.current) / 1000
 			),
 			results: data.feedback === 'good' ? 1 : 0,
+			message: data?.comment || '',
 			timestamp: Math.round(new Date().getTime() / 1000),
 		});
+
+		timer.current = 0;
 
 		clearChat();
 	};
