@@ -76,6 +76,8 @@ const Chat = () => {
 		[user: string, response: ChatAppResponse][]
 	>([]);
 
+	const timer = useRef<number>(0);
+
 	const handleAsyncRequest = async (
 		question: string,
 		answers: [string, ChatAppResponse][],
@@ -149,7 +151,16 @@ const Chat = () => {
 	const client = useLogin ? useMsal().instance : undefined;
 
 	const makeApiRequest = async (question: string) => {
+		await analytics.track('Question Asked', {
+			question,
+			timestamp: Math.round(new Date().getTime() / 1000),
+		});
+
 		lastQuestionRef.current = question;
+
+		if (timer.current === 0) {
+			timer.current = new Date().getTime();
+		}
 
 		error && setError(undefined);
 		setIsLoading(true);
@@ -198,6 +209,12 @@ const Chat = () => {
 						setAnswers,
 						response.body
 					);
+
+				await analytics.track('Question Replied', {
+					reply: parsedResponse,
+					timestamp: Math.round(new Date().getTime() / 1000),
+				});
+
 				setAnswers([...answers, [question, parsedResponse]]);
 			} else {
 				const parsedResponse: ChatAppResponseOrError =
@@ -345,11 +362,14 @@ const Chat = () => {
 		feedback: string;
 		comment?: string;
 	}) => {
-		await analytics.track('Feedback Submitted', {
-			properties: {
-				feedback: data.feedback,
-				comment: data.comment,
-			},
+		timer.current = 0;
+
+		await analytics.track('Chat Completed', {
+			time_to_complete: Math.round(
+				(new Date().getTime() - timer.current) / 1000
+			),
+			results: data.feedback === 'good' ? 1 : 0,
+			timestamp: Math.round(new Date().getTime() / 1000),
 		});
 
 		clearChat();
