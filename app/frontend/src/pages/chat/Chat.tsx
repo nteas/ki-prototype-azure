@@ -381,10 +381,12 @@ const Chat = () => {
 		<Layout
 			headerActions={
 				<div className={styles.commandsContainer}>
-					<FinishChatButton
-						className={styles.commandButton}
-						onSubmit={handleFinishedClick}
-					/>
+					{lastQuestionRef.current && (
+						<FinishChatButton
+							className={styles.commandButton}
+							onSubmit={handleFinishedClick}
+						/>
+					)}
 
 					<SettingsButton
 						className={styles.commandButton}

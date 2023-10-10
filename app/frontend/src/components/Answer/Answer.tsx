@@ -38,39 +38,34 @@ export const Answer = ({
 	const sanitizedAnswerHtml = DOMPurify.sanitize(parsedAnswer.answerHtml);
 
 	return (
-		<Stack
+		<div
 			className={`${styles.answerContainer} ${
 				isSelected && styles.selected
-			}`}
-			verticalAlign="space-between">
-			<Stack.Item>
-				<Stack horizontal horizontalAlign="space-between">
-					<AnswerIcon />
-					<div>
-						<IconButton
-							style={{ color: 'black' }}
-							iconProps={{ iconName: 'Lightbulb' }}
-							title="Show thought process"
-							ariaLabel="Show thought process"
-							onClick={() => onThoughtProcessClicked()}
-							disabled={
-								!answer.choices[0].extra_args.thoughts?.length
-							}
-						/>
-						<IconButton
-							style={{ color: 'black' }}
-							iconProps={{ iconName: 'ClipboardList' }}
-							title="Show supporting content"
-							ariaLabel="Show supporting content"
-							onClick={() => onSupportingContentClicked()}
-							disabled={
-								!answer.choices[0].extra_args.data_points
-									?.length
-							}
-						/>
-					</div>
-				</Stack>
-			</Stack.Item>
+			}`}>
+			<div className={styles.answerIcons}>
+				<AnswerIcon />
+
+				<div className={styles.answerActionIcons}>
+					<IconButton
+						iconProps={{ iconName: 'Lightbulb' }}
+						title="Show thought process"
+						ariaLabel="Show thought process"
+						onClick={() => onThoughtProcessClicked()}
+						disabled={
+							!answer.choices[0].extra_args.thoughts?.length
+						}
+					/>
+					<IconButton
+						iconProps={{ iconName: 'ClipboardList' }}
+						title="Show supporting content"
+						ariaLabel="Show supporting content"
+						onClick={() => onSupportingContentClicked()}
+						disabled={
+							!answer.choices[0].extra_args.data_points?.length
+						}
+					/>
+				</div>
+			</div>
 
 			<Stack.Item grow>
 				<div
@@ -134,6 +129,6 @@ export const Answer = ({
 						</Stack>
 					</Stack.Item>
 				)}
-		</Stack>
+		</div>
 	);
 };
