@@ -11,7 +11,7 @@ interface Log {
 
 export function Component(): JSX.Element {
 	const [logs, setLogs] = useState<Log[]>([]);
-	const [log, setLog] = useState<Log>();
+	const [log, setLog] = useState<Log | null>();
 
 	useMemo(() => {
 		fetch('/logs')
@@ -32,14 +32,21 @@ export function Component(): JSX.Element {
 							onClick={() => setLog(log)}>
 							<span>{log.uuid}</span>
 							<span>{log.feedback}</span>
-							<span>{log.timestamp}</span>
+							<span>{new Date(log.timestamp).toISOString()}</span>
 						</div>
 					))}
 				</div>
 
 				{log && (
-					<div className={styles.logModal}>
-						<div>{log.thought_process}</div>
+					<div className={styles.modalWrapper}>
+						<div
+							className={styles.overlay}
+							onClick={() => setLog(null)}
+						/>
+
+						<div className={styles.modal}>
+							<div>{log.thought_process}</div>
+						</div>
 					</div>
 				)}
 			</div>
