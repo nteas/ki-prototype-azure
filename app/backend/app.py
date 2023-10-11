@@ -27,10 +27,12 @@ from quart import (
     send_from_directory,
 )
 from quart_cors import cors
+import sqlite3
 
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
 from core.authentication import AuthenticationHelper
+
 
 CONFIG_OPENAI_TOKEN = "openai_token"
 CONFIG_CREDENTIAL = "azure_credential"
@@ -39,6 +41,8 @@ CONFIG_CHAT_APPROACH = "chat_approach"
 CONFIG_BLOB_CONTAINER_CLIENT = "blob_container_client"
 CONFIG_AUTH_CLIENT = "auth_client"
 CONFIG_SEARCH_CLIENT = "search_client"
+CONFIG_DB_NAME = "app.db"
+
 
 bp = Blueprint("routes", __name__, static_folder="static")
 
@@ -146,6 +150,64 @@ async def chat_stream():
     except Exception as e:
         logging.exception("Exception in /chat")
         return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/logs", methods=["GET"])
+async def get_logs():
+    conn = sqlite3.connect(CONFIG_DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='logs'")
+    table_exists = c.fetchone() is not None
+
+    # If the logs table does not exist, create it
+    if not table_exists:
+        return {"error": "logs table does not exist"}
+
+    c.execute("SELECT * FROM logs")
+    rows = c.fetchall()
+
+    logs = []
+    for row in rows:
+        log = {
+            "id": row[0],
+            "uuid": row[1],
+            "feedback": row[2],
+            "timestamp": row[3],
+            "thought_process": row[4],
+        }
+        logs.append(log)
+
+    return jsonify(logs)
+
+
+@bp.route("/logs/add", methods=["POST"])
+async def add_log():
+    data = await request.get_json()
+    uuid = data.get("uuid")
+    feedback = data.get("feedback")
+    timestamp = data.get("timestamp")
+    thought_process = data.get("thought_process")
+
+    conn = sqlite3.connect(CONFIG_DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='logs'")
+    table_exists = c.fetchone() is not None
+
+    # If the logs table does not exist, create it
+    if not table_exists:
+        c.execute(
+            """CREATE TABLE logs
+                    (id INTEGER PRIMARY KEY, uuid TEXT, feedback TEXT, timestamp NUMERIC, thought_process TEXT)"""
+        )
+
+    c.execute(
+        "INSERT INTO logs (uuid, feedback, timestamp, thought_process) VALUES (?, ?, ?, ?)",
+        (uuid, feedback, timestamp, thought_process),
+    )
+    conn.commit()
+    conn.close()
+
+    return "log added successfully"
 
 
 # Send MSAL.js settings to the client UI

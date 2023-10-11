@@ -5,7 +5,6 @@ import { initializeIcons } from '@fluentui/react';
 
 import './index.css';
 
-import Layout from './components/Layout/Layout';
 import Chat from './pages/chat/Chat';
 
 initializeIcons();
@@ -22,6 +21,10 @@ const router = createHashRouter([
 			{
 				path: 'qa',
 				lazy: () => import('./pages/oneshot/OneShot'),
+			},
+			{
+				path: 'logs',
+				lazy: () => import('./pages/logs/Logs'),
 			},
 			{
 				path: '*',

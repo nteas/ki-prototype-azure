@@ -372,6 +372,21 @@ const Chat = () => {
 			timestamp: Math.round(new Date().getTime() / 1000),
 		});
 
+		const lastAnswer = answers[answers.length - 1];
+
+		await fetch('/logs/add', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				uuid: sessionStorage.getItem('ajs_anonymous_id'),
+				message: data?.comment || '',
+				timestamp: Math.round(new Date().getTime() / 1000),
+				thought_process: lastAnswer[1].choices[0].extra_args.thoughts,
+			}),
+		});
+
 		timer.current = 0;
 
 		clearChat();

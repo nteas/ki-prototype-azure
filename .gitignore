@@ -1,3 +1,6 @@
+# temporary db
+app/backend/app.db
+
 # Azure az webapp deployment details
 .azure
 *_env

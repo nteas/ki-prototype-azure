@@ -30,6 +30,8 @@ export default defineConfig({
 			'/chat_stream': 'http://localhost:50505',
 			'/ask': 'http://localhost:50505',
 			'/chat': 'http://localhost:50505',
+			'/logs': 'http://localhost:50505',
+			'/logs/*': 'http://localhost:50505',
 		},
 	},
 });

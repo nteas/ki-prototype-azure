@@ -3,7 +3,7 @@ import { NavLink, Link } from 'react-router-dom';
 import styles from './Layout.module.css';
 
 interface Props {
-	headerActions: React.ReactNode;
+	headerActions?: React.ReactNode;
 	children: React.ReactNode;
 }
 
