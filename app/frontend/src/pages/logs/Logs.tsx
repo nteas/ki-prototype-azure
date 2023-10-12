@@ -25,7 +25,7 @@ export function Component(): JSX.Element {
 				<h1>Logs</h1>
 
 				<div className={styles.logs}>
-					{logs.map((log, i) => (
+					{logs?.map((log, i) => (
 						<div
 							key={i}
 							className={styles.log}
