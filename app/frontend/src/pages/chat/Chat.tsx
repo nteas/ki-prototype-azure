@@ -381,8 +381,8 @@ const Chat = () => {
 			},
 			body: JSON.stringify({
 				uuid: sessionStorage.getItem('ajs_anonymous_id'),
-				message: data?.comment || '',
-				timestamp: Math.round(new Date().getTime() / 1000),
+				feedback: data?.comment || '',
+				timestamp: new Date().getTime(),
 				thought_process: lastAnswer[1].choices[0].extra_args.thoughts,
 			}),
 		});

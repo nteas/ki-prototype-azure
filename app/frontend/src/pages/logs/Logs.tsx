@@ -45,7 +45,11 @@ export function Component(): JSX.Element {
 						/>
 
 						<div className={styles.modal}>
-							<div>{log.thought_process}</div>
+							<div
+								dangerouslySetInnerHTML={{
+									__html: log.thought_process,
+								}}
+							/>
 						</div>
 					</div>
 				)}
