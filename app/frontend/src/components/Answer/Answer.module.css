@@ -32,7 +32,6 @@
 }
 
 .answerText {
-	color: #28292c;
 	font-size: 17px;
 	font-weight: 400;
 	letter-spacing: 0.255px;
@@ -48,26 +47,28 @@
 	padding: 5px;
 }
 
-.selected {
-	outline: 2px solid rgba(115, 118, 225, 1);
+.citations {
+	padding-top: 10px;
 }
 
-.citationLearnMore {
-	margin-right: 5px;
-	font-weight: 600;
-	line-height: 24px;
+.citations span {
+	font-family: Roboto;
+	font-size: 17px;
+	font-style: normal;
+	font-weight: 400;
+	line-height: 28px; /* 164.706% */
+	letter-spacing: 0.255px;
 }
 
 .citation {
-	font-weight: 500;
-	line-height: 24px;
-	text-align: center;
-	border-radius: 4px;
-	padding: 0px 8px;
-	background: #d1dbfa;
-	color: #123bb6;
-	text-decoration: none;
-	cursor: pointer;
+	color: #056089;
+	border-radius: 5px;
+	background: #ceecf9;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 18px; /* 128.571% */
+	padding: 5px 10px;
+	margin-left: 5px;
 }
 
 .citation:hover {
@@ -113,16 +114,9 @@ sup {
 	justify-content: center;
 	font-size: 10px;
 	font-weight: 600;
+	color: #0079ad;
 	vertical-align: top;
-	top: -1;
-	margin: 0px 2px;
-	min-width: 14px;
 	height: 14px;
-	border-radius: 3px;
-	background: #d1dbfa;
-	color: #123bb6;
-	text-decoration-color: transparent;
-	outline: transparent solid 1px;
 	cursor: pointer;
 }
 

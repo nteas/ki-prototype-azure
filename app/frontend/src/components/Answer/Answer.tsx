@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Stack, IconButton } from '@fluentui/react';
+import { IconButton } from '@fluentui/react';
 import DOMPurify from 'dompurify';
 
 import styles from './Answer.module.css';
@@ -67,67 +67,53 @@ export const Answer = ({
 				</div>
 			</div>
 
-			<Stack.Item grow>
-				<div
-					className={styles.answerText}
-					dangerouslySetInnerHTML={{
-						__html: sanitizedAnswerHtml,
-					}}></div>
-			</Stack.Item>
+			<div
+				className={styles.answerText}
+				dangerouslySetInnerHTML={{
+					__html: sanitizedAnswerHtml,
+				}}></div>
 
 			{!!parsedAnswer.citations.length && (
-				<Stack.Item>
-					<Stack horizontal wrap tokens={{ childrenGap: 5 }}>
-						<span className={styles.citationLearnMore}>
-							Kilder:
-						</span>
-						{parsedAnswer.citations.map((x, i) => {
-							const path = getCitationFilePath(x);
-							return (
-								<a
-									key={i}
-									className={styles.citation}
-									title={x}
-									onClick={() => onCitationClicked(path)}>
-									{`${++i}. ${x}`}
-								</a>
-							);
-						})}
-					</Stack>
-				</Stack.Item>
+				<div className={styles.citations}>
+					<span className={styles.citationLearnMore}>Kilder:</span>
+
+					{parsedAnswer.citations.map((x, i) => {
+						const path = getCitationFilePath(x);
+						return (
+							<a
+								key={i}
+								className={styles.citation}
+								title={x}
+								onClick={() => onCitationClicked(path)}>
+								{`${++i}. ${x}`}
+							</a>
+						);
+					})}
+				</div>
 			)}
 
 			{!!parsedAnswer.followupQuestions.length &&
 				showFollowupQuestions &&
 				onFollowupQuestionClicked && (
-					<Stack.Item>
-						<Stack
-							horizontal
-							wrap
-							className={`${
-								!!parsedAnswer.citations.length
-									? styles.followupQuestionsList
-									: ''
-							}`}
-							tokens={{ childrenGap: 6 }}>
-							<span className={styles.followupQuestionLearnMore}>
-								Follow-up questions:
-							</span>
-							{parsedAnswer.followupQuestions.map((x, i) => {
-								return (
-									<a
-										key={i}
-										className={styles.followupQuestion}
-										title={x}
-										onClick={() =>
-											onFollowupQuestionClicked(x)
-										}>
-										{`${x}`}
-									</a>
-								);
-							})}
-						</Stack>
-					</Stack.Item>
+					<>
+						<span className={styles.followupQuestionLearnMore}>
+							Follow-up questions:
+						</span>
+
+						{parsedAnswer.followupQuestions.map((x, i) => {
+							return (
+								<a
+									key={i}
+									className={styles.followupQuestion}
+									title={x}
+									onClick={() =>
+										onFollowupQuestionClicked(x)
+									}>
+									{`${x}`}
+								</a>
+							);
+						})}
+					</>
 				)}
 		</div>
 	);
