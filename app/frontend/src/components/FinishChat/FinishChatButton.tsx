@@ -3,8 +3,9 @@ import { createPortal } from 'react-dom';
 import {
 	CommentCheckmark24Regular,
 	Checkmark24Regular,
-	ThumbLike24Regular,
-	ThumbDislike24Regular,
+	Star48Regular,
+	Star48Filled,
+	Dismiss24Regular,
 } from '@fluentui/react-icons';
 import { Button } from '@fluentui/react-components';
 
@@ -13,7 +14,7 @@ import styles from './FinishChatButton.module.css';
 interface Props {
 	className?: string;
 	disabled?: boolean;
-	onSubmit: (data: { feedback: string; comment?: string }) => Promise<void>;
+	onSubmit: (data: { feedback: number; comment?: string }) => Promise<void>;
 }
 
 export const FinishChatButton = ({ className, disabled, onSubmit }: Props) => {
@@ -37,18 +38,17 @@ export const FinishChatButton = ({ className, disabled, onSubmit }: Props) => {
 
 interface ModalProps {
 	onClose: () => void;
-	onSubmit: (data: { feedback: string; comment?: string }) => Promise<void>;
+	onSubmit: (data: { feedback: number; comment?: string }) => Promise<void>;
 }
 
 const Modal = ({ onClose, onSubmit }: ModalProps) => {
 	const [valid, setValid] = useState(false);
-	const [successClicked, setSuccessClicked] = useState(false);
-	const [warningClicked, setWarningClicked] = useState(false);
+	const [feedback, setFeedback] = useState(0);
 	const commentRef = useRef<HTMLTextAreaElement>(null);
 
 	const handleSubmit = async () => {
 		await onSubmit({
-			feedback: successClicked ? 'good' : 'bad',
+			feedback,
 			comment: commentRef?.current?.value || undefined,
 		});
 
@@ -61,7 +61,7 @@ const Modal = ({ onClose, onSubmit }: ModalProps) => {
 
 			<div className={styles.modal}>
 				<button className={styles.closeButton} onClick={onClose}>
-					X
+					<Dismiss24Regular />
 				</button>
 
 				<h2>Fullfør samtale</h2>
@@ -72,33 +72,25 @@ const Modal = ({ onClose, onSubmit }: ModalProps) => {
 				</p>
 
 				<div className={styles.feedbackButtons}>
-					<button
-						className={`${styles.button} ${styles.successButton} ${
-							successClicked && styles.successButtonActive
-						}`}
-						onClick={() => {
-							setSuccessClicked(!successClicked);
-							setWarningClicked(false);
-							setValid(!successClicked);
-						}}>
-						<span>Bra</span>
-
-						<ThumbLike24Regular />
-					</button>
-
-					<button
-						className={`${styles.button} ${styles.warningButton} ${
-							warningClicked && styles.warningButtonActive
-						}`}
-						onClick={() => {
-							setWarningClicked(!warningClicked);
-							setSuccessClicked(false);
-							setValid(!warningClicked);
-						}}>
-						<span>Dårlig</span>
-
-						<ThumbDislike24Regular />
-					</button>
+					{[1, 2, 3, 4, 5].map(i => (
+						<button
+							key={i}
+							className={`${styles.button} ${
+								feedback >= i
+									? styles.successButton
+									: styles.warningButton
+							}`}
+							onClick={() => {
+								setFeedback(i);
+								setValid(i > 0);
+							}}>
+							{feedback >= i ? (
+								<Star48Filled />
+							) : (
+								<Star48Regular />
+							)}
+						</button>
+					))}
 				</div>
 
 				<textarea ref={commentRef} placeholder="Valgfri kommentar" />

@@ -1,4 +1,4 @@
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 
 import styles from './Layout.module.css';
 
@@ -8,6 +8,7 @@ interface Props {
 }
 
 const Layout = ({ headerActions, children }: Props) => {
+	const navigate = useNavigate();
 	return (
 		<div className={styles.layout}>
 			<header className={styles.header} role="banner">
@@ -51,6 +52,12 @@ const Layout = ({ headerActions, children }: Props) => {
 			</header>
 
 			<main className={styles.main}>{children}</main>
+
+			<button
+				className={styles.piButton}
+				onClick={() => navigate('/logs')}>
+				&#120587;
+			</button>
 		</div>
 	);
 };

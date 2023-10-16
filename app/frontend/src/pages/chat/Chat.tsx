@@ -360,14 +360,14 @@ const Chat = () => {
 	};
 
 	const handleFinishedClick = async (data: {
-		feedback: string;
+		feedback: number;
 		comment?: string;
 	}) => {
 		await analytics.track('Chat Completed', {
 			time_to_complete: Math.round(
 				(new Date().getTime() - timer.current) / 1000
 			),
-			results: data.feedback === 'good' ? 1 : 0,
+			results: data.feedback,
 			message: data?.comment || '',
 			timestamp: Math.round(new Date().getTime() / 1000),
 		});
@@ -380,8 +380,9 @@ const Chat = () => {
 				'Content-Type': 'application/json',
 			},
 			body: JSON.stringify({
-				uuid: sessionStorage.getItem('ajs_anonymous_id'),
-				feedback: data?.comment || '',
+				uuid: localStorage.getItem('ajs_anonymous_id'),
+				feedback: data.feedback,
+				comment: data?.comment || '',
 				timestamp: new Date().getTime(),
 				thought_process: lastAnswer[1].choices[0].extra_args.thoughts,
 			}),

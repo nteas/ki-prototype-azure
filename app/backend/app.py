@@ -172,8 +172,9 @@ async def get_logs():
             "id": row[0],
             "uuid": row[1],
             "feedback": row[2],
-            "timestamp": row[3],
-            "thought_process": row[4],
+            "comment": row[3],
+            "timestamp": row[4],
+            "thought_process": row[5],
         }
         logs.append(log)
 
@@ -185,6 +186,7 @@ async def add_log():
     data = await request.get_json()
     uuid = data.get("uuid")
     feedback = data.get("feedback")
+    comment = data.get("comment")
     timestamp = data.get("timestamp")
     thought_process = data.get("thought_process")
 
@@ -201,8 +203,8 @@ async def add_log():
         )
 
     c.execute(
-        "INSERT INTO logs (uuid, feedback, timestamp, thought_process) VALUES (?, ?, ?, ?)",
-        (uuid, feedback, timestamp, thought_process),
+        "INSERT INTO logs (uuid, feedback, comment, timestamp, thought_process) VALUES (?, ?, ?, ?, ?)",
+        (uuid, feedback, comment, timestamp, thought_process),
     )
     conn.commit()
     conn.close()
