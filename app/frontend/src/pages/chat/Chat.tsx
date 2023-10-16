@@ -367,7 +367,7 @@ const Chat = () => {
 			time_to_complete: Math.round(
 				(new Date().getTime() - timer.current) / 1000
 			),
-			results: data.feedback,
+			result: data.feedback,
 			message: data?.comment || '',
 			timestamp: Math.round(new Date().getTime() / 1000),
 		});
@@ -380,7 +380,10 @@ const Chat = () => {
 				'Content-Type': 'application/json',
 			},
 			body: JSON.stringify({
-				uuid: localStorage.getItem('ajs_anonymous_id'),
+				uuid:
+					localStorage
+						.getItem('ajs_anonymous_id')
+						?.replace('"', '') || '',
 				feedback: data.feedback,
 				comment: data?.comment || '',
 				timestamp: new Date().getTime(),

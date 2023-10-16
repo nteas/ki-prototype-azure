@@ -5,6 +5,7 @@ import styles from './Logs.module.css';
 interface Log {
 	uuid: string;
 	feedback: string;
+	comment: string;
 	thought_process: string;
 	timestamp: number;
 }
@@ -16,7 +17,7 @@ export function Component(): JSX.Element {
 	useMemo(() => {
 		fetch('/logs')
 			.then(res => res.json())
-			.then(data => setLogs(data));
+			.then(data => setLogs(data?.logs || []));
 	}, []);
 
 	return (
@@ -30,9 +31,12 @@ export function Component(): JSX.Element {
 							key={i}
 							className={styles.log}
 							onClick={() => setLog(log)}>
-							<span>{log.uuid}</span>
 							<span>{log.feedback}</span>
-							<span>{new Date(log.timestamp).toISOString()}</span>
+							<span>{log.uuid}</span>
+							<span>{log.comment}</span>
+							<span>
+								{new Date(log.timestamp).toLocaleString()}
+							</span>
 						</div>
 					))}
 				</div>

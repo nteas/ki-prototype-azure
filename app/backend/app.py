@@ -27,7 +27,7 @@ from quart import (
     send_from_directory,
 )
 from quart_cors import cors
-import sqlite3
+import pymongo
 
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
@@ -41,10 +41,25 @@ CONFIG_CHAT_APPROACH = "chat_approach"
 CONFIG_BLOB_CONTAINER_CLIENT = "blob_container_client"
 CONFIG_AUTH_CLIENT = "auth_client"
 CONFIG_SEARCH_CLIENT = "search_client"
-CONFIG_DB_NAME = "app.db"
+CONFIG_DB_NAME = "ki-prototype"
+CONFIG_COLLECTION_NAME = "logs"
 
 
 bp = Blueprint("routes", __name__, static_folder="static")
+
+# Set up MongoDB client
+AZURE_MONGODB = os.getenv("AZURE_MONGODB")
+mongodb_client = pymongo.MongoClient(AZURE_MONGODB)
+
+# Create database if it doesn't exist
+db = mongodb_client[CONFIG_DB_NAME]
+if CONFIG_DB_NAME not in mongodb_client.list_database_names():
+    # Create a database with 400 RU throughput that can be shared across
+    # the DB's collections
+    db.command({"customAction": "CreateDatabase", "offerThroughput": 400})
+    print("Created db '{}' with shared throughput.\n".format(CONFIG_DB_NAME))
+else:
+    print("Using database: '{}'.\n".format(CONFIG_DB_NAME))
 
 
 @bp.route("/")
@@ -154,62 +169,37 @@ async def chat_stream():
 
 @bp.route("/logs", methods=["GET"])
 async def get_logs():
-    conn = sqlite3.connect(CONFIG_DB_NAME)
-    c = conn.cursor()
-    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='logs'")
-    table_exists = c.fetchone() is not None
-
-    # If the logs table does not exist, create it
-    if not table_exists:
-        return {"error": "logs table does not exist"}
-
-    c.execute("SELECT * FROM logs")
-    rows = c.fetchall()
-
-    logs = []
-    for row in rows:
-        log = {
-            "id": row[0],
-            "uuid": row[1],
-            "feedback": row[2],
-            "comment": row[3],
-            "timestamp": row[4],
-            "thought_process": row[5],
-        }
-        logs.append(log)
-
-    return jsonify(logs)
+    logs_cursor = db.logs.find()
+    logs_list = []
+    for log in logs_cursor:
+        log["_id"] = str(log["_id"])  # Convert ObjectId to string
+        logs_list.append(log)
+    return {"logs": logs_list}
 
 
 @bp.route("/logs/add", methods=["POST"])
 async def add_log():
-    data = await request.get_json()
-    uuid = data.get("uuid")
-    feedback = data.get("feedback")
-    comment = data.get("comment")
-    timestamp = data.get("timestamp")
-    thought_process = data.get("thought_process")
+    try:
+        data = await request.get_json()
+        uuid = data.get("uuid")
+        feedback = data.get("feedback")
+        comment = data.get("comment")
+        timestamp = data.get("timestamp")
+        thought_process = data.get("thought_process")
 
-    conn = sqlite3.connect(CONFIG_DB_NAME)
-    c = conn.cursor()
-    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='logs'")
-    table_exists = c.fetchone() is not None
+        log = {
+            "uuid": uuid,
+            "feedback": feedback,
+            "comment": comment,
+            "timestamp": timestamp,
+            "thought_process": thought_process,
+        }
 
-    # If the logs table does not exist, create it
-    if not table_exists:
-        c.execute(
-            """CREATE TABLE logs
-                    (id INTEGER PRIMARY KEY, uuid TEXT, feedback TEXT, timestamp NUMERIC, thought_process TEXT)"""
-        )
+        db.logs.insert_one(log)
 
-    c.execute(
-        "INSERT INTO logs (uuid, feedback, comment, timestamp, thought_process) VALUES (?, ?, ?, ?, ?)",
-        (uuid, feedback, comment, timestamp, thought_process),
-    )
-    conn.commit()
-    conn.close()
-
-    return "log added successfully"
+        return {"success": True}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 # Send MSAL.js settings to the client UI

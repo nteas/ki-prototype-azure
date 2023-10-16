@@ -7,11 +7,22 @@
 	transition: all 0.2s ease-in-out;
 }
 .log:nth-child(odd) {
-	background-color: #f4f4f4;
+	background-color: #e8e8e8;
 }
 
 .log:hover {
 	background-color: #d2d2d2;
+}
+
+.log span {
+	flex: 1;
+}
+.log span:nth-of-type(2),
+.log span:nth-of-type(3) {
+	flex: 8;
+}
+.log span:nth-of-type(4) {
+	flex: 2;
 }
 
 .modalWrapper {
