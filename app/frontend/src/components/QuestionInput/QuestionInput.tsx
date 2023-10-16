@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Stack, TextField } from '@fluentui/react';
-import { Button, Tooltip } from '@fluentui/react-components';
+import { Button } from '@fluentui/react-components';
 import { Send28Filled, Search28Filled } from '@fluentui/react-icons';
 
 import styles from './QuestionInput.module.css';
@@ -67,17 +67,12 @@ export const QuestionInput = ({
 				onKeyDown={onEnterPress}
 			/>
 			<div className={styles.questionInputButtonsContainer}>
-				<Tooltip content="Ask question button" relationship="label">
-					<Button
-						size="large"
-						icon={search ? <Search28Filled /> : <Send28Filled />}
-						disabled={sendQuestionDisabled}
-						onClick={sendQuestion}
-						className={
-							search ? styles.searchButton : styles.sendButton
-						}
-					/>
-				</Tooltip>
+				<Button
+					size="large"
+					icon={search ? <Search28Filled /> : <Send28Filled />}
+					disabled={sendQuestionDisabled}
+					onClick={sendQuestion}
+				/>
 			</div>
 		</Stack>
 	);

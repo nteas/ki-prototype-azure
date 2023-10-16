@@ -17,25 +17,22 @@
 	line-height: 28.9px; /* 170% */
 }
 
-.questionInputButtonsContainer {
-}
-
 .questionInputButtonsContainer button {
 	display: flex;
 	align-items: center;
 	padding: 15px;
 	width: 53px;
 	border-radius: 5px;
-	background: #b5b7bb;
 	max-width: none;
-}
-
-.questionInputButtonsContainer .searchButton {
 	background: #0079ad;
 }
 
-.questionInputButtonsContainer button:hover {
+.questionInputButtonsContainer button:disabled {
 	background: #b5b7bb;
+}
+
+.questionInputButtonsContainer button:hover {
+	background: #0079ad;
 }
 
 .questionInputButtonsContainer button svg path {

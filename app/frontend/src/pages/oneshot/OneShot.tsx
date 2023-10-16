@@ -1,8 +1,6 @@
 import { useRef, useState } from 'react';
 import {
 	Checkbox,
-	ChoiceGroup,
-	IChoiceGroupOption,
 	Panel,
 	DefaultButton,
 	Spinner,
@@ -17,7 +15,6 @@ import styles from './OneShot.module.css';
 import { askApi, ChatAppResponse, AskRequest, RetrievalMode } from '../../api';
 import { Answer, AnswerError } from '../../components/Answer';
 import { QuestionInput } from '../../components/QuestionInput';
-import { ExampleList } from '../../components/Example';
 import {
 	AnalysisPanel,
 	AnalysisPanelTabs,
