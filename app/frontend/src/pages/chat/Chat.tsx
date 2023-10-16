@@ -76,6 +76,7 @@ const Chat = () => {
 		[user: string, response: ChatAppResponse][]
 	>([]);
 
+	const questionCounter = useRef<number>(0);
 	const timer = useRef<number>(0);
 
 	const handleAsyncRequest = async (
@@ -86,6 +87,7 @@ const Chat = () => {
 	) => {
 		let answer: string = '';
 		let askResponse: ChatAppResponse = {} as ChatAppResponse;
+		questionCounter.current += 1;
 
 		const updateState = (newContent: string) => {
 			return new Promise(resolve => {
@@ -368,9 +370,12 @@ const Chat = () => {
 				(new Date().getTime() - timer.current) / 1000
 			),
 			result: data.feedback,
+			questions_asked: questionCounter.current,
 			message: data?.comment || '',
 			timestamp: Math.round(new Date().getTime() / 1000),
 		});
+
+		questionCounter.current = 0;
 
 		const lastAnswer = answers[answers.length - 1];
 
