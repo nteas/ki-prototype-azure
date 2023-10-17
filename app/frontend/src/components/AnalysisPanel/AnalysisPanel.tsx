@@ -54,59 +54,81 @@ export const AnalysisPanel = ({
 					<span>Lukk</span>
 				</div>
 
-				<Pivot
-					className={className}
-					selectedKey={activeTab}
-					onLinkClick={pivotItem =>
-						pivotItem &&
-						onActiveTabChanged(
-							pivotItem.props.itemKey! as AnalysisPanelTabs
-						)
-					}>
-					<PivotItem
-						itemKey={AnalysisPanelTabs.ThoughtProcessTab}
-						headerText="Tankeprosess"
-						headerButtonProps={
-							isDisabledThoughtProcessTab
-								? pivotItemDisabledStyle
-								: undefined
-						}>
-						<div
-							className={styles.thoughtProcess}
-							dangerouslySetInnerHTML={{
-								__html: sanitizedThoughts,
-							}}></div>
-					</PivotItem>
-					<PivotItem
-						itemKey={AnalysisPanelTabs.SupportingContentTab}
-						headerText="Dokumentasjon"
-						headerButtonProps={
-							isDisabledSupportingContentTab
-								? pivotItemDisabledStyle
-								: undefined
-						}>
-						<SupportingContent
-							supportingContent={
-								answer.choices[0].extra_args.data_points
-							}
-						/>
-					</PivotItem>
-					<PivotItem
-						itemKey={AnalysisPanelTabs.CitationTab}
-						headerText="Kilder"
-						headerButtonProps={
-							isDisabledCitationTab
-								? pivotItemDisabledStyle
-								: undefined
-						}>
-						<iframe
-							title="Kilde"
-							src={activeCitation}
-							width="100%"
-							height={citationHeight}
-						/>
-					</PivotItem>
-				</Pivot>
+				<div className={styles.modalNav}>
+					<button
+						className={
+							activeTab === AnalysisPanelTabs.ThoughtProcessTab
+								? styles.activeButton
+								: ''
+						}
+						onClick={() =>
+							onActiveTabChanged(
+								AnalysisPanelTabs.ThoughtProcessTab
+							)
+						}
+						disabled={isDisabledThoughtProcessTab}>
+						Tankeprosess
+					</button>
+					<button
+						className={
+							activeTab === AnalysisPanelTabs.SupportingContentTab
+								? styles.activeButton
+								: ''
+						}
+						onClick={() =>
+							onActiveTabChanged(
+								AnalysisPanelTabs.SupportingContentTab
+							)
+						}
+						disabled={isDisabledSupportingContentTab}>
+						Dokumentasjon
+					</button>
+					<button
+						className={
+							activeTab === AnalysisPanelTabs.CitationTab
+								? styles.activeButton
+								: ''
+						}
+						onClick={() =>
+							onActiveTabChanged(AnalysisPanelTabs.CitationTab)
+						}
+						disabled={isDisabledCitationTab}>
+						Kilder
+					</button>
+				</div>
+
+				<div className={styles.content}>
+					{activeTab === AnalysisPanelTabs.ThoughtProcessTab && (
+						<div className={styles.tab}>
+							<div
+								className={styles.thoughtProcess}
+								dangerouslySetInnerHTML={{
+									__html: sanitizedThoughts,
+								}}></div>
+						</div>
+					)}
+
+					{activeTab === AnalysisPanelTabs.SupportingContentTab && (
+						<div className={styles.tab}>
+							<SupportingContent
+								supportingContent={
+									answer.choices[0].extra_args.data_points
+								}
+							/>
+						</div>
+					)}
+
+					{activeTab === AnalysisPanelTabs.CitationTab && (
+						<div className={styles.tab}>
+							<iframe
+								title="Kilde"
+								src={activeCitation}
+								width="100%"
+								height={citationHeight}
+							/>
+						</div>
+					)}
+				</div>
 			</div>
 		</div>,
 		document.getElementById('portal') as Element

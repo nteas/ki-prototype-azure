@@ -1,5 +1,8 @@
 * {
 	box-sizing: border-box;
+	font-family: 'Roboto', sans-serif;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 }
 
 html,
@@ -7,12 +10,7 @@ body {
 	height: 100%;
 	margin: 0;
 	padding: 0;
-}
-html {
 	background: #f6f6f6;
-	font-family: 'Roboto', sans-serif;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
 	color: #28292c;
 }
 
