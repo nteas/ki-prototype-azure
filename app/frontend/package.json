@@ -35,6 +35,6 @@
 		"vite": "^4.4.2"
 	},
 	"optionalDependencies": {
-		"@esbuild/win32-x64": "^0.19.4"
+		"@esbuild/win32-x64": "^0.19.5"
 	}
 }
