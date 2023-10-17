@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import Layout from '../../components/Layout/Layout';
 import styles from './Logs.module.css';
+import { getChatLogs } from '../../api';
 
-interface Log {
+export interface Log {
 	uuid: string;
 	feedback: string;
 	comment: string;
@@ -15,9 +16,7 @@ export function Component(): JSX.Element {
 	const [log, setLog] = useState<Log | null>();
 
 	useMemo(() => {
-		fetch('/logs')
-			.then(res => res.json())
-			.then(data => setLogs(data?.logs || []));
+		getChatLogs().then(logs => setLogs(logs));
 	}, []);
 
 	return (
@@ -61,5 +60,3 @@ export function Component(): JSX.Element {
 		</Layout>
 	);
 }
-
-Component.displayName = 'OneShot';

@@ -19,6 +19,7 @@ import {
 	ChatAppResponseOrError,
 	ChatRequest,
 	ChatTurn,
+	logChat,
 } from '../../api';
 import { Answer, AnswerError, AnswerLoading } from '../../components/Answer';
 import { QuestionInput } from '../../components/QuestionInput';
@@ -379,21 +380,10 @@ const Chat = () => {
 
 		const lastAnswer = answers[answers.length - 1];
 
-		await fetch('/logs/add', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({
-				uuid:
-					localStorage
-						.getItem('ajs_anonymous_id')
-						?.replace('"', '') || '',
-				feedback: data.feedback,
-				comment: data?.comment || '',
-				timestamp: new Date().getTime(),
-				thought_process: lastAnswer[1].choices[0].extra_args.thoughts,
-			}),
+		await logChat({
+			feedback: data.feedback,
+			comment: data.comment || '',
+			thought_process: lastAnswer[1].choices[0].extra_args.thoughts || '',
 		});
 
 		timer.current = 0;

@@ -7,6 +7,7 @@ import {
 	ChatRequest,
 } from './models';
 import { useLogin } from '../authConfig';
+import { Log } from '../pages/logs/Logs';
 
 function getHeaders(idToken: string | undefined): Record<string, string> {
 	var headers: Record<string, string> = {
@@ -84,4 +85,34 @@ export async function chatApi(options: ChatRequest): Promise<Response> {
 
 export function getCitationFilePath(citation: string): string {
 	return `${BACKEND_URI}/content/${citation}`;
+}
+
+interface AddLogProps {
+	feedback: number;
+	comment: string;
+	thought_process: string;
+}
+
+export async function logChat(props: AddLogProps): Promise<Response> {
+	return await fetch(`${BACKEND_URI}/logs/add`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({
+			uuid:
+				localStorage.getItem('ajs_anonymous_id')?.replace('"', '') ||
+				'',
+			feedback: props.feedback,
+			comment: props.comment || '',
+			timestamp: new Date().getTime(),
+			thought_process: props.thought_process,
+		}),
+	});
+}
+
+export async function getChatLogs(): Promise<Log[]> {
+	return await fetch(`${BACKEND_URI}/logs`)
+		.then(res => res.json())
+		.then(data => data?.logs || []);
 }
