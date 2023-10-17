@@ -573,11 +573,6 @@ const Chat = () => {
 						)}
 
 						<div className={styles.chatInput}>
-							<ClearChatButton
-								onClick={clearChat}
-								disabled={!lastQuestionRef.current || isLoading}
-							/>
-
 							<QuestionInput
 								clearOnSend
 								placeholder="Skriv et nytt spørsmål. For eksempel “Er det bindingstid på Spotpris?”"
