@@ -45,10 +45,10 @@ Do not include any special characters like '+'.
 If you cannot generate a search query, return just the number 0.
 """
     query_prompt_few_shots = [
-        {"role": USER, "content": "What are my health plans?"},
-        {"role": ASSISTANT, "content": "Show available health plans"},
-        {"role": USER, "content": "does my plan cover cardio?"},
-        {"role": ASSISTANT, "content": "Health plan cardio coverage"},
+        {"role": USER, "content": "Hva koster HBO Max??"},
+        {"role": ASSISTANT, "content": "Vis hva HBO Max koster i poeng og kroner"},
+        {"role": USER, "content": "Hva er HBO Max??"},
+        {"role": ASSISTANT, "content": "Forklar hva HBO Max er"},
     ]
 
     def __init__(
