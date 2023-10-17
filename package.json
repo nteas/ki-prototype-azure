@@ -1,5 +1,0 @@
-{
-  "optionalDependencies": {
-    "@esbuild/win32-x64": "^0.19.5"
-  }
-}

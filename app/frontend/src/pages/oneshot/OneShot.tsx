@@ -12,7 +12,13 @@ import {
 
 import styles from './OneShot.module.css';
 
-import { askApi, ChatAppResponse, AskRequest, RetrievalMode } from '../../api';
+import {
+	askApi,
+	ChatAppResponse,
+	AskRequest,
+	RetrievalMode,
+	logChat,
+} from '../../api';
 import { Answer, AnswerError } from '../../components/Answer';
 import { QuestionInput } from '../../components/QuestionInput';
 import {
@@ -24,6 +30,8 @@ import { useLogin, getToken } from '../../authConfig';
 import { useMsal } from '@azure/msal-react';
 import { TokenClaimsDisplay } from '../../components/TokenClaimsDisplay';
 import Layout from '../../components/Layout/Layout';
+import analytics from '../../libs/analytics';
+import { FinishChatButton } from '../../components/FinishChat/FinishChatButton';
 
 export function Component(): JSX.Element {
 	const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
@@ -45,6 +53,8 @@ export function Component(): JSX.Element {
 	const [useGroupsSecurityFilter, setUseGroupsSecurityFilter] =
 		useState<boolean>(false);
 
+	const timer = useRef<number>(0);
+	const questionCounter = useRef<number>(0);
 	const lastQuestionRef = useRef<string>('');
 
 	const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -59,6 +69,12 @@ export function Component(): JSX.Element {
 	const client = useLogin ? useMsal().instance : undefined;
 
 	const makeApiRequest = async (question: string) => {
+		await analytics.track('Question Asked', {
+			question,
+			timestamp: Math.round(new Date().getTime() / 1000),
+		});
+
+		questionCounter.current += 1;
 		lastQuestionRef.current = question;
 
 		error && setError(undefined);
@@ -98,6 +114,12 @@ export function Component(): JSX.Element {
 				idToken: token?.accessToken,
 			};
 			const result = await askApi(request);
+
+			await analytics.track('Question Replied', {
+				reply: result.choices[0].message.content,
+				timestamp: Math.round(new Date().getTime() / 1000),
+			});
+
 			setAnswer(result);
 		} catch (e) {
 			setError(e);
@@ -201,13 +223,56 @@ export function Component(): JSX.Element {
 		setUseGroupsSecurityFilter(!!checked);
 	};
 
+	const handleFinishedClick = async (data: {
+		feedback: number;
+		comment?: string;
+	}) => {
+		await analytics.track('Chat Completed', {
+			time_to_complete: Math.round(
+				(new Date().getTime() - timer.current) / 1000
+			),
+			result: data.feedback,
+			questions_asked: questionCounter.current,
+			message: data?.comment || '',
+			timestamp: Math.round(new Date().getTime() / 1000),
+		});
+
+		await logChat({
+			feedback: data.feedback,
+			comment: data.comment || '',
+			thought_process: answer?.choices[0].extra_args.thoughts || '',
+		});
+
+		questionCounter.current = 0;
+		timer.current = 0;
+
+		clearChat();
+	};
+
+	const clearChat = () => {
+		lastQuestionRef.current = '';
+		error && setError(undefined);
+		setActiveCitation(undefined);
+		setActiveAnalysisPanelTab(undefined);
+		setAnswer(undefined);
+	};
+
 	return (
 		<Layout
 			headerActions={
-				<SettingsButton
-					className={styles.settingsButton}
-					onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
-				/>
+				<>
+					{lastQuestionRef.current && (
+						<FinishChatButton
+							className={styles.commandButton}
+							onSubmit={handleFinishedClick}
+						/>
+					)}
+
+					<SettingsButton
+						className={styles.settingsButton}
+						onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
+					/>
+				</>
 			}>
 			<div className={styles.oneshotContainer}>
 				<div className={styles.oneshotTopSection}>
@@ -216,7 +281,7 @@ export function Component(): JSX.Element {
 					</h2>
 
 					<p className={styles.oneshotSubTitle}>
-						Bot’en vil kun søke i alle FAQ-innleggene på nte.no
+						Boten vil kun søke i alle FAQ-innleggene på nte.no
 					</p>
 
 					<div className={styles.oneshotQuestionInput}>
@@ -230,9 +295,7 @@ export function Component(): JSX.Element {
 				</div>
 				<div className={styles.oneshotBottomSection}>
 					{isLoading && <Spinner label="Generating answer" />}
-					{/* {!lastQuestionRef.current && (
-						<ExampleList onExampleClicked={onExampleClicked} />
-					)} */}
+
 					{!isLoading && answer && !error && (
 						<div className={styles.oneshotAnswerContainer}>
 							<Answer

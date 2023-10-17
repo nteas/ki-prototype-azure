@@ -376,8 +376,6 @@ const Chat = () => {
 			timestamp: Math.round(new Date().getTime() / 1000),
 		});
 
-		questionCounter.current = 0;
-
 		const lastAnswer = answers[answers.length - 1];
 
 		await logChat({
@@ -386,6 +384,7 @@ const Chat = () => {
 			thought_process: lastAnswer[1].choices[0].extra_args.thoughts || '',
 		});
 
+		questionCounter.current = 0;
 		timer.current = 0;
 
 		clearChat();
