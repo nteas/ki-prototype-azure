@@ -43,25 +43,12 @@ CONFIG_AUTH_CLIENT = "auth_client"
 CONFIG_SEARCH_CLIENT = "search_client"
 CONFIG_DB_NAME = "ki-prototype"
 CONFIG_COLLECTION_NAME = "logs"
+CONFIG_MONGO_DB = "mongodb"
 
 
 bp = Blueprint("routes", __name__, static_folder="static")
 router = Blueprint("api", __name__, url_prefix="/api")
 router.register_blueprint(bp)
-
-# Set up MongoDB client
-AZURE_MONGODB = os.getenv("AZURE_MONGODB")
-mongodb_client = pymongo.MongoClient(AZURE_MONGODB)
-
-# Create database if it doesn't exist
-db = mongodb_client[CONFIG_DB_NAME]
-if CONFIG_DB_NAME not in mongodb_client.list_database_names():
-    # Create a database with 400 RU throughput that can be shared across
-    # the DB's collections
-    db.command({"customAction": "CreateDatabase", "offerThroughput": 400})
-    print("Created db '{}' with shared throughput.\n".format(CONFIG_DB_NAME))
-else:
-    print("Using database: '{}'.\n".format(CONFIG_DB_NAME))
 
 
 @bp.route("/")
@@ -178,6 +165,7 @@ async def chat_stream():
 
 @router.route("/logs", methods=["GET"])
 async def get_logs():
+    db = current_app.config[CONFIG_MONGO_DB]
     logs_cursor = db.logs.find()
     logs_list = []
     for log in logs_cursor:
@@ -204,6 +192,7 @@ async def add_log():
             "thought_process": thought_process,
         }
 
+        db = current_app.config[CONFIG_MONGO_DB]
         db.logs.insert_one(log)
 
         return {"success": True}
@@ -360,6 +349,25 @@ def create_app():
     if os.getenv("WEBSITE_HOSTNAME"):  # In production, don't log as heavily
         default_level = "WARNING"
     logging.basicConfig(level=os.getenv("APP_LOG_LEVEL", default_level))
+
+    # Set up MongoDB client
+    AZURE_MONGODB = os.getenv("AZURE_MONGODB")
+    try:
+        mongodb_client = pymongo.MongoClient(AZURE_MONGODB)
+    except pymongo.errors.ConnectionFailure:
+        logging.error("Failed to connect to MongoDB at %s", AZURE_MONGODB)
+        mongodb_client = None
+
+    if mongodb_client:
+        # Create database if it doesn't exist
+        current_app.config[CONFIG_MONGO_DB] = mongodb_client[CONFIG_DB_NAME]
+        if CONFIG_DB_NAME not in mongodb_client.list_database_names():
+            # Create a database with 400 RU throughput that can be shared across
+            # the DB's collections
+            current_app.config[CONFIG_MONGO_DB].command({"customAction": "CreateDatabase", "offerThroughput": 400})
+            logging.info("Created db '%s' with shared throughput.", CONFIG_DB_NAME)
+        else:
+            logging.info("Using database: '%s'.", CONFIG_DB_NAME)
 
     if allowed_origin := os.getenv("ALLOWED_ORIGIN"):
         app.logger.info("CORS enabled for %s", allowed_origin)
