@@ -41,9 +41,9 @@ CONFIG_CHAT_APPROACH = "chat_approach"
 CONFIG_BLOB_CONTAINER_CLIENT = "blob_container_client"
 CONFIG_AUTH_CLIENT = "auth_client"
 CONFIG_SEARCH_CLIENT = "search_client"
+CONFIG_MONGODB = "mongodb"
 CONFIG_DB_NAME = "ki-prototype"
 CONFIG_COLLECTION_NAME = "logs"
-CONFIG_MONGO_DB = "mongodb"
 
 
 bp = Blueprint("routes", __name__, static_folder="static")
@@ -165,7 +165,7 @@ async def chat_stream():
 
 @router.route("/logs", methods=["GET"])
 async def get_logs():
-    db = current_app.config[CONFIG_MONGO_DB]
+    db = current_app.config[CONFIG_MONGODB]
     logs_cursor = db.logs.find()
     logs_list = []
     for log in logs_cursor:
@@ -192,7 +192,7 @@ async def add_log():
             "thought_process": thought_process,
         }
 
-        db = current_app.config[CONFIG_MONGO_DB]
+        db = current_app.config[CONFIG_MONGODB]
         db.logs.insert_one(log)
 
         return {"success": True}
@@ -259,6 +259,7 @@ async def setup_clients():
     AZURE_SERVER_APP_ID = os.getenv("AZURE_SERVER_APP_ID")
     AZURE_SERVER_APP_SECRET = os.getenv("AZURE_SERVER_APP_SECRET")
     AZURE_CLIENT_APP_ID = os.getenv("AZURE_CLIENT_APP_ID")
+    AZURE_MONGODB = os.getenv("AZURE_MONGODB")
     AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID")
     TOKEN_CACHE_PATH = os.getenv("TOKEN_CACHE_PATH")
 
@@ -306,6 +307,24 @@ async def setup_clients():
         openai.api_key = OPENAI_API_KEY
         openai.organization = OPENAI_ORGANIZATION
 
+    # Set up MongoDB client
+    try:
+        mongodb_client = pymongo.MongoClient(AZURE_MONGODB)
+    except pymongo.errors.ConnectionFailure:
+        logging.error("Failed to connect to MongoDB at %s", AZURE_MONGODB)
+        mongodb_client = None
+
+    if mongodb_client:
+        # Create database if it doesn't exist
+        current_app.config[CONFIG_MONGODB] = mongodb_client[CONFIG_DB_NAME]
+        if CONFIG_DB_NAME not in mongodb_client.list_database_names():
+            # Create a database with 400 RU throughput that can be shared across
+            # the DB's collections
+            current_app.config[CONFIG_MONGODB].command({"customAction": "CreateDatabase", "offerThroughput": 400})
+            logging.info("Created db '%s' with shared throughput.", CONFIG_DB_NAME)
+        else:
+            logging.info("Using database: '%s'.", CONFIG_DB_NAME)
+
     current_app.config[CONFIG_CREDENTIAL] = azure_credential
     current_app.config[CONFIG_SEARCH_CLIENT] = search_client
     current_app.config[CONFIG_BLOB_CONTAINER_CLIENT] = blob_container_client
@@ -349,25 +368,6 @@ def create_app():
     if os.getenv("WEBSITE_HOSTNAME"):  # In production, don't log as heavily
         default_level = "WARNING"
     logging.basicConfig(level=os.getenv("APP_LOG_LEVEL", default_level))
-
-    # Set up MongoDB client
-    AZURE_MONGODB = os.getenv("AZURE_MONGODB")
-    try:
-        mongodb_client = pymongo.MongoClient(AZURE_MONGODB)
-    except pymongo.errors.ConnectionFailure:
-        logging.error("Failed to connect to MongoDB at %s", AZURE_MONGODB)
-        mongodb_client = None
-
-    if mongodb_client:
-        # Create database if it doesn't exist
-        current_app.config[CONFIG_MONGO_DB] = mongodb_client[CONFIG_DB_NAME]
-        if CONFIG_DB_NAME not in mongodb_client.list_database_names():
-            # Create a database with 400 RU throughput that can be shared across
-            # the DB's collections
-            current_app.config[CONFIG_MONGO_DB].command({"customAction": "CreateDatabase", "offerThroughput": 400})
-            logging.info("Created db '%s' with shared throughput.", CONFIG_DB_NAME)
-        else:
-            logging.info("Using database: '%s'.", CONFIG_DB_NAME)
 
     if allowed_origin := os.getenv("ALLOWED_ORIGIN"):
         app.logger.info("CORS enabled for %s", allowed_origin)
