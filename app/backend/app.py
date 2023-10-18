@@ -48,7 +48,6 @@ CONFIG_COLLECTION_NAME = "logs"
 
 bp = Blueprint("routes", __name__, static_folder="static")
 router = Blueprint("api", __name__, url_prefix="/api")
-router.register_blueprint(bp)
 
 
 @bp.route("/")
@@ -361,6 +360,7 @@ def create_app():
         configure_azure_monitor()
         AioHttpClientInstrumentor().instrument()
     app = Quart(__name__)
+    app.register_blueprint(bp)
     app.register_blueprint(router)
     app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)  # type: ignore[method-assign]
 
