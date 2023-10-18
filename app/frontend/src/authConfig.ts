@@ -4,7 +4,6 @@ import {
 	AuthenticationResult,
 	IPublicClientApplication,
 } from '@azure/msal-browser';
-import { BACKEND_URI } from './api';
 
 interface AuthSetup {
 	// Set to true if login elements should be shown in the UI
@@ -43,7 +42,7 @@ interface AuthSetup {
 
 // Fetch the auth setup JSON data from the API if not already cached
 async function fetchAuthSetup(): Promise<AuthSetup> {
-	const response = await fetch(`${BACKEND_URI}/auth_setup`);
+	const response = await fetch('/api/auth_setup');
 	if (!response.ok) {
 		throw new Error(`auth setup response was not ok: ${response.status}`);
 	}

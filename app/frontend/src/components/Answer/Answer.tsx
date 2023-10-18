@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { IconButton } from '@fluentui/react';
+import { Lightbulb24Regular, Clipboard24Regular } from '@fluentui/react-icons';
 import DOMPurify from 'dompurify';
 
 import styles from './Answer.module.css';
@@ -46,24 +46,25 @@ export const Answer = ({
 				<AnswerIcon />
 
 				<div className={styles.answerActionIcons}>
-					<IconButton
-						iconProps={{ iconName: 'Lightbulb' }}
+					<button
+						className={styles.answerActionIcon}
 						title="Show thought process"
-						ariaLabel="Show thought process"
 						onClick={() => onThoughtProcessClicked()}
 						disabled={
 							!answer.choices[0].extra_args.thoughts?.length
-						}
-					/>
-					<IconButton
-						iconProps={{ iconName: 'ClipboardList' }}
+						}>
+						<Lightbulb24Regular />
+					</button>
+
+					<button
+						className={styles.answerActionIcon}
 						title="Show supporting content"
-						ariaLabel="Show supporting content"
 						onClick={() => onSupportingContentClicked()}
 						disabled={
 							!answer.choices[0].extra_args.data_points?.length
-						}
-					/>
+						}>
+						<Clipboard24Regular />
+					</button>
 				</div>
 			</div>
 

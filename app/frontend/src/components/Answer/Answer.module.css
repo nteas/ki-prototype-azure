@@ -21,13 +21,31 @@
 }
 
 .answerActionIcons {
+	display: flex;
+	gap: 5px;
+}
+.answerActionIcon {
+	border-radius: 5px;
+	background: #fff;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	width: 24px;
+	height: 24px;
+	border: none;
+	padding: 2px;
+}
+.answerActionIcon:hover {
+	background: #e5f3f9;
+}
+.answerActionIcon:active {
+	background: #0079ad;
+}
+.answerActionIcon:active svg {
+	color: #fff;
+}
+.answerActionIcon svg {
 	color: #0079ad;
-	font-feature-settings: 'cpsp' on;
-	font-size: 16px;
-	font-style: normal;
-	font-weight: 400;
-	line-height: 20px; /* 125% */
-	text-transform: uppercase;
 }
 
 .answerText {
