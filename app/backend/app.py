@@ -307,23 +307,24 @@ async def setup_clients():
         openai.api_key = OPENAI_API_KEY
         openai.organization = OPENAI_ORGANIZATION
 
-    # Set up MongoDB client
-    try:
-        mongodb_client = pymongo.MongoClient(AZURE_MONGODB)
-    except pymongo.errors.ConnectionFailure:
-        logging.error("Failed to connect to MongoDB at %s", AZURE_MONGODB)
-        mongodb_client = None
+    if AZURE_MONGODB:
+        # Set up MongoDB client
+        try:
+            mongodb_client = pymongo.MongoClient(AZURE_MONGODB)
+        except pymongo.errors.ConnectionFailure:
+            logging.error("Failed to connect to MongoDB at %s", AZURE_MONGODB)
+            mongodb_client = None
 
-    if mongodb_client:
-        # Create database if it doesn't exist
-        current_app.config[CONFIG_MONGODB] = mongodb_client[CONFIG_DB_NAME]
-        if CONFIG_DB_NAME not in mongodb_client.list_database_names():
-            # Create a database with 400 RU throughput that can be shared across
-            # the DB's collections
-            current_app.config[CONFIG_MONGODB].command({"customAction": "CreateDatabase", "offerThroughput": 400})
-            logging.info("Created db '%s' with shared throughput.", CONFIG_DB_NAME)
-        else:
-            logging.info("Using database: '%s'.", CONFIG_DB_NAME)
+        if mongodb_client:
+            # Create database if it doesn't exist
+            current_app.config[CONFIG_MONGODB] = mongodb_client[CONFIG_DB_NAME]
+            if CONFIG_DB_NAME not in mongodb_client.list_database_names():
+                # Create a database with 400 RU throughput that can be shared across
+                # the DB's collections
+                current_app.config[CONFIG_MONGODB].command({"customAction": "CreateDatabase", "offerThroughput": 400})
+                logging.info("Created db '%s' with shared throughput.", CONFIG_DB_NAME)
+            else:
+                logging.info("Using database: '%s'.", CONFIG_DB_NAME)
 
     current_app.config[CONFIG_CREDENTIAL] = azure_credential
     current_app.config[CONFIG_SEARCH_CLIENT] = search_client
