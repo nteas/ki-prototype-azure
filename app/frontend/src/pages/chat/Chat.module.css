@@ -2,7 +2,6 @@
 	flex: 1;
 	display: flex;
 	flex-direction: row;
-	margin-top: 20px;
 }
 
 .chatRoot {
@@ -23,15 +22,14 @@
 	flex-direction: column;
 	justify-content: center;
 	max-height: 1024px;
-	padding-top: 150px;
 }
 
 .chatEmptyStateTitle {
 	font-size: 32px;
 	font-style: normal;
 	font-weight: 500;
-	line-height: 41.6px; /* 130% */
-	margin-bottom: 10px;
+	line-height: 41.6px;
+	margin: 0 0 10px;
 }
 
 .chatEmptyStateSubtitle {
