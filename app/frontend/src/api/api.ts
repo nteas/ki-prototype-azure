@@ -1,5 +1,3 @@
-const BACKEND_URI = '';
-
 import {
 	AskRequest,
 	ChatAppResponse,
@@ -8,6 +6,8 @@ import {
 } from './models';
 import { useLogin } from '../authConfig';
 import { Log } from '../pages/logs/Logs';
+
+export const BACKEND_URI = '/api';
 
 function getHeaders(idToken: string | undefined): Record<string, string> {
 	var headers: Record<string, string> = {

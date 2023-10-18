@@ -46,6 +46,8 @@ CONFIG_COLLECTION_NAME = "logs"
 
 
 bp = Blueprint("routes", __name__, static_folder="static")
+router = Blueprint("api", __name__, url_prefix="/api")
+router.register_blueprint(bp)
 
 # Set up MongoDB client
 AZURE_MONGODB = os.getenv("AZURE_MONGODB")
@@ -87,7 +89,7 @@ async def assets(path):
 # Serve content files from blob storage from within the app to keep the example self-contained.
 # *** NOTE *** this assumes that the content files are public, or at least that all users of the app
 # can access all the files. This is also slow and memory hungry.
-@bp.route("/content/<path>")
+@router.route("/content/<path>")
 async def content_file(path):
     blob_container_client = current_app.config[CONFIG_BLOB_CONTAINER_CLIENT]
     blob = await blob_container_client.get_blob_client(path).download_blob()
@@ -102,7 +104,14 @@ async def content_file(path):
     return await send_file(blob_file, mimetype=mime_type, as_attachment=False, attachment_filename=path)
 
 
-@bp.route("/ask", methods=["POST"])
+# Send MSAL.js settings to the client UI
+@router.route("/auth_setup", methods=["GET"])
+def auth_setup():
+    auth_helper = current_app.config[CONFIG_AUTH_CLIENT]
+    return jsonify(auth_helper.get_auth_setup_for_client())
+
+
+@router.route("/ask", methods=["POST"])
 async def ask():
     if not request.is_json:
         return jsonify({"error": "request must be json"}), 415
@@ -121,7 +130,7 @@ async def ask():
         return jsonify({"error": str(e)}), 500
 
 
-@bp.route("/chat", methods=["POST"])
+@router.route("/chat", methods=["POST"])
 async def chat():
     if not request.is_json:
         return jsonify({"error": "request must be json"}), 415
@@ -147,7 +156,7 @@ async def format_as_ndjson(r: AsyncGenerator[dict, None]) -> AsyncGenerator[str,
         yield json.dumps(event, ensure_ascii=False) + "\n"
 
 
-@bp.route("/chat_stream", methods=["POST"])
+@router.route("/chat_stream", methods=["POST"])
 async def chat_stream():
     if not request.is_json:
         return jsonify({"error": "request must be json"}), 415
@@ -167,7 +176,7 @@ async def chat_stream():
         return jsonify({"error": str(e)}), 500
 
 
-@bp.route("/logs", methods=["GET"])
+@router.route("/logs", methods=["GET"])
 async def get_logs():
     logs_cursor = db.logs.find()
     logs_list = []
@@ -177,7 +186,7 @@ async def get_logs():
     return {"logs": logs_list}
 
 
-@bp.route("/logs/add", methods=["POST"])
+@router.route("/logs/add", methods=["POST"])
 async def add_log():
     try:
         data = await request.get_json()
@@ -202,11 +211,28 @@ async def add_log():
         return {"error": str(e)}
 
 
-# Send MSAL.js settings to the client UI
-@bp.route("/auth_setup", methods=["GET"])
-def auth_setup():
-    auth_helper = current_app.config[CONFIG_AUTH_CLIENT]
-    return jsonify(auth_helper.get_auth_setup_for_client())
+# get list og files from blob storage
+@bp.route("/files", methods=["GET"])
+async def get_files():
+    blob_container_client = current_app.config[CONFIG_BLOB_CONTAINER_CLIENT]
+    blob_list = blob_container_client.list_blobs()
+    # convert blob_list from AsyncItemPaged to list
+    blob_list = [blob async for blob in blob_list]
+
+    blob_names = []
+    for blob in blob_list:
+        blob_names.append(blob.name)
+    return {"files": blob_names}
+
+
+# search for file name in cognitive search
+@bp.route("/search", methods=["GET"])
+async def search():
+    search_client = current_app.config[CONFIG_SEARCH_CLIENT]
+    search_term = request.args.get("q")
+    search_results = await search_client.search(search_text=search_term, include_total_count=True)
+    search_results = [result async for result in search_results]
+    return {"results": search_results}
 
 
 @bp.before_request
@@ -326,7 +352,7 @@ def create_app():
         configure_azure_monitor()
         AioHttpClientInstrumentor().instrument()
     app = Quart(__name__)
-    app.register_blueprint(bp)
+    app.register_blueprint(router)
     app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)  # type: ignore[method-assign]
 
     # Level should be one of https://docs.python.org/3/library/logging.html#logging-levels

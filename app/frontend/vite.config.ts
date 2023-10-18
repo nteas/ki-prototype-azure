@@ -26,12 +26,10 @@ export default defineConfig({
 	server: {
 		port: 3000,
 		proxy: {
-			'/auth_setup': 'http://localhost:50505',
-			'/chat_stream': 'http://localhost:50505',
-			'/ask': 'http://localhost:50505',
-			'/chat': 'http://localhost:50505',
-			'/logs': 'http://localhost:50505',
-			'/logs/*': 'http://localhost:50505',
+			'/api': {
+				target: 'http://localhost:50505',
+				changeOrigin: true,
+			},
 		},
 	},
 });
