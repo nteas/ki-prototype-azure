@@ -19,7 +19,7 @@ import {
 	ChatAppResponseOrError,
 	ChatRequest,
 	ChatTurn,
-	logChat,
+	// logChat,
 } from '../../api';
 import { Answer, AnswerError, AnswerLoading } from '../../components/Answer';
 import { QuestionInput } from '../../components/QuestionInput';
@@ -34,8 +34,8 @@ import { useLogin, getToken } from '../../authConfig';
 import { useMsal } from '@azure/msal-react';
 import { TokenClaimsDisplay } from '../../components/TokenClaimsDisplay';
 import Layout from '../../components/Layout/Layout';
-import { FinishChatButton } from '../../components/FinishChat/FinishChatButton';
 import analytics from '../../libs/analytics';
+import { ClearChatButton } from '../../components/ClearChatButton';
 
 const Chat = () => {
 	const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
@@ -364,29 +364,29 @@ const Chat = () => {
 		setSelectedAnswer(index);
 	};
 
-	const handleFinishedClick = async (data: {
-		feedback: number;
-		comment?: string;
-	}) => {
-		const lastAnswer = answers[answers.length - 1];
+	// const handleFinishedClick = async (data: {
+	// 	feedback: number;
+	// 	comment?: string;
+	// }) => {
+	// 	const lastAnswer = answers[answers.length - 1];
 
-		await logChat({
-			feedback: data.feedback,
-			comment: data.comment || '',
-			thought_process: lastAnswer[1].choices[0].extra_args.thoughts || '',
-		});
+	// 	await logChat({
+	// 		feedback: data.feedback,
+	// 		comment: data.comment || '',
+	// 		thought_process: lastAnswer[1].choices[0].extra_args.thoughts || '',
+	// 	});
 
-		clearChat();
-	};
+	// 	clearChat();
+	// };
 
 	return (
 		<Layout
 			headerActions={
 				<div className={styles.commandsContainer}>
 					{lastQuestionRef.current && (
-						<FinishChatButton
+						<ClearChatButton
 							className={styles.commandButton}
-							onSubmit={handleFinishedClick}
+							onClick={clearChat}
 						/>
 					)}
 

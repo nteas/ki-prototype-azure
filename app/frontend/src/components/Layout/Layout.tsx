@@ -53,11 +53,11 @@ const Layout = ({ headerActions, children }: Props) => {
 
 			<main className={styles.main}>{children}</main>
 
-			<button
+			{/* <button
 				className={styles.piButton}
 				onClick={() => navigate('/logs')}>
 				&#120587;
-			</button>
+			</button> */}
 		</div>
 	);
 };

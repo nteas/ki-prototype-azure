@@ -17,7 +17,7 @@ import {
 	ChatAppResponse,
 	AskRequest,
 	RetrievalMode,
-	logChat,
+	// logChat,
 } from '../../api';
 import { Answer, AnswerError } from '../../components/Answer';
 import { QuestionInput } from '../../components/QuestionInput';
@@ -31,7 +31,7 @@ import { useMsal } from '@azure/msal-react';
 import { TokenClaimsDisplay } from '../../components/TokenClaimsDisplay';
 import Layout from '../../components/Layout/Layout';
 import analytics from '../../libs/analytics';
-import { FinishChatButton } from '../../components/FinishChat/FinishChatButton';
+import { ClearChatButton } from '../../components/ClearChatButton';
 
 export function Component(): JSX.Element {
 	const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
@@ -179,10 +179,6 @@ export function Component(): JSX.Element {
 		setExcludeCategory(newValue || '');
 	};
 
-	const onExampleClicked = (example: string) => {
-		makeApiRequest(example);
-	};
-
 	const onShowCitation = (citation: string) => {
 		if (
 			activeCitation === citation &&
@@ -217,18 +213,18 @@ export function Component(): JSX.Element {
 		setUseGroupsSecurityFilter(!!checked);
 	};
 
-	const handleFinishedClick = async (data: {
-		feedback: number;
-		comment?: string;
-	}) => {
-		await logChat({
-			feedback: data.feedback,
-			comment: data.comment || '',
-			thought_process: answer?.choices[0].extra_args.thoughts || '',
-		});
+	// const handleFinishedClick = async (data: {
+	// 	feedback: number;
+	// 	comment?: string;
+	// }) => {
+	// 	await logChat({
+	// 		feedback: data.feedback,
+	// 		comment: data.comment || '',
+	// 		thought_process: answer?.choices[0].extra_args.thoughts || '',
+	// 	});
 
-		clearChat();
-	};
+	// 	clearChat();
+	// };
 
 	const clearChat = () => {
 		lastQuestionRef.current = '';
@@ -243,9 +239,9 @@ export function Component(): JSX.Element {
 			headerActions={
 				<>
 					{lastQuestionRef.current && (
-						<FinishChatButton
+						<ClearChatButton
 							className={styles.commandButton}
-							onSubmit={handleFinishedClick}
+							onClick={clearChat}
 						/>
 					)}
 

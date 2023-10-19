@@ -102,8 +102,8 @@
 .commandsContainer {
 	display: flex;
 	align-self: flex-end;
+	gap: 10px;
 }
 
 .commandButton {
-	margin-right: 20px;
 }
