@@ -74,7 +74,10 @@ export function Component(): JSX.Element {
 			timestamp: Math.round(new Date().getTime() / 1000),
 		});
 
-		questionCounter.current += 1;
+		if (timer.current === 0) {
+			timer.current = new Date().getTime() / 1000;
+		}
+
 		lastQuestionRef.current = question;
 
 		error && setError(undefined);
@@ -118,7 +121,12 @@ export function Component(): JSX.Element {
 			await analytics.track('Question Replied', {
 				reply: result.choices[0].message.content,
 				timestamp: Math.round(new Date().getTime() / 1000),
+				responseTime: Math.round(
+					new Date().getTime() / 1000 - timer.current
+				),
 			});
+
+			timer.current = new Date().getTime() / 1000;
 
 			setAnswer(result);
 		} catch (e) {
@@ -133,20 +141,6 @@ export function Component(): JSX.Element {
 		newValue?: string
 	) => {
 		setPromptTemplate(newValue || '');
-	};
-
-	const onPromptTemplatePrefixChange = (
-		_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
-		newValue?: string
-	) => {
-		setPromptTemplatePrefix(newValue || '');
-	};
-
-	const onPromptTemplateSuffixChange = (
-		_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
-		newValue?: string
-	) => {
-		setPromptTemplateSuffix(newValue || '');
 	};
 
 	const onRetrieveCountChange = (
@@ -227,24 +221,11 @@ export function Component(): JSX.Element {
 		feedback: number;
 		comment?: string;
 	}) => {
-		await analytics.track('Chat Completed', {
-			time_to_complete: Math.round(
-				(new Date().getTime() - timer.current) / 1000
-			),
-			result: data.feedback,
-			questions_asked: questionCounter.current,
-			message: data?.comment || '',
-			timestamp: Math.round(new Date().getTime() / 1000),
-		});
-
 		await logChat({
 			feedback: data.feedback,
 			comment: data.comment || '',
 			thought_process: answer?.choices[0].extra_args.thoughts || '',
 		});
-
-		questionCounter.current = 0;
-		timer.current = 0;
 
 		clearChat();
 	};

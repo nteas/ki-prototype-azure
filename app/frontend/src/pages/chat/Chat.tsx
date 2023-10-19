@@ -213,8 +213,9 @@ const Chat = () => {
 				await analytics.track('Question Replied', {
 					reply: parsedResponse.choices[0].message.content,
 					timestamp: Math.round(new Date().getTime() / 1000),
-					responseTime:
-						Math.round(new Date().getTime() / 1000) - timer.current,
+					responseTime: Math.round(
+						new Date().getTime() / 1000 - timer.current
+					),
 				});
 
 				timer.current = new Date().getTime() / 1000;
