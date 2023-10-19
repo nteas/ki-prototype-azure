@@ -1,4 +1,5 @@
 .answerContainer {
+	position: relative;
 	max-width: 590px;
 	padding: 10px 20px 20px 20px;
 	display: flex;
@@ -90,6 +91,71 @@
 
 .citation:hover {
 	text-decoration: underline;
+}
+
+.button {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	outline: none;
+	border: none;
+	border-radius: 5px;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 22px; /* 129.412% */
+	transition: all 200ms ease-in-out;
+	cursor: pointer;
+	color: #0079ad;
+}
+
+.feedbackWrapper {
+	position: absolute;
+	top: calc(100% + 10px);
+	left: 10px;
+	display: flex;
+	gap: 10px;
+}
+
+.feedbackButtons {
+	display: flex;
+	gap: 5px;
+}
+
+.feedbackButtons button {
+	padding: 5px;
+	border: none;
+}
+
+.feedbackButtons button svg {
+	height: 24px;
+	width: 24px;
+}
+
+.activeButton {
+	color: #397f57;
+	background: #d4e8d7;
+}
+
+.feedbackButtons button:hover,
+.activeButton:hover {
+	color: #fff;
+	background: #397f57;
+}
+form {
+	display: flex;
+	gap: 10px;
+}
+.inputWrapper {
+	flex: 1;
+	background-color: white;
+	padding: 0 10px;
+}
+
+.submitButton {
+	background: #0079ad;
+	color: #fff;
+	border: none;
+	padding: 0 10px;
 }
 
 .followupQuestionsList {

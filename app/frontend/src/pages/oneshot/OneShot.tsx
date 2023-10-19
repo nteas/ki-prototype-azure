@@ -294,7 +294,7 @@ export function Component(): JSX.Element {
 					</div>
 				</div>
 				<div className={styles.oneshotBottomSection}>
-					{isLoading && <Spinner label="Generating answer" />}
+					{isLoading && <Spinner label="Genererer svar" />}
 
 					{!isLoading && answer && !error && (
 						<div className={styles.oneshotAnswerContainer}>

@@ -30,7 +30,6 @@ import {
 	AnalysisPanelTabs,
 } from '../../components/AnalysisPanel';
 import { SettingsButton } from '../../components/SettingsButton';
-import { ClearChatButton } from '../../components/ClearChatButton';
 import { useLogin, getToken } from '../../authConfig';
 import { useMsal } from '@azure/msal-react';
 import { TokenClaimsDisplay } from '../../components/TokenClaimsDisplay';
@@ -77,7 +76,6 @@ const Chat = () => {
 		[user: string, response: ChatAppResponse][]
 	>([]);
 
-	const questionCounter = useRef<number>(0);
 	const timer = useRef<number>(0);
 
 	const handleAsyncRequest = async (
@@ -88,7 +86,6 @@ const Chat = () => {
 	) => {
 		let answer: string = '';
 		let askResponse: ChatAppResponse = {} as ChatAppResponse;
-		questionCounter.current += 1;
 
 		const updateState = (newContent: string) => {
 			return new Promise(resolve => {
@@ -162,7 +159,7 @@ const Chat = () => {
 		lastQuestionRef.current = question;
 
 		if (timer.current === 0) {
-			timer.current = new Date().getTime();
+			timer.current = new Date().getTime() / 1000;
 		}
 
 		error && setError(undefined);
@@ -216,7 +213,11 @@ const Chat = () => {
 				await analytics.track('Question Replied', {
 					reply: parsedResponse.choices[0].message.content,
 					timestamp: Math.round(new Date().getTime() / 1000),
+					responseTime:
+						Math.round(new Date().getTime() / 1000) - timer.current,
 				});
+
+				timer.current = new Date().getTime() / 1000;
 
 				setAnswers([...answers, [question, parsedResponse]]);
 			} else {
@@ -366,16 +367,6 @@ const Chat = () => {
 		feedback: number;
 		comment?: string;
 	}) => {
-		await analytics.track('Chat Completed', {
-			time_to_complete: Math.round(
-				(new Date().getTime() - timer.current) / 1000
-			),
-			result: data.feedback,
-			questions_asked: questionCounter.current,
-			message: data?.comment || '',
-			timestamp: Math.round(new Date().getTime() / 1000),
-		});
-
 		const lastAnswer = answers[answers.length - 1];
 
 		await logChat({
@@ -383,9 +374,6 @@ const Chat = () => {
 			comment: data.comment || '',
 			thought_process: lastAnswer[1].choices[0].extra_args.thoughts || '',
 		});
-
-		questionCounter.current = 0;
-		timer.current = 0;
 
 		clearChat();
 	};

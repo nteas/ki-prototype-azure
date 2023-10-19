@@ -1,5 +1,11 @@
-import { useMemo } from 'react';
-import { Lightbulb24Regular, Clipboard24Regular } from '@fluentui/react-icons';
+import { useMemo, useRef, useState } from 'react';
+import {
+	Lightbulb24Regular,
+	Clipboard24Regular,
+	Star48Filled,
+	Star48Regular,
+} from '@fluentui/react-icons';
+import { Input } from '@fluentui/react-components';
 import DOMPurify from 'dompurify';
 
 import styles from './Answer.module.css';
@@ -7,6 +13,7 @@ import styles from './Answer.module.css';
 import { ChatAppResponse, getCitationFilePath } from '../../api';
 import { parseAnswerToHtml } from './AnswerParser';
 import { AnswerIcon } from './AnswerIcon';
+import analytics from '../../libs/analytics';
 
 interface Props {
 	answer: ChatAppResponse;
@@ -29,6 +36,9 @@ export const Answer = ({
 	onFollowupQuestionClicked,
 	showFollowupQuestions,
 }: Props) => {
+	const [feedback, setFeedback] = useState(0);
+	const inputRef = useRef<HTMLInputElement>(null);
+	const isFeedbackGiven = useRef<boolean>(false);
 	const messageContent = answer.choices[0].message.content;
 	const parsedAnswer = useMemo(
 		() => parseAnswerToHtml(messageContent, isStreaming, onCitationClicked),
@@ -116,6 +126,60 @@ export const Answer = ({
 						})}
 					</>
 				)}
+
+			{!isFeedbackGiven.current && (
+				<div className={styles.feedbackWrapper}>
+					<div className={styles.feedbackButtons}>
+						{[1, 2, 3, 4, 5].map(i => (
+							<button
+								key={i}
+								className={`${styles.button} ${
+									feedback >= i && styles.activeButton
+								}`}
+								onClick={() => {
+									setFeedback(i);
+								}}>
+								{feedback >= i ? (
+									<Star48Filled />
+								) : (
+									<Star48Regular />
+								)}
+							</button>
+						))}
+					</div>
+
+					{feedback > 1 && (
+						<form
+							onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
+								e.preventDefault();
+
+								analytics.track('Feedback Given', {
+									answer: messageContent,
+									result: feedback,
+									comment: e.currentTarget.comment.value,
+								});
+
+								isFeedbackGiven.current = true;
+
+								setFeedback(0);
+								e.currentTarget.comment.value = '';
+							}}>
+							<div className={styles.inputWrapper}>
+								<Input
+									name="comment"
+									placeholder="Skriv en kommentar"
+								/>
+							</div>
+
+							<button
+								className={`${styles.button} ${styles.submitButton}`}
+								type="submit">
+								Send
+							</button>
+						</form>
+					)}
+				</div>
+			)}
 		</div>
 	);
 };
