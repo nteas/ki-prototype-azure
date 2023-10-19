@@ -218,7 +218,7 @@ const Chat = () => {
 					),
 				});
 
-				timer.current = new Date().getTime() / 1000;
+				timer.current = 0;
 
 				setAnswers([...answers, [question, parsedResponse]]);
 			} else {

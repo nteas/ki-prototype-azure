@@ -54,7 +54,7 @@ export function Component(): JSX.Element {
 		useState<boolean>(false);
 
 	const timer = useRef<number>(0);
-	const questionCounter = useRef<number>(0);
+	// const questionCounter = useRef<number>(0);
 	const lastQuestionRef = useRef<string>('');
 
 	const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -126,7 +126,7 @@ export function Component(): JSX.Element {
 				),
 			});
 
-			timer.current = new Date().getTime() / 1000;
+			timer.current = 0;
 
 			setAnswer(result);
 		} catch (e) {
