@@ -148,7 +148,7 @@ export const Answer = ({
 						))}
 					</div>
 
-					{feedback > 1 && (
+					{feedback > 0 && (
 						<form
 							onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
 								e.preventDefault();
