@@ -1,26 +1,10 @@
 #!/bin/sh
 
-apt-get install python3-venv
-
-echo 'Creating python virtual environment "app/backend/backend_env"'
-python3 -m venv app/backend/backend_env
-
-echo ""
-echo "Restoring backend python packages"
-echo ""
-
-cd app/backend
-./backend_env/bin/python -m pip install -r requirements.txt
-if [ $? -ne 0 ]; then
-    echo "Failed to restore backend python packages"
-    exit $?
-fi
-
 echo ""
 echo "Restoring frontend npm packages"
 echo ""
 
-cd ../frontend
+cd app/frontend
 npm install
 if [ $? -ne 0 ]; then
     echo "Failed to restore frontend npm packages"
@@ -43,9 +27,7 @@ echo ""
 
 cd ../backend
 
-port=50505
-host=localhost
-./backend_env/bin/python -m quart --app main:app run --port "$port" --host "$host" --reload
+python -m quart --app main:app run
 if [ $? -ne 0 ]; then
     echo "Failed to start backend"
     exit $?
