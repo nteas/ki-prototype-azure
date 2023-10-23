@@ -235,6 +235,7 @@ const Chat = () => {
 	};
 
 	const clearChat = () => {
+		console.log('clearing chat');
 		lastQuestionRef.current = '';
 		error && setError(undefined);
 		setActiveCitation(undefined);
