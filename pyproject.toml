@@ -3,7 +3,6 @@ name = "ki-prototype"
 version = "0.1.0"
 description = "POC AI prototype"
 authors = ["Ola Årbogen <ola.arbogen@nte.no>"]
-path = "app/backend"
 
 [tool.poetry.dependencies]
 python = "^3.10"

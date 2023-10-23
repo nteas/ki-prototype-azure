@@ -1,0 +1,2 @@
+[config]
+command = bash app/azure-start.sh

@@ -36,10 +36,8 @@ import { ClearChatButton } from '../../components/ClearChatButton';
 export function Component(): JSX.Element {
 	const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
 	const [promptTemplate, setPromptTemplate] = useState<string>('');
-	const [promptTemplatePrefix, setPromptTemplatePrefix] =
-		useState<string>('');
-	const [promptTemplateSuffix, setPromptTemplateSuffix] =
-		useState<string>('');
+	const [promptTemplatePrefix] = useState<string>('');
+	const [promptTemplateSuffix] = useState<string>('');
 	const [retrievalMode, setRetrievalMode] = useState<RetrievalMode>(
 		RetrievalMode.Hybrid
 	);
@@ -152,8 +150,7 @@ export function Component(): JSX.Element {
 
 	const onRetrievalModeChange = (
 		_ev: React.FormEvent<HTMLDivElement>,
-		option?: IDropdownOption<RetrievalMode> | undefined,
-		index?: number | undefined
+		option?: IDropdownOption<RetrievalMode> | undefined
 	) => {
 		setRetrievalMode(option?.data || RetrievalMode.Hybrid);
 	};
@@ -304,7 +301,6 @@ export function Component(): JSX.Element {
 					) : null}
 					{activeAnalysisPanelTab && answer && (
 						<AnalysisPanel
-							className={styles.oneshotAnalysisPanel}
 							activeCitation={activeCitation}
 							onActiveTabChanged={x => onToggleTab(x)}
 							citationHeight="600px"
