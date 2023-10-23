@@ -1,5 +1,6 @@
 data/
 backend/.env
+poetry.lock
 # temporary db
 
 # Azure az webapp deployment details
