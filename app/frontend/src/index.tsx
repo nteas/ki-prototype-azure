@@ -1,15 +1,38 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { createHashRouter, Outlet, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom';
 import { initializeIcons } from '@fluentui/react';
+// import { MsalProvider } from '@azure/msal-react';
+// import {
+// 	PublicClientApplication,
+// 	EventType,
+// 	AccountInfo,
+// } from '@azure/msal-browser';
 
+// import { msalConfig } from './authConfig';
+import Chat from './pages/chat/Chat';
 import './index.css';
 
-import Chat from './pages/chat/Chat';
+// const msalInstance = new PublicClientApplication(msalConfig);
+
+// if (
+// 	!msalInstance.getActiveAccount() &&
+// 	msalInstance.getAllAccounts().length > 0
+// ) {
+// 	msalInstance.setActiveAccount(msalInstance.getActiveAccount());
+// }
+
+// msalInstance.addEventCallback(event => {
+// 	console.log(event.payload);
+// 	if (event.eventType === EventType.LOGIN_SUCCESS && event.payload) {
+// 		const account = event.payload as AccountInfo;
+// 		msalInstance.setActiveAccount(account);
+// 	}
+// });
 
 initializeIcons();
 
-const router = createHashRouter([
+const router = createBrowserRouter([
 	{
 		path: '/',
 		element: <Outlet />,
@@ -25,6 +48,10 @@ const router = createHashRouter([
 			{
 				path: 'logs',
 				lazy: () => import('./pages/logs/Logs'),
+			},
+			{
+				path: 'admin',
+				lazy: () => import('./pages/admin/index'),
 			},
 			{
 				path: '*',
