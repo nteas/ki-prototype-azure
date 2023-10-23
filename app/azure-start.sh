@@ -1,5 +1,7 @@
 #!/bin/sh
 
+apt-get install python3-venv
+
 echo 'Creating python virtual environment "app/backend/backend_env"'
 python3 -m venv app/backend/backend_env
 
