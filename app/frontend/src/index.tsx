@@ -11,6 +11,7 @@ import { initializeIcons } from '@fluentui/react';
 
 // import { msalConfig } from './authConfig';
 import Chat from './pages/chat/Chat';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css';
 
 // const msalInstance = new PublicClientApplication(msalConfig);

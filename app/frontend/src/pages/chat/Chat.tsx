@@ -147,7 +147,7 @@ const Chat = () => {
 		return fullResponse;
 	};
 
-	const client = useMsal().instance;
+	const client = useLogin ? useMsal().instance : undefined;
 
 	const makeApiRequest = async (question: string) => {
 		await analytics.track('Question Asked', {
@@ -167,8 +167,6 @@ const Chat = () => {
 		setActiveAnalysisPanelTab(undefined);
 
 		const token = client ? await getToken(client) : undefined;
-
-		console.log(token);
 
 		try {
 			const history: ChatTurn[] = answers.map(a => ({

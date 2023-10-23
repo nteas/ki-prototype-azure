@@ -6,13 +6,14 @@ interface Props {
 	headerActions?: React.ReactNode;
 	logoSuffix?: string | '';
 	children: React.ReactNode;
+	className?: string;
 }
 
-const Layout = ({ logoSuffix, headerActions, children }: Props) => {
+const Layout = ({ logoSuffix, headerActions, children, className }: Props) => {
 	const navigate = useNavigate();
 
 	return (
-		<div className={styles.layout}>
+		<div className={`${className} ${styles.layout}`}>
 			<header className={styles.header} role="banner">
 				<div className={styles.headerContainer}>
 					<Link to="/" className={styles.headerTitleContainer}>
