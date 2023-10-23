@@ -1,10 +1,11 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import eslint from 'vite-plugin-eslint';
 
 // https://vitejs.dev/config/
 export default defineConfig({
 	clearScreen: false,
-	plugins: [react()],
+	plugins: [react(), eslint()],
 	build: {
 		outDir: '../backend/static',
 		emptyOutDir: true,

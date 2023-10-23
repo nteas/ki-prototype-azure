@@ -9,7 +9,7 @@ import { Log } from '../pages/logs/Logs';
 const BACKEND_URI = '/api';
 
 function getHeaders(idToken: string | undefined): Record<string, string> {
-	var headers: Record<string, string> = {
+	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
 	};
 	// If using login, add the id token of the logged in account as the authorization

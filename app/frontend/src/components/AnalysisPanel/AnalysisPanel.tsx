@@ -1,4 +1,3 @@
-import { Pivot, PivotItem } from '@fluentui/react';
 import DOMPurify from 'dompurify';
 import { createPortal } from 'react-dom';
 import { Dismiss24Regular } from '@fluentui/react-icons';
@@ -10,7 +9,6 @@ import { ChatAppResponse } from '../../api';
 import { AnalysisPanelTabs } from './AnalysisPanelTabs';
 
 interface Props {
-	className: string;
 	activeTab: AnalysisPanelTabs;
 	onActiveTabChanged: (tab: AnalysisPanelTabs) => void;
 	activeCitation: string | undefined;
@@ -18,14 +16,11 @@ interface Props {
 	answer: ChatAppResponse;
 }
 
-const pivotItemDisabledStyle = { disabled: true, style: { color: 'grey' } };
-
 export const AnalysisPanel = ({
 	answer,
 	activeTab,
 	activeCitation,
 	citationHeight,
-	className,
 	onActiveTabChanged,
 }: Props) => {
 	const isDisabledThoughtProcessTab: boolean =

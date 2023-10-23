@@ -81,8 +81,7 @@ const Chat = () => {
 	const handleAsyncRequest = async (
 		question: string,
 		answers: [string, ChatAppResponse][],
-		setAnswers: Function,
-		responseBody: ReadableStream<any>
+		responseBody: ReadableStream<unknown>
 	) => {
 		let answer: string = '';
 		let askResponse: ChatAppResponse = {} as ChatAppResponse;
@@ -203,12 +202,7 @@ const Chat = () => {
 			}
 			if (shouldStream) {
 				const parsedResponse: ChatAppResponse =
-					await handleAsyncRequest(
-						question,
-						answers,
-						setAnswers,
-						response.body
-					);
+					await handleAsyncRequest(question, answers, response.body);
 
 				await analytics.track('Question Replied', {
 					reply: parsedResponse.choices[0].message.content,
@@ -280,8 +274,7 @@ const Chat = () => {
 
 	const onRetrievalModeChange = (
 		_ev: React.FormEvent<HTMLDivElement>,
-		option?: IDropdownOption<RetrievalMode> | undefined,
-		index?: number | undefined
+		option?: IDropdownOption<RetrievalMode> | undefined
 	) => {
 		setRetrievalMode(option?.data || RetrievalMode.Hybrid);
 	};
@@ -562,7 +555,6 @@ const Chat = () => {
 
 					{answers.length > 0 && activeAnalysisPanelTab && (
 						<AnalysisPanel
-							className={styles.chatAnalysisPanel}
 							activeCitation={activeCitation}
 							onActiveTabChanged={x =>
 								onToggleTab(x, selectedAnswer)

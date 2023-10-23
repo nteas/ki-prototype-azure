@@ -37,7 +37,6 @@ export const Answer = ({
 	showFollowupQuestions,
 }: Props) => {
 	const [feedback, setFeedback] = useState(0);
-	const inputRef = useRef<HTMLInputElement>(null);
 	const isFeedbackGiven = useRef<boolean>(false);
 	const messageContent = answer.choices[0].message.content;
 	const parsedAnswer = useMemo(
