@@ -16,6 +16,7 @@ import AdminLayout from '../../components/Layout/AdminLayout';
 import Button from '../../components/Button/Button';
 
 import styles from './Admin.module.css';
+import { useNavigate } from 'react-router';
 
 const data = [
 	{
@@ -56,6 +57,8 @@ const data = [
 	},
 ];
 export function Component(): JSX.Element {
+	const navigate = useNavigate();
+
 	const handleOpenItem = () => {
 		console.log('open');
 	};
@@ -69,136 +72,138 @@ export function Component(): JSX.Element {
 	};
 
 	return (
-		<AdminLayout logoSuffix="ADMIN" className={styles.layout}>
-			<div className={styles.container}>
-				<div className={styles.header}>
-					<span>Informasjonskilder</span>
+		<AdminLayout className={styles.layout}>
+			<div className={styles.header}>
+				<Button
+					className={styles.button}
+					icon={<FontAwesomeIcon icon={faCloudArrowUp} />}
+					onClick={() => navigate('create')}>
+					Legg til kilde
+				</Button>
+			</div>
 
-					<Button icon={<FontAwesomeIcon icon={faCloudArrowUp} />}>
-						Legg til kilde
-					</Button>
+			<div className={styles.filters}>
+				<InputGroup className={styles.search}>
+					<Form.Control placeholder="Søk etter kilde" />
+					<InputGroup.Text>
+						<FontAwesomeIcon icon={faMagnifyingGlass} />
+					</InputGroup.Text>
+				</InputGroup>
+
+				<Form.Check
+					className={styles.check}
+					type="checkbox"
+					label="Vis kun flagget"
+				/>
+
+				<Form.Check
+					className={styles.check}
+					type="switch"
+					label="Vis PDF-kilder"
+					defaultChecked={true}
+				/>
+
+				<Form.Check
+					className={styles.check}
+					type="switch"
+					label="Vis web-kilder"
+					defaultChecked={true}
+				/>
+			</div>
+
+			<div className={styles.head}>
+				<div className={styles.col} style={{ flex: 1 }}>
+					Type
 				</div>
-
-				<div className={styles.filters}>
-					<InputGroup className={styles.search}>
-						<Form.Control placeholder="Søk etter kilde" />
-						<InputGroup.Text>
-							<FontAwesomeIcon icon={faMagnifyingGlass} />
-						</InputGroup.Text>
-					</InputGroup>
-
-					<Form.Check
-						className={styles.check}
-						type="checkbox"
-						label="Vis kun flagget"
-					/>
-
-					<Form.Check
-						className={styles.check}
-						type="switch"
-						label="Vis PDF-kilder"
-						defaultChecked={true}
-					/>
-
-					<Form.Check
-						className={styles.check}
-						type="switch"
-						label="Vis web-kilder"
-						defaultChecked={true}
-					/>
+				<div className={styles.col} style={{ flex: 5 }}>
+					Navn
 				</div>
-
-				<div className={styles.head}>
-					<div className={styles.col} style={{ flex: 1 }}>
-						Type
-					</div>
-					<div className={styles.col} style={{ flex: 5 }}>
-						Navn
-					</div>
-					<div className={styles.col} style={{ flex: 3 }}>
-						Eier
-					</div>
-					<div className={styles.col} style={{ flex: 2 }}>
-						Klassifisering
-					</div>
-					<div className={styles.col} style={{ flex: 2 }}>
-						Oppdatert
-					</div>
-					<div className={styles.col} style={{ flex: 2 }}>
-						Handlinger
-					</div>
+				<div className={styles.col} style={{ flex: 3 }}>
+					Eier
 				</div>
+				<div className={styles.col} style={{ flex: 2 }}>
+					Klassifisering
+				</div>
+				<div className={styles.col} style={{ flex: 2 }}>
+					Oppdatert
+				</div>
+				<div className={styles.col} style={{ flex: 2 }}>
+					Handlinger
+				</div>
+			</div>
 
-				<div className={styles.rows}>
-					{data.map(item => (
-						<div
-							className={`${styles.row} ${
-								item.flagged && styles.flagged
-							}`}
-							key={item.id}>
-							<div className={styles.col} style={{ flex: 1 }}>
-								<FontAwesomeIcon
-									icon={
-										item.type.includes('PDF')
-											? faFilePdf
-											: faGlobe
-									}
-								/>
-							</div>
-
-							<div className={styles.col} style={{ flex: 5 }}>
-								{item.name}
-							</div>
-
-							<div className={styles.col} style={{ flex: 3 }}>
-								{item.owner}
-							</div>
-
-							<div className={styles.col} style={{ flex: 2 }}>
-								<Badge pill bg="primary">
-									{item.classification}
-								</Badge>
-							</div>
-
-							<div className={styles.col} style={{ flex: 2 }}>
-								{item.updated}
-							</div>
-
-							<div
-								className={`${styles.col} ${styles.actions}`}
-								style={{ flex: 2 }}>
-								<button
-									className={styles.open}
-									onClick={handleOpenItem}
-									title="Åpne">
-									<FontAwesomeIcon icon={faEye} />
-								</button>
-
-								<button
-									className={styles.edit}
-									onClick={handleEditItem}
-									title="Rediger">
-									<FontAwesomeIcon icon={faCog} />
-								</button>
-
-								<button
-									className={styles.delete}
-									onClick={handleDeleteItem}
-									title="Slett">
-									<FontAwesomeIcon icon={faTrash} />
-								</button>
-							</div>
+			<div className={styles.rows}>
+				{data.map(item => (
+					<div
+						className={`${styles.row} ${
+							item.flagged && styles.flagged
+						}`}
+						key={item.id}>
+						<div className={styles.col} style={{ flex: 1 }}>
+							<FontAwesomeIcon
+								icon={
+									item.type.includes('PDF')
+										? faFilePdf
+										: faGlobe
+								}
+							/>
 						</div>
-					))}
-				</div>
 
-				<div className={styles.bottomActions}>
-					<span>Viser {data.length} kilder</span>
+						<div className={styles.col} style={{ flex: 5 }}>
+							{item.name}
+						</div>
 
-					<Button icon={<FontAwesomeIcon icon={faCloudArrowUp} />}>
-						Legg til kilde
-					</Button>
-				</div>
+						<div className={styles.col} style={{ flex: 3 }}>
+							{item.owner}
+						</div>
+
+						<div className={styles.col} style={{ flex: 2 }}>
+							<Badge pill bg="primary">
+								{item.classification}
+							</Badge>
+						</div>
+
+						<div className={styles.col} style={{ flex: 2 }}>
+							{item.updated}
+						</div>
+
+						<div
+							className={`${styles.col} ${styles.actions}`}
+							style={{ flex: 2 }}>
+							<button
+								className={styles.open}
+								onClick={handleOpenItem}
+								title="Åpne">
+								<FontAwesomeIcon icon={faEye} />
+							</button>
+
+							<button
+								className={styles.edit}
+								onClick={handleEditItem}
+								title="Rediger">
+								<FontAwesomeIcon icon={faCog} />
+							</button>
+
+							<button
+								className={styles.delete}
+								onClick={handleDeleteItem}
+								title="Slett">
+								<FontAwesomeIcon icon={faTrash} />
+							</button>
+						</div>
+					</div>
+				))}
+			</div>
+
+			<div className={styles.bottomActions}>
+				<span>Viser {data.length} kilder</span>
+
+				<Button
+					className={styles.button}
+					icon={<FontAwesomeIcon icon={faCloudArrowUp} />}
+					onClick={() => navigate('create')}>
+					Legg til kilde
+				</Button>
 			</div>
 		</AdminLayout>
 	);

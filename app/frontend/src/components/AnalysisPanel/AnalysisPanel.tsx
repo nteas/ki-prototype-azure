@@ -117,6 +117,7 @@ export const AnalysisPanel = ({
 					{activeTab === AnalysisPanelTabs.CitationTab && (
 						<div className={styles.tab}>
 							<iframe
+								className={styles.frame}
 								title="Kilde"
 								src={activeCitation}
 								width="100%"

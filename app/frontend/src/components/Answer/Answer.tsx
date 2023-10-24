@@ -152,6 +152,7 @@ export const Answer = ({
 
 					{feedback > 0 && (
 						<form
+							className={styles.form}
 							onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
 								e.preventDefault();
 

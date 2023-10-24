@@ -53,7 +53,24 @@ const router = createBrowserRouter([
 			},
 			{
 				path: 'admin',
-				lazy: () => import('./pages/admin/index'),
+				children: [
+					{
+						index: true,
+						lazy: () => import('./pages/admin'),
+					},
+					{
+						path: 'create',
+						lazy: () => import('./pages/admin/CreateSource'),
+					},
+					// {
+					// 	path: 'edit',
+					// 	lazy: () => import('./pages/admin/EditSource'),
+					// },
+					// {
+					// 	path: 'delete',
+					// 	lazy: () => import('./pages/admin/DeleteSource'),
+					// },
+				],
 			},
 			{
 				path: '*',

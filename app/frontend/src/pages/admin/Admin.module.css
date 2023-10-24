@@ -1,13 +1,10 @@
 .layout {
 	background-color: white;
 }
-.container {
-	flex: 0 1 1020px;
-}
 
 .header {
 	display: flex;
-	justify-content: space-between;
+	justify-content: flex-end;
 	align-items: center;
 	margin-bottom: 26px;
 }
@@ -15,6 +12,13 @@
 .header > span {
 	font-size: 24px;
 	font-weight: 400;
+	letter-spacing: -0.32px;
+}
+
+.button {
+	padding: 8px 12px;
+	font-size: 13px;
+	font-weight: 500;
 	letter-spacing: -0.32px;
 }
 

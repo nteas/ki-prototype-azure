@@ -248,164 +248,156 @@ export function Component(): JSX.Element {
 					/>
 				</>
 			}>
-			<div className={styles.oneshotContainer}>
-				<div className={styles.oneshotTopSection}>
-					<h2 className={styles.oneshotTitle}>
-						Søk i spørsmål og svar
-					</h2>
+			<div className={styles.oneshotTopSection}>
+				<h2 className={styles.oneshotTitle}>Søk i spørsmål og svar</h2>
 
-					<p className={styles.oneshotSubTitle}>
-						Boten vil kun søke i alle FAQ-innleggene på nte.no
-					</p>
+				<p className={styles.oneshotSubTitle}>
+					Boten vil kun søke i alle FAQ-innleggene på nte.no
+				</p>
 
-					<div className={styles.oneshotQuestionInput}>
-						<QuestionInput
-							placeholder="Skriv et nytt spørsmål. For eksempel “Er det bindingstid på Spotpris?”"
-							disabled={isLoading}
-							onSend={question => makeApiRequest(question)}
-							search
+				<div className={styles.oneshotQuestionInput}>
+					<QuestionInput
+						placeholder="Skriv et nytt spørsmål. For eksempel “Er det bindingstid på Spotpris?”"
+						disabled={isLoading}
+						onSend={question => makeApiRequest(question)}
+						search
+					/>
+				</div>
+			</div>
+			<div className={styles.oneshotBottomSection}>
+				{isLoading && <Spinner label="Genererer svar" />}
+
+				{!isLoading && answer && !error && (
+					<div className={styles.oneshotAnswerContainer}>
+						<Answer
+							answer={answer}
+							isStreaming={false}
+							onCitationClicked={x => onShowCitation(x)}
+							onThoughtProcessClicked={() =>
+								onToggleTab(AnalysisPanelTabs.ThoughtProcessTab)
+							}
+							onSupportingContentClicked={() =>
+								onToggleTab(
+									AnalysisPanelTabs.SupportingContentTab
+								)
+							}
 						/>
 					</div>
-				</div>
-				<div className={styles.oneshotBottomSection}>
-					{isLoading && <Spinner label="Genererer svar" />}
-
-					{!isLoading && answer && !error && (
-						<div className={styles.oneshotAnswerContainer}>
-							<Answer
-								answer={answer}
-								isStreaming={false}
-								onCitationClicked={x => onShowCitation(x)}
-								onThoughtProcessClicked={() =>
-									onToggleTab(
-										AnalysisPanelTabs.ThoughtProcessTab
-									)
-								}
-								onSupportingContentClicked={() =>
-									onToggleTab(
-										AnalysisPanelTabs.SupportingContentTab
-									)
-								}
-							/>
-						</div>
-					)}
-					{error ? (
-						<div className={styles.oneshotAnswerContainer}>
-							<AnswerError
-								error={error.toString()}
-								onRetry={() =>
-									makeApiRequest(lastQuestionRef.current)
-								}
-							/>
-						</div>
-					) : null}
-					{activeAnalysisPanelTab && answer && (
-						<AnalysisPanel
-							activeCitation={activeCitation}
-							onActiveTabChanged={x => onToggleTab(x)}
-							citationHeight="600px"
-							answer={answer}
-							activeTab={activeAnalysisPanelTab}
+				)}
+				{error ? (
+					<div className={styles.oneshotAnswerContainer}>
+						<AnswerError
+							error={error.toString()}
+							onRetry={() =>
+								makeApiRequest(lastQuestionRef.current)
+							}
 						/>
-					)}
-				</div>
-
-				<Panel
-					headerText="Configure answer generation"
-					isOpen={isConfigPanelOpen}
-					isBlocking={false}
-					onDismiss={() => setIsConfigPanelOpen(false)}
-					closeButtonAriaLabel="Close"
-					onRenderFooterContent={() => (
-						<DefaultButton
-							onClick={() => setIsConfigPanelOpen(false)}>
-							Close
-						</DefaultButton>
-					)}
-					isFooterAtBottom={true}>
-					<TextField
-						className={styles.oneshotSettingsSeparator}
-						defaultValue={promptTemplate}
-						label="Override prompt template"
-						multiline
-						autoAdjustHeight
-						onChange={onPromptTemplateChange}
+					</div>
+				) : null}
+				{activeAnalysisPanelTab && answer && (
+					<AnalysisPanel
+						activeCitation={activeCitation}
+						onActiveTabChanged={x => onToggleTab(x)}
+						citationHeight="600px"
+						answer={answer}
+						activeTab={activeAnalysisPanelTab}
 					/>
-
-					<SpinButton
-						className={styles.oneshotSettingsSeparator}
-						label="Retrieve this many search results:"
-						min={1}
-						max={50}
-						defaultValue={retrieveCount.toString()}
-						onChange={onRetrieveCountChange}
-					/>
-					<TextField
-						className={styles.oneshotSettingsSeparator}
-						label="Exclude category"
-						onChange={onExcludeCategoryChanged}
-					/>
-					<Checkbox
-						className={styles.oneshotSettingsSeparator}
-						checked={useSemanticRanker}
-						label="Use semantic ranker for retrieval"
-						onChange={onUseSemanticRankerChange}
-					/>
-					<Checkbox
-						className={styles.oneshotSettingsSeparator}
-						checked={useSemanticCaptions}
-						label="Use query-contextual summaries instead of whole documents"
-						onChange={onUseSemanticCaptionsChange}
-						disabled={!useSemanticRanker}
-					/>
-					{useLogin && (
-						<Checkbox
-							className={styles.oneshotSettingsSeparator}
-							checked={useOidSecurityFilter}
-							label="Use oid security filter"
-							disabled={!client?.getActiveAccount()}
-							onChange={onUseOidSecurityFilterChange}
-						/>
-					)}
-					{useLogin && (
-						<Checkbox
-							className={styles.oneshotSettingsSeparator}
-							checked={useGroupsSecurityFilter}
-							label="Use groups security filter"
-							disabled={!client?.getActiveAccount()}
-							onChange={onUseGroupsSecurityFilterChange}
-						/>
-					)}
-					<Dropdown
-						className={styles.oneshotSettingsSeparator}
-						label="Retrieval mode"
-						options={[
-							{
-								key: 'hybrid',
-								text: 'Vectors + Text (Hybrid)',
-								selected: retrievalMode == RetrievalMode.Hybrid,
-								data: RetrievalMode.Hybrid,
-							},
-							{
-								key: 'vectors',
-								text: 'Vectors',
-								selected:
-									retrievalMode == RetrievalMode.Vectors,
-								data: RetrievalMode.Vectors,
-							},
-							{
-								key: 'text',
-								text: 'Text',
-								selected: retrievalMode == RetrievalMode.Text,
-								data: RetrievalMode.Text,
-							},
-						]}
-						required
-						onChange={onRetrievalModeChange}
-					/>
-					{useLogin && <TokenClaimsDisplay />}
-				</Panel>
+				)}
 			</div>
+
+			<Panel
+				headerText="Configure answer generation"
+				isOpen={isConfigPanelOpen}
+				isBlocking={false}
+				onDismiss={() => setIsConfigPanelOpen(false)}
+				closeButtonAriaLabel="Close"
+				onRenderFooterContent={() => (
+					<DefaultButton onClick={() => setIsConfigPanelOpen(false)}>
+						Close
+					</DefaultButton>
+				)}
+				isFooterAtBottom={true}>
+				<TextField
+					className={styles.oneshotSettingsSeparator}
+					defaultValue={promptTemplate}
+					label="Override prompt template"
+					multiline
+					autoAdjustHeight
+					onChange={onPromptTemplateChange}
+				/>
+
+				<SpinButton
+					className={styles.oneshotSettingsSeparator}
+					label="Retrieve this many search results:"
+					min={1}
+					max={50}
+					defaultValue={retrieveCount.toString()}
+					onChange={onRetrieveCountChange}
+				/>
+				<TextField
+					className={styles.oneshotSettingsSeparator}
+					label="Exclude category"
+					onChange={onExcludeCategoryChanged}
+				/>
+				<Checkbox
+					className={styles.oneshotSettingsSeparator}
+					checked={useSemanticRanker}
+					label="Use semantic ranker for retrieval"
+					onChange={onUseSemanticRankerChange}
+				/>
+				<Checkbox
+					className={styles.oneshotSettingsSeparator}
+					checked={useSemanticCaptions}
+					label="Use query-contextual summaries instead of whole documents"
+					onChange={onUseSemanticCaptionsChange}
+					disabled={!useSemanticRanker}
+				/>
+				{useLogin && (
+					<Checkbox
+						className={styles.oneshotSettingsSeparator}
+						checked={useOidSecurityFilter}
+						label="Use oid security filter"
+						disabled={!client?.getActiveAccount()}
+						onChange={onUseOidSecurityFilterChange}
+					/>
+				)}
+				{useLogin && (
+					<Checkbox
+						className={styles.oneshotSettingsSeparator}
+						checked={useGroupsSecurityFilter}
+						label="Use groups security filter"
+						disabled={!client?.getActiveAccount()}
+						onChange={onUseGroupsSecurityFilterChange}
+					/>
+				)}
+				<Dropdown
+					className={styles.oneshotSettingsSeparator}
+					label="Retrieval mode"
+					options={[
+						{
+							key: 'hybrid',
+							text: 'Vectors + Text (Hybrid)',
+							selected: retrievalMode == RetrievalMode.Hybrid,
+							data: RetrievalMode.Hybrid,
+						},
+						{
+							key: 'vectors',
+							text: 'Vectors',
+							selected: retrievalMode == RetrievalMode.Vectors,
+							data: RetrievalMode.Vectors,
+						},
+						{
+							key: 'text',
+							text: 'Text',
+							selected: retrievalMode == RetrievalMode.Text,
+							data: RetrievalMode.Text,
+						},
+					]}
+					required
+					onChange={onRetrievalModeChange}
+				/>
+				{useLogin && <TokenClaimsDisplay />}
+			</Panel>
 		</Layout>
 	);
 }

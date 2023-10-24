@@ -1,0 +1,26 @@
+.title {
+	font-size: 28px;
+	font-weight: 500;
+	margin: 72px 0 24px;
+}
+
+.row {
+	display: flex;
+	gap: 32px;
+	margin-bottom: 24px;
+}
+
+.row > * {
+	flex: 1;
+}
+
+.actions {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 16px;
+}
+
+.actions a {
+	color: #0079ad;
+}

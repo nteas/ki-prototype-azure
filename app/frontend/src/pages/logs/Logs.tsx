@@ -21,42 +21,38 @@ export function Component(): JSX.Element {
 
 	return (
 		<Layout>
-			<div className={styles.wrapper}>
-				<h1>Logs</h1>
+			<h1>Logs</h1>
 
-				<div className={styles.logs}>
-					{logs?.map((log, i) => (
-						<div
-							key={i}
-							className={styles.log}
-							onClick={() => setLog(log)}>
-							<span>{log.feedback}</span>
-							<span>{log.uuid}</span>
-							<span>{log.comment}</span>
-							<span>
-								{new Date(log.timestamp).toLocaleString()}
-							</span>
-						</div>
-					))}
-				</div>
-
-				{log && (
-					<div className={styles.modalWrapper}>
-						<div
-							className={styles.overlay}
-							onClick={() => setLog(null)}
-						/>
-
-						<div className={styles.modal}>
-							<div
-								dangerouslySetInnerHTML={{
-									__html: log.thought_process,
-								}}
-							/>
-						</div>
+			<div className={styles.logs}>
+				{logs?.map((log, i) => (
+					<div
+						key={i}
+						className={styles.log}
+						onClick={() => setLog(log)}>
+						<span>{log.feedback}</span>
+						<span>{log.uuid}</span>
+						<span>{log.comment}</span>
+						<span>{new Date(log.timestamp).toLocaleString()}</span>
 					</div>
-				)}
+				))}
 			</div>
+
+			{log && (
+				<div className={styles.modalWrapper}>
+					<div
+						className={styles.overlay}
+						onClick={() => setLog(null)}
+					/>
+
+					<div className={styles.modal}>
+						<div
+							dangerouslySetInnerHTML={{
+								__html: log.thought_process,
+							}}
+						/>
+					</div>
+				</div>
+			)}
 		</Layout>
 	);
 }

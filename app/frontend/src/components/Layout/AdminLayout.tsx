@@ -1,19 +1,25 @@
 import { NavLink, Link, useNavigate } from 'react-router-dom';
+import Breadcrumb from 'react-bootstrap/Breadcrumb';
 
 import styles from './Layout.module.css';
 
+interface Breadcrumb {
+	link: string;
+	text: string;
+}
+
 interface Props {
 	headerActions?: React.ReactNode;
-	logoSuffix?: string | '';
 	children: React.ReactNode;
 	className?: string;
+	breadcrumbs?: Breadcrumb[];
 }
 
 const AdminLayout = ({
-	logoSuffix,
 	headerActions,
 	children,
 	className,
+	breadcrumbs = [],
 }: Props) => {
 	const navigate = useNavigate();
 
@@ -28,7 +34,7 @@ const AdminLayout = ({
 							className={styles.headerLogo}
 						/>
 
-						<span>| KS BETA {logoSuffix}</span>
+						<span>| KS BETA ADMIN</span>
 					</Link>
 
 					<nav className={styles.headerNav}>
@@ -59,7 +65,26 @@ const AdminLayout = ({
 				</div>
 			</header>
 
-			<main className={styles.main}>{children}</main>
+			<main className={styles.main}>
+				<Breadcrumb>
+					<Breadcrumb.Item
+						active={breadcrumbs?.length === 0}
+						href="/admin">
+						Informasjonskilder
+					</Breadcrumb.Item>
+
+					{breadcrumbs?.map((breadcrumb, i) => (
+						<Breadcrumb.Item
+							active={i === breadcrumbs.length - 1}
+							key={i}
+							onClick={() => navigate(breadcrumb.link)}>
+							{breadcrumb.text}
+						</Breadcrumb.Item>
+					))}
+				</Breadcrumb>
+
+				{children}
+			</main>
 
 			<footer className={styles.footer}>
 				<div className={styles.footerContainer}>

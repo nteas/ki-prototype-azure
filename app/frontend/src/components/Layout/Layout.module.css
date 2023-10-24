@@ -1,6 +1,4 @@
 .layout {
-	display: flex;
-	flex-direction: column;
 	height: 100%;
 }
 
@@ -107,14 +105,10 @@
 }
 
 .main {
-	flex: 1;
 	padding: 191px 12px 25px;
-	display: flex;
-	justify-content: center;
-}
-
-.main > * {
-	flex: 0 1 1020px;
+	max-width: 1020px;
+	margin: 0 auto;
+	height: 100%;
 }
 
 .footerContainer {

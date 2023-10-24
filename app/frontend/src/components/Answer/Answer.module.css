@@ -143,7 +143,7 @@
 	color: #fff;
 	background: #397f57;
 }
-form {
+.form {
 	display: flex;
 	gap: 10px;
 }
