@@ -1,13 +1,14 @@
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import {
-	CommentCheckmark24Regular,
-	Checkmark24Regular,
-	Star48Regular,
-	Star48Filled,
-	Dismiss24Regular,
-} from '@fluentui/react-icons';
 import { Button } from '@fluentui/react-components';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+	faCheck,
+	faMessageCheck,
+	faStar,
+	faXmark,
+} from '@fortawesome/pro-regular-svg-icons';
+import { faStar as faStarSolid } from '@fortawesome/pro-solid-svg-icons';
 
 import styles from './FinishChatButton.module.css';
 
@@ -23,7 +24,7 @@ export const FinishChatButton = ({ className, disabled, onSubmit }: Props) => {
 	return (
 		<div className={`${styles.container} ${className ?? ''}`}>
 			<Button
-				icon={<CommentCheckmark24Regular />}
+				icon={<FontAwesomeIcon icon={faMessageCheck} />}
 				disabled={disabled}
 				onClick={() => setOpen(true)}>
 				Fullfør
@@ -61,7 +62,7 @@ const Modal = ({ onClose, onSubmit }: ModalProps) => {
 
 			<div className={styles.modal}>
 				<button className={styles.closeButton} onClick={onClose}>
-					<Dismiss24Regular />
+					<FontAwesomeIcon icon={faXmark} />
 				</button>
 
 				<h2>Fullfør samtale</h2>
@@ -85,9 +86,9 @@ const Modal = ({ onClose, onSubmit }: ModalProps) => {
 								setValid(i > 0);
 							}}>
 							{feedback >= i ? (
-								<Star48Filled />
+								<FontAwesomeIcon icon={faStarSolid} />
 							) : (
-								<Star48Regular />
+								<FontAwesomeIcon icon={faStar} />
 							)}
 						</button>
 					))}
@@ -108,7 +109,7 @@ const Modal = ({ onClose, onSubmit }: ModalProps) => {
 						onClick={handleSubmit}>
 						<span>Fullfør og start ny samtale</span>
 
-						<Checkmark24Regular />
+						<FontAwesomeIcon icon={faCheck} />
 					</button>
 				</div>
 			</div>

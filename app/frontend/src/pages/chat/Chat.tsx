@@ -375,7 +375,7 @@ const Chat = () => {
 	return (
 		<Layout
 			headerActions={
-				<div className={styles.commandsContainer}>
+				<>
 					{lastQuestionRef.current && (
 						<ClearChatButton
 							className={styles.commandButton}
@@ -387,7 +387,7 @@ const Chat = () => {
 						className={styles.commandButton}
 						onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
 					/>
-				</div>
+				</>
 			}>
 			<div className={styles.container}>
 				<div className={styles.chatRoot}>

@@ -1,5 +1,6 @@
-import { Settings24Regular } from '@fluentui/react-icons';
 import { Button } from '@fluentui/react-components';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCog } from '@fortawesome/pro-regular-svg-icons';
 
 import styles from './SettingsButton.module.css';
 
@@ -11,7 +12,7 @@ interface Props {
 export const SettingsButton = ({ className, onClick }: Props) => {
 	return (
 		<div className={`${styles.container} ${className ?? ''}`}>
-			<Button icon={<Settings24Regular />} onClick={onClick}>
+			<Button icon={<FontAwesomeIcon icon={faCog} />} onClick={onClick}>
 				Innstillinger
 			</Button>
 		</div>

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Stack, TextField } from '@fluentui/react';
 import { Button } from '@fluentui/react-components';
-import { Send28Filled, Search28Filled } from '@fluentui/react-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faMagnifyingGlass } from '@fortawesome/pro-regular-svg-icons';
+import { faPaperPlane } from '@fortawesome/pro-solid-svg-icons';
 
 import styles from './QuestionInput.module.css';
 
@@ -69,7 +71,13 @@ export const QuestionInput = ({
 			<div className={styles.questionInputButtonsContainer}>
 				<Button
 					size="large"
-					icon={search ? <Search28Filled /> : <Send28Filled />}
+					icon={
+						search ? (
+							<FontAwesomeIcon icon={faMagnifyingGlass} />
+						) : (
+							<FontAwesomeIcon icon={faPaperPlane} />
+						)
+					}
 					disabled={sendQuestionDisabled}
 					onClick={sendQuestion}
 				/>

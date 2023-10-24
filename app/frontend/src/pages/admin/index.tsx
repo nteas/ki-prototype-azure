@@ -1,6 +1,8 @@
-import { CloudArrowUp24Filled, Search24Regular } from '@fluentui/react-icons';
 import Form from 'react-bootstrap/Form';
 import InputGroup from 'react-bootstrap/InputGroup';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faMagnifyingGlass } from '@fortawesome/pro-regular-svg-icons';
+import { faCloudArrowUp } from '@fortawesome/pro-solid-svg-icons';
 
 import Layout from '../../components/Layout/Layout';
 import Button from '../../components/Button/Button';
@@ -13,7 +15,7 @@ export function Component(): JSX.Element {
 				<div className={styles.header}>
 					<span>Informasjonskilder</span>
 
-					<Button icon={<CloudArrowUp24Filled />}>
+					<Button icon={<FontAwesomeIcon icon={faCloudArrowUp} />}>
 						Legg til kilde
 					</Button>
 				</div>
@@ -22,7 +24,7 @@ export function Component(): JSX.Element {
 					<InputGroup>
 						<Form.Control placeholder="Søk etter kilde" />
 						<InputGroup.Text>
-							<Search24Regular />
+							<FontAwesomeIcon icon={faMagnifyingGlass} />
 						</InputGroup.Text>
 					</InputGroup>
 

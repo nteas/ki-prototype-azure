@@ -1,5 +1,6 @@
 import { Stack, PrimaryButton } from '@fluentui/react';
-import { ErrorCircle24Regular } from '@fluentui/react-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faExclamationCircle } from '@fortawesome/pro-solid-svg-icons';
 
 import styles from './Answer.module.css';
 
@@ -11,11 +12,7 @@ interface Props {
 export const AnswerError = ({ error, onRetry }: Props) => {
 	return (
 		<Stack className={styles.answerContainer} verticalAlign="space-between">
-			<ErrorCircle24Regular
-				aria-hidden="true"
-				aria-label="Error icon"
-				primaryFill="red"
-			/>
+			<FontAwesomeIcon icon={faExclamationCircle} />
 
 			<Stack.Item grow>
 				<p className={styles.answerText}>{error}</p>

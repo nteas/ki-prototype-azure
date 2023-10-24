@@ -20,6 +20,9 @@
 	align-items: center;
 	align-self: stretch;
 }
+.answerIcons svg {
+	height: 20px;
+}
 
 .answerActionIcons {
 	display: flex;
@@ -34,7 +37,6 @@
 	width: 24px;
 	height: 24px;
 	border: none;
-	padding: 2px;
 }
 .answerActionIcon:hover {
 	background: #e5f3f9;
@@ -42,11 +44,11 @@
 .answerActionIcon:active {
 	background: #0079ad;
 }
-.answerActionIcon:active svg {
-	color: #fff;
-}
 .answerActionIcon svg {
 	color: #0079ad;
+}
+.answerActionIcon:active svg {
+	color: #fff;
 }
 
 .answerText {

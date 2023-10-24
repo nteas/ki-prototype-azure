@@ -1,18 +1,21 @@
 import { useMemo, useRef, useState } from 'react';
-import {
-	Lightbulb24Regular,
-	Clipboard24Regular,
-	Star48Filled,
-	Star48Regular,
-} from '@fluentui/react-icons';
 import { Input } from '@fluentui/react-components';
 import DOMPurify from 'dompurify';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+	faStars,
+	faStar as faStarSolid,
+} from '@fortawesome/pro-solid-svg-icons';
+import {
+	faClipboard,
+	faLightbulb,
+	faStar,
+} from '@fortawesome/pro-regular-svg-icons';
 
 import styles from './Answer.module.css';
 
 import { ChatAppResponse, getCitationFilePath } from '../../api';
 import { parseAnswerToHtml } from './AnswerParser';
-import { AnswerIcon } from './AnswerIcon';
 import analytics from '../../libs/analytics';
 
 interface Props {
@@ -52,7 +55,7 @@ export const Answer = ({
 				isSelected && styles.selected
 			}`}>
 			<div className={styles.answerIcons}>
-				<AnswerIcon />
+				<FontAwesomeIcon icon={faStars} />
 
 				<div className={styles.answerActionIcons}>
 					<button
@@ -62,7 +65,7 @@ export const Answer = ({
 						disabled={
 							!answer.choices[0].extra_args.thoughts?.length
 						}>
-						<Lightbulb24Regular />
+						<FontAwesomeIcon icon={faLightbulb} />
 					</button>
 
 					<button
@@ -72,7 +75,7 @@ export const Answer = ({
 						disabled={
 							!answer.choices[0].extra_args.data_points?.length
 						}>
-						<Clipboard24Regular />
+						<FontAwesomeIcon icon={faClipboard} />
 					</button>
 				</div>
 			</div>
@@ -139,9 +142,9 @@ export const Answer = ({
 									setFeedback(i);
 								}}>
 								{feedback >= i ? (
-									<Star48Filled />
+									<FontAwesomeIcon icon={faStarSolid} />
 								) : (
-									<Star48Regular />
+									<FontAwesomeIcon icon={faStar} />
 								)}
 							</button>
 						))}

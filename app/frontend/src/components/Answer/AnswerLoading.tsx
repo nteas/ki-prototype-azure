@@ -1,8 +1,9 @@
 import { Stack } from '@fluentui/react';
 import { animated, useSpring } from '@react-spring/web';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faStars } from '@fortawesome/pro-solid-svg-icons';
 
 import styles from './Answer.module.css';
-import { AnswerIcon } from './AnswerIcon';
 
 export const AnswerLoading = () => {
 	const animatedStyles = useSpring({
@@ -15,7 +16,8 @@ export const AnswerLoading = () => {
 			<Stack
 				className={styles.answerContainer}
 				verticalAlign="space-between">
-				<AnswerIcon />
+				<FontAwesomeIcon icon={faStars} />
+
 				<Stack.Item grow>
 					<p className={styles.answerText}>
 						Genererer svar

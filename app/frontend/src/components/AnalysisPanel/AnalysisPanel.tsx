@@ -1,6 +1,7 @@
 import DOMPurify from 'dompurify';
 import { createPortal } from 'react-dom';
-import { Dismiss24Regular } from '@fluentui/react-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faXmark } from '@fortawesome/pro-regular-svg-icons';
 
 import styles from './AnalysisPanel.module.css';
 
@@ -44,7 +45,7 @@ export const AnalysisPanel = ({
 				<div
 					className={styles.closeButtonWrap}
 					onClick={() => onActiveTabChanged(activeTab)}>
-					<Dismiss24Regular />
+					<FontAwesomeIcon icon={faXmark} />
 
 					<span>Lukk</span>
 				</div>

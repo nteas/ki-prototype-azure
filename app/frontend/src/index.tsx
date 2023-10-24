@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom';
 import { initializeIcons } from '@fluentui/react';
+
 // import { MsalProvider } from '@azure/msal-react';
 // import {
 // 	PublicClientApplication,
