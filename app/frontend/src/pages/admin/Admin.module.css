@@ -28,3 +28,10 @@
 	background: #f6f6f6;
 	margin-bottom: 24px;
 }
+
+.filters .search {
+	flex: 4;
+}
+.filters .check {
+	flex: 1;
+}

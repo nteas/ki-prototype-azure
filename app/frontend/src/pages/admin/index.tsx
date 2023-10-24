@@ -21,22 +21,28 @@ export function Component(): JSX.Element {
 				</div>
 
 				<div className={styles.filters}>
-					<InputGroup>
+					<InputGroup className={styles.search}>
 						<Form.Control placeholder="Søk etter kilde" />
 						<InputGroup.Text>
 							<FontAwesomeIcon icon={faMagnifyingGlass} />
 						</InputGroup.Text>
 					</InputGroup>
 
-					<Form.Check type="checkbox" label="Vis kun flagget" />
+					<Form.Check
+						className={styles.check}
+						type="checkbox"
+						label="Vis kun flagget"
+					/>
 
 					<Form.Check
+						className={styles.check}
 						type="switch"
 						label="Vis PDF-kilder"
 						defaultChecked={true}
 					/>
 
 					<Form.Check
+						className={styles.check}
 						type="switch"
 						label="Vis web-kilder"
 						defaultChecked={true}
