@@ -12,24 +12,12 @@ services:
             prepackage:
                 windows:
                     shell: pwsh
-                    run: |
-                        cd ../frontend
-                        npm install
-                        npm run build
-                        cd ../backend
-                        pip install -r requirements.txt
-                        python main.py &
+                    run: cd ../frontend;npm install;npm run build
                     interactive: true
                     continueOnError: false
                 posix:
                     shell: sh
-                    run: |
-                        cd ../frontend
-                        npm install
-                        npm run build
-                        cd ../backend
-                        pip install -r requirements.txt
-                        python main.py &
+                    run: cd ../frontend;npm install;npm run build
                     interactive: true
                     continueOnError: false
 hooks:
