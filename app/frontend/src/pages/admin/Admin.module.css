@@ -35,3 +35,46 @@
 .filters .check {
 	flex: 1;
 }
+
+.head {
+	display: flex;
+	align-items: flex-end;
+	gap: 10px;
+}
+
+.head .col {
+	padding: 16px;
+}
+.rows > div:nth-of-type(odd) {
+	background-color: #f6f6f6;
+}
+.row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.rows > div.flagged {
+	background: #fadcd5;
+	color: #b22727;
+}
+
+.col {
+	padding: 8px 16px;
+}
+
+.actions {
+	display: flex;
+	gap: 10px;
+}
+
+.actions button {
+	border: none;
+	outline: none;
+	background: none;
+	color: #0079ad;
+}
+
+.actions .delete {
+	color: #b22727;
+}
