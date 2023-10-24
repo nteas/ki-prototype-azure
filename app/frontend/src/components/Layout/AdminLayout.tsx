@@ -72,7 +72,10 @@ const AdminLayout = ({
 					</Link>
 
 					<div>
-						Systemansvarlig <a href="mailto:">Erlend Østerås</a>
+						Systemansvarlig{' '}
+						<a href="mailto:erlend.osteras@nte.no">
+							Erlend Østerås
+						</a>
 					</div>
 				</div>
 			</footer>
