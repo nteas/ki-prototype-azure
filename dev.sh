@@ -17,8 +17,8 @@ if [ $? -ne 0 ]; then
 fi
 
 cd app/backend
-echo 'Creating python virtual environment "backend/backend_env"'
-python3 -m venv backend/backend_env
+echo 'Creating python virtual environment "backend_env"'
+python3 -m venv backend_env
 
 echo ""
 echo "Restoring backend python packages"

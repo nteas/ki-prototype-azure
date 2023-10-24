@@ -12,7 +12,7 @@ import {
 	faTrash,
 } from '@fortawesome/pro-solid-svg-icons';
 
-import Layout from '../../components/Layout/Layout';
+import AdminLayout from '../../components/Layout/AdminLayout';
 import Button from '../../components/Button/Button';
 
 import styles from './Admin.module.css';
@@ -69,7 +69,7 @@ export function Component(): JSX.Element {
 	};
 
 	return (
-		<Layout logoSuffix="ADMIN" className={styles.layout}>
+		<AdminLayout logoSuffix="ADMIN" className={styles.layout}>
 			<div className={styles.container}>
 				<div className={styles.header}>
 					<span>Informasjonskilder</span>
@@ -169,27 +169,38 @@ export function Component(): JSX.Element {
 								style={{ flex: 2 }}>
 								<button
 									className={styles.open}
-									onClick={handleOpenItem}>
+									onClick={handleOpenItem}
+									title="Åpne">
 									<FontAwesomeIcon icon={faEye} />
 								</button>
 
 								<button
 									className={styles.edit}
-									onClick={handleEditItem}>
+									onClick={handleEditItem}
+									title="Rediger">
 									<FontAwesomeIcon icon={faCog} />
 								</button>
 
 								<button
 									className={styles.delete}
-									onClick={handleDeleteItem}>
+									onClick={handleDeleteItem}
+									title="Slett">
 									<FontAwesomeIcon icon={faTrash} />
 								</button>
 							</div>
 						</div>
 					))}
 				</div>
+
+				<div className={styles.bottomActions}>
+					<span>Viser {data.length} kilder</span>
+
+					<Button icon={<FontAwesomeIcon icon={faCloudArrowUp} />}>
+						Legg til kilde
+					</Button>
+				</div>
 			</div>
-		</Layout>
+		</AdminLayout>
 	);
 }
 

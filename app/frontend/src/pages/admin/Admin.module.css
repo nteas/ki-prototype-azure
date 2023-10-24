@@ -45,6 +45,10 @@
 .head .col {
 	padding: 16px;
 }
+
+.rows {
+	margin-bottom: 24px;
+}
 .rows > div:nth-of-type(odd) {
 	background-color: #f6f6f6;
 }
@@ -77,4 +81,10 @@
 
 .actions .delete {
 	color: #b22727;
+}
+
+.bottomActions {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 }
