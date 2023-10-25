@@ -21,7 +21,7 @@ const data = {
 	frequency: 'Ukentlig',
 	id: '1',
 	flagged: true,
-	log: [
+	logs: [
 		{
 			id: '2',
 			created: '02.02.2021',
@@ -201,13 +201,39 @@ export function Component(): JSX.Element {
 
 			<h2 className={styles.title}>Endringslogg</h2>
 
-			<div className={styles.logList}>
-				<div className={styles.log}>
-					<div className={styles.row}>
-						<span></span>
-					</div>
+			{data.logs.length > 0 && (
+				<div className={styles.logList}>
+					{data.logs.map(log => (
+						<div
+							key={log.id}
+							className={`${styles.log} ${
+								log.change === 'flagged' && styles.flagged
+							}`}>
+							<div className={styles.logRow}>
+								<span className={styles.logTitle}>
+									{log.change === 'flagged'
+										? 'Kilde ble flagget'
+										: log.change}
+								</span>
+
+								<span className={styles.logTime}>
+									{log.created}
+								</span>
+							</div>
+
+							{log.message && (
+								<div className={styles.logRow}>
+									<span>{log.message}</span>
+								</div>
+							)}
+
+							<div className={styles.logRow}>
+								<span>Av {log.user}</span>
+							</div>
+						</div>
+					))}
 				</div>
-			</div>
+			)}
 		</AdminLayout>
 	);
 }
