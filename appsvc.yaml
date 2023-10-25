@@ -6,7 +6,7 @@ version: 1
 
 # Define the pre-build command to install Node.js and build the React app
 pre-build: |
-    sudo npm install -g n
+    npm install -g n
     n lts
     cd app/frontend
     npm install
