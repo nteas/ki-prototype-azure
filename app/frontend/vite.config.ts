@@ -13,16 +13,8 @@ export default defineConfig({
 		rollupOptions: {
 			output: {
 				manualChunks: id => {
-					if (id.includes('@fortawesome')) {
-						return 'fortawesome-react';
-					} else if (id.includes('bootstrap')) {
-						return 'bootstrap';
-					} else if (id.includes('analytics')) {
-						return 'analytics';
-					} else if (id.includes('@fluentui/react')) {
+					if (id.includes('@fluentui/react')) {
 						return 'fluentui-react';
-					} else if (id.includes('react')) {
-						return 'react';
 					} else if (id.includes('node_modules')) {
 						return 'vendor';
 					}
