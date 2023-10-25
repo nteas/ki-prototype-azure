@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 from typing import AsyncGenerator
 
+from routers.documents import document_router
 import aiohttp
 import openai
 from azure.identity.aio import DefaultAzureCredential
@@ -28,6 +29,8 @@ from quart import (
 )
 from quart_cors import cors
 import pymongo
+from quart_schema import QuartSchema
+
 
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
@@ -47,7 +50,7 @@ CONFIG_COLLECTION_NAME = "logs"
 
 
 bp = Blueprint("routes", __name__, static_folder="static")
-router = Blueprint("api", __name__, url_prefix="/api")
+api_router = Blueprint("api", __name__, url_prefix="/api")
 
 
 @bp.route("/")
@@ -75,7 +78,7 @@ async def assets(path):
 # Serve content files from blob storage from within the app to keep the example self-contained.
 # *** NOTE *** this assumes that the content files are public, or at least that all users of the app
 # can access all the files. This is also slow and memory hungry.
-@router.route("/content/<path>")
+@api_router.route("/content/<path>")
 async def content_file(path):
     blob_container_client = current_app.config[CONFIG_BLOB_CONTAINER_CLIENT]
     blob = await blob_container_client.get_blob_client(path).download_blob()
@@ -91,13 +94,13 @@ async def content_file(path):
 
 
 # Send MSAL.js settings to the client UI
-@router.route("/auth_setup", methods=["GET"])
+@api_router.route("/auth_setup", methods=["GET"])
 def auth_setup():
     auth_helper = current_app.config[CONFIG_AUTH_CLIENT]
     return jsonify(auth_helper.get_auth_setup_for_client())
 
 
-@router.route("/ask", methods=["POST"])
+@api_router.route("/ask", methods=["POST"])
 async def ask():
     if not request.is_json:
         return jsonify({"error": "request must be json"}), 415
@@ -116,7 +119,7 @@ async def ask():
         return jsonify({"error": str(e)}), 500
 
 
-@router.route("/chat", methods=["POST"])
+@api_router.route("/chat", methods=["POST"])
 async def chat():
     if not request.is_json:
         return jsonify({"error": "request must be json"}), 415
@@ -142,7 +145,7 @@ async def format_as_ndjson(r: AsyncGenerator[dict, None]) -> AsyncGenerator[str,
         yield json.dumps(event, ensure_ascii=False) + "\n"
 
 
-@router.route("/chat_stream", methods=["POST"])
+@api_router.route("/chat_stream", methods=["POST"])
 async def chat_stream():
     if not request.is_json:
         return jsonify({"error": "request must be json"}), 415
@@ -162,7 +165,7 @@ async def chat_stream():
         return jsonify({"error": str(e)}), 500
 
 
-@router.route("/logs", methods=["GET"])
+@api_router.route("/logs", methods=["GET"])
 async def get_logs():
     db = current_app.config[CONFIG_MONGODB]
     logs_cursor = db.logs.find()
@@ -173,7 +176,7 @@ async def get_logs():
     return {"logs": logs_list}
 
 
-@router.route("/logs/add", methods=["POST"])
+@api_router.route("/logs/add", methods=["POST"])
 async def add_log():
     try:
         data = await request.get_json()
@@ -197,30 +200,6 @@ async def add_log():
         return {"success": True}
     except Exception as e:
         return {"error": str(e)}
-
-
-# get list og files from blob storage
-@bp.route("/files", methods=["GET"])
-async def get_files():
-    blob_container_client = current_app.config[CONFIG_BLOB_CONTAINER_CLIENT]
-    blob_list = blob_container_client.list_blobs()
-    # convert blob_list from AsyncItemPaged to list
-    blob_list = [blob async for blob in blob_list]
-
-    blob_names = []
-    for blob in blob_list:
-        blob_names.append(blob.name)
-    return {"files": blob_names}
-
-
-# search for file name in cognitive search
-@bp.route("/search", methods=["GET"])
-async def search():
-    search_client = current_app.config[CONFIG_SEARCH_CLIENT]
-    search_term = request.args.get("q")
-    search_results = await search_client.search(search_text=search_term, include_total_count=True)
-    search_results = [result async for result in search_results]
-    return {"results": search_results}
 
 
 @bp.before_request
@@ -360,8 +339,12 @@ def create_app():
         configure_azure_monitor()
         AioHttpClientInstrumentor().instrument()
     app = Quart(__name__)
+    AZURE_ENVIRONMENT = os.getenv("AZURE_ENVIRONMENT", "public")
+    if AZURE_ENVIRONMENT == "dev":
+        QuartSchema(app)
+    api_router.register_blueprint(document_router)
+    app.register_blueprint(api_router)
     app.register_blueprint(bp)
-    app.register_blueprint(router)
     app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)  # type: ignore[method-assign]
 
     # Level should be one of https://docs.python.org/3/library/logging.html#logging-levels

@@ -23,7 +23,7 @@ const data = {
 	flagged: true,
 	logs: [
 		{
-			id: '2',
+			id: '1',
 			created: '02.02.2021',
 			user: 'Erlend Østerås',
 			change: 'flagged',
@@ -37,7 +37,7 @@ const data = {
 			change: 'Endret eier',
 		},
 		{
-			id: '1',
+			id: '3',
 			created: '01.01.2021',
 			user: 'Erlend Østerås',
 			change: 'Opprettet',
