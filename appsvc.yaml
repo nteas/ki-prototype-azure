@@ -6,6 +6,7 @@ version: 1
 
 # Define the pre-build command to install Node.js and build the React app
 pre-build: |
+    su -
     curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
     apt install nodejs
     node -v
