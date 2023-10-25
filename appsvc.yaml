@@ -6,9 +6,10 @@ version: 1
 
 # Define the pre-build command to install Node.js and build the React app
 pre-build: |
-    su -
-    curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
-    apt install nodejs
+    curl -LO https://nodejs.org/dist/v18.0.0/node-v18.0.0-linux-x64.tar.xz
+    mkdir ~/nodejs
+    tar -xJf node-v18.0.0-linux-x64.tar.xz -C ~/nodejs --strip-components=1
+    export PATH=$HOME/nodejs/bin:$PATH
     node -v
     npm -v
     cd app/frontend
