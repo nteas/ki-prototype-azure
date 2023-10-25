@@ -5,12 +5,12 @@
 version: 1
 
 # Define the pre-build command to install Node.js and build the React app
-pre-build:
-    - cd ../frontend
-    - npm install
-    - npm run build
+pre-build: |
+    cd ../frontend
+    npm install
+    npm run build
 
 # Define the run command to start the Python app and serve the React app
-run:
-    - pip install -r requirements.txt
-    - python3 -m gunicorn main:app
+run: |
+    pip install -r requirements.txt
+    python3 -m gunicorn main:app
