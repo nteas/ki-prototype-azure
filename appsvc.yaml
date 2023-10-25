@@ -8,6 +8,8 @@ version: 1
 pre-build: |
     node -v
     npm -v
+    apt update
+    apt upgrade -y
     cd app/frontend
     npm install
     npm run build
