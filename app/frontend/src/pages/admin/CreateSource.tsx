@@ -1,13 +1,16 @@
+import { faCheck } from '@fortawesome/pro-regular-svg-icons';
+import { useState } from 'react';
 import Form from 'react-bootstrap/Form';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import AdminLayout from '../../components/Layout/AdminLayout';
 import Button from '../../components/Button/Button';
 
 import styles from './CreateSource.module.css';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheck } from '@fortawesome/pro-regular-svg-icons';
 
 export function Component(): JSX.Element {
+	const [isFile, setIsFile] = useState<boolean>(true);
+
 	return (
 		<AdminLayout
 			className={styles.layout}
@@ -26,19 +29,51 @@ export function Component(): JSX.Element {
 							type="radio"
 							name="type"
 							label="Fil"
-							defaultChecked={true}
+							checked={isFile}
+							onChange={() => setIsFile(true)}
 						/>
 
-						<Form.Check type="radio" name="type" label="Nettside" />
+						<Form.Check
+							type="radio"
+							name="type"
+							label="Nettside"
+							checked={!isFile}
+							onChange={() => setIsFile(false)}
+						/>
 					</div>
 				</div>
 
-				<div className={styles.row}>
-					<Form.Group>
-						<Form.Label>Fil</Form.Label>
-						<Form.Control name="file" type="file" required />
-					</Form.Group>
-				</div>
+				{isFile ? (
+					<div className={styles.row}>
+						<Form.Group>
+							<Form.Label>Fil</Form.Label>
+							<Form.Control name="file" type="file" required />
+						</Form.Group>
+					</div>
+				) : (
+					<>
+						<div className={styles.row}>
+							<Form.Group>
+								<Form.Label>URL</Form.Label>
+								<Form.Control name="url" required />
+							</Form.Group>
+						</div>
+
+						<div className={styles.row}>
+							<Form.Group>
+								<Form.Label>Oppdateringsfrekvens</Form.Label>
+								<Form.Select
+									aria-label="Velg oppdateringsfrekvens"
+									required>
+									<option>Velg</option>
+									<option value="1">Daglig</option>
+									<option value="2">Ukentlig</option>
+									<option value="3">Månedtlig</option>
+								</Form.Select>
+							</Form.Group>
+						</div>
+					</>
+				)}
 
 				<div className={styles.row}>
 					<Form.Group>
