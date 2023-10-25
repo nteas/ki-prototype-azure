@@ -1,4 +1,5 @@
 import Form from 'react-bootstrap/Form';
+import { Button as OriginalButton } from 'react-bootstrap';
 
 import AdminLayout from '../../components/Layout/AdminLayout';
 import Button from '../../components/Button/Button';
@@ -6,6 +7,7 @@ import Button from '../../components/Button/Button';
 import styles from './CreateSource.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck } from '@fortawesome/pro-regular-svg-icons';
+import { faEye, faTrash } from '@fortawesome/pro-solid-svg-icons';
 
 export function Component(): JSX.Element {
 	return (
@@ -17,7 +19,7 @@ export function Component(): JSX.Element {
 					text: 'Legg til kilde',
 				},
 			]}>
-			<h2 className={styles.title}>Legg til kilde</h2>
+			<h2 className={styles.title}>Endre kilde</h2>
 
 			<Form>
 				<div className={styles.row}>
@@ -70,6 +72,17 @@ export function Component(): JSX.Element {
 				</div>
 
 				<div className={styles.actions}>
+					<Button
+						variant="outline-primary"
+						icon={<FontAwesomeIcon icon={faEye} type="submit" />}>
+						Se kilde
+					</Button>
+
+					<OriginalButton variant="outline-danger">
+						<span>Slett</span>
+						<FontAwesomeIcon icon={faTrash} type="submit" />
+					</OriginalButton>
+
 					<a href="/admin">Avbryt</a>
 
 					<Button
@@ -82,4 +95,4 @@ export function Component(): JSX.Element {
 	);
 }
 
-Component.displayName = 'CreateSource';
+Component.displayName = 'EditSource';

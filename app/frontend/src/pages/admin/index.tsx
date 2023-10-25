@@ -25,7 +25,7 @@ const data = [
 		owner: 'FHI',
 		classification: 'Offentlig',
 		updated: '01.01.2021',
-		id: 1,
+		id: '1',
 		flagged: true,
 	},
 	{
@@ -34,7 +34,7 @@ const data = [
 		owner: 'NTE',
 		classification: 'Offentlig',
 		updated: '13.10.2020',
-		id: 2,
+		id: '2',
 		flagged: false,
 	},
 	{
@@ -43,7 +43,7 @@ const data = [
 		owner: 'FHI',
 		classification: 'Offentlig',
 		updated: '01.01.2021',
-		id: 3,
+		id: '3',
 		flagged: false,
 	},
 	{
@@ -52,7 +52,7 @@ const data = [
 		owner: 'NTE',
 		classification: 'Offentlig',
 		updated: '13.10.2020',
-		id: 4,
+		id: '4',
 		flagged: false,
 	},
 ];
@@ -63,12 +63,12 @@ export function Component(): JSX.Element {
 		console.log('open');
 	};
 
-	const handleEditItem = () => {
-		console.log('edit');
+	const handleEditItem = (id: string) => {
+		navigate(`edit/${id}`);
 	};
 
 	const handleDeleteItem = () => {
-		console.log('delete');
+		if (!confirm('Er du sikker på at du vil slette denne kilden?')) return;
 	};
 
 	return (
@@ -179,7 +179,7 @@ export function Component(): JSX.Element {
 
 							<button
 								className={styles.edit}
-								onClick={handleEditItem}
+								onClick={() => handleEditItem(item.id)}
 								title="Rediger">
 								<FontAwesomeIcon icon={faCog} />
 							</button>

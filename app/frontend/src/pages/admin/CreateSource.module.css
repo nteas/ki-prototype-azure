@@ -18,9 +18,17 @@
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
+	padding-top: 48px;
 	gap: 16px;
 }
 
 .actions a {
-	color: #0079ad;
+	margin-left: auto;
+	color: var(--blue);
+}
+
+.actions button {
+	display: flex;
+	align-items: center;
+	gap: 10px;
 }

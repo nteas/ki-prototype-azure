@@ -4,6 +4,7 @@ import { Button } from 'react-bootstrap';
 interface Props {
 	children: string;
 	className?: string;
+	variant?: string;
 	icon?: JSX.Element;
 	onClick?: () => void;
 	type?: 'button' | 'submit' | 'reset';
@@ -12,6 +13,7 @@ interface Props {
 export default function Component({
 	children,
 	className,
+	variant,
 	icon,
 	onClick,
 	type = 'submit',
@@ -20,6 +22,7 @@ export default function Component({
 		<Button
 			className={`${styles.button} ${className}`}
 			onClick={onClick}
+			variant={variant}
 			type={type}>
 			<span className={styles.label}>{children}</span>
 

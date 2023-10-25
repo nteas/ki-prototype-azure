@@ -3,16 +3,4 @@
 	gap: 10px;
 	justify-content: space-between;
 	align-items: center;
-	outline: none;
-	border: none;
-	border-radius: 5px;
-	cursor: pointer;
-	background: #0079ad;
-	color: white;
-	font-size: 16px;
-	line-height: 1;
-	font-weight: 500;
-	line-height: normal;
-	padding: 10px 12px;
-	transition: all 200ms ease-in-out;
 }

@@ -64,7 +64,7 @@
 
 .rows > div.flagged {
 	background: #fadcd5;
-	color: #b22727;
+	color: var(--red);
 }
 
 .col {
@@ -80,11 +80,11 @@
 	border: none;
 	outline: none;
 	background: none;
-	color: #0079ad;
+	color: var(--blue);
 }
 
 .actions .delete {
-	color: #b22727;
+	color: var(--red);
 }
 
 .bottomActions {

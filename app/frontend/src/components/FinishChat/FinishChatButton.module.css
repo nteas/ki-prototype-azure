@@ -75,7 +75,7 @@
 	outline: none;
 	border: none;
 	border-radius: 5px;
-	background-color: #0079ad;
+	background-color: var(--blue);
 	color: #fff;
 	font-size: 17px;
 	font-weight: 600;
@@ -89,9 +89,9 @@
 }
 
 .outlinedButton {
-	color: #0079ad;
+	color: var(--blue);
 	background-color: transparent;
-	border: 2px solid #0079ad;
+	border: 2px solid var(--blue);
 }
 
 .successButton {

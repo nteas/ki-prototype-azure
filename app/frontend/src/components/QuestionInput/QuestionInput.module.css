@@ -24,7 +24,7 @@
 	width: 53px;
 	border-radius: 5px;
 	max-width: none;
-	background: #0079ad;
+	background: var(--blue);
 }
 
 .questionInputButtonsContainer button:disabled {
@@ -32,7 +32,7 @@
 }
 
 .questionInputButtonsContainer button:hover {
-	background: #0079ad;
+	background: var(--blue);
 }
 
 .questionInputButtonsContainer button svg path {

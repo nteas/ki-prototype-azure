@@ -13,6 +13,7 @@ import { initializeIcons } from '@fluentui/react';
 // import { msalConfig } from './authConfig';
 import Chat from './pages/chat/Chat';
 import 'bootstrap/dist/css/bootstrap.min.css';
+
 import './index.css';
 
 // const msalInstance = new PublicClientApplication(msalConfig);
@@ -62,10 +63,10 @@ const router = createBrowserRouter([
 						path: 'create',
 						lazy: () => import('./pages/admin/CreateSource'),
 					},
-					// {
-					// 	path: 'edit',
-					// 	lazy: () => import('./pages/admin/EditSource'),
-					// },
+					{
+						path: 'edit/:id',
+						lazy: () => import('./pages/admin/EditSource'),
+					},
 					// {
 					// 	path: 'delete',
 					// 	lazy: () => import('./pages/admin/DeleteSource'),

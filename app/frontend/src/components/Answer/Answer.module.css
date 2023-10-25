@@ -42,10 +42,10 @@
 	background: #e5f3f9;
 }
 .answerActionIcon:active {
-	background: #0079ad;
+	background: var(--blue);
 }
 .answerActionIcon svg {
-	color: #0079ad;
+	color: var(--blue);
 }
 .answerActionIcon:active svg {
 	color: #fff;
@@ -107,7 +107,7 @@
 	line-height: 22px; /* 129.412% */
 	transition: all 200ms ease-in-out;
 	cursor: pointer;
-	color: #0079ad;
+	color: var(--blue);
 }
 
 .feedbackWrapper {
@@ -154,7 +154,7 @@
 }
 
 .submitButton {
-	background: #0079ad;
+	background: var(--blue);
 	color: #fff;
 	border: none;
 	padding: 0 10px;
@@ -199,7 +199,7 @@ sup {
 	justify-content: center;
 	font-size: 10px;
 	font-weight: 600;
-	color: #0079ad;
+	color: var(--blue);
 	vertical-align: top;
 	height: 14px;
 	cursor: pointer;
@@ -208,7 +208,7 @@ sup {
 .retryButton {
 	width: fit-content;
 	border-radius: 5px;
-	background: #0079ad;
+	background: var(--blue);
 	padding: 12px 33px;
 	font-size: 17px;
 	font-style: normal;
