@@ -6,9 +6,9 @@ version: 1
 
 # Define the pre-build command to install Node.js and build the React app
 pre-build: |
+    cd app/frontend
     npm install n
     ./node_modules/.bin/n lts
-    cd app/frontend
     npm install
     npm run build
 
