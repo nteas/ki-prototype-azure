@@ -6,7 +6,8 @@ version: 1
 
 # Define the pre-build command to install Node.js and build the React app
 pre-build: |
-    npm install -g npm@latest
+    curl -sL https://deb.nodesource.com/setup_14.x | bash -
+    apt-get install -y nodejs
     cd app/frontend
     npm install
     npm run build
