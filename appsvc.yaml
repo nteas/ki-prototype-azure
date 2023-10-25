@@ -6,9 +6,8 @@ version: 1
 
 # Define the pre-build command to install Node.js and build the React app
 pre-build: |
-    chown -R $(whoami) /usr/local/lib/
-    npm install -g n
-    n lts
+    npm install n
+    ./node_modules/.bin/n lts
     cd app/frontend
     npm install
     npm run build
