@@ -53,11 +53,6 @@ bp = Blueprint("routes", __name__, static_folder="static")
 api_router = Blueprint("api", __name__, url_prefix="/api")
 
 
-@bp.route("/")
-async def index():
-    return await bp.send_static_file("index.html")
-
-
 # Empty page is recommended for login redirect to work.
 # See https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-browser/docs/initialization.md#redirecturi-considerations for more information
 @bp.route("/redirect")
@@ -73,6 +68,12 @@ async def favicon():
 @bp.route("/assets/<path:path>")
 async def assets(path):
     return await send_from_directory(Path(__file__).resolve().parent / "static" / "assets", path)
+
+
+@bp.route("/")
+@bp.route("/<path:path>")
+async def index(path):
+    return await bp.send_static_file("index.html")
 
 
 # Serve content files from blob storage from within the app to keep the example self-contained.
@@ -343,7 +344,7 @@ def create_app():
     if AZURE_ENVIRONMENT == "dev":
         QuartSchema(app)
     api_router.register_blueprint(document_router)
-    app.register_blueprint(api_router)
+    bp.register_blueprint(api_router)
     app.register_blueprint(bp)
     app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)  # type: ignore[method-assign]
 
