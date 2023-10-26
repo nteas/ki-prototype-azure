@@ -72,7 +72,7 @@ async def assets(path):
 
 @bp.route("/")
 @bp.route("/<path:path>")
-async def index(path):
+async def index(path=""):
     return await bp.send_static_file("index.html")
 
 
