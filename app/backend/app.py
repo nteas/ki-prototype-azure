@@ -340,8 +340,8 @@ def create_app():
         configure_azure_monitor()
         AioHttpClientInstrumentor().instrument()
     app = Quart(__name__)
-    AZURE_ENVIRONMENT = os.getenv("AZURE_ENVIRONMENT", "public")
-    if AZURE_ENVIRONMENT == "dev":
+    AZURE_ENV_NAME = os.getenv("AZURE_ENV_NAME", "dev")
+    if AZURE_ENV_NAME == "dev":
         QuartSchema(app)
     api_router.register_blueprint(document_router)
     bp.register_blueprint(api_router)
