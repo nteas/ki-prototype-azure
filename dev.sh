@@ -46,6 +46,10 @@ echo "Building frontend"
 echo ""
 
 npm run dev &
+npm_pid=$!  # Save the PID of the npm process
+
+trap "kill $npm_pid" EXIT  # Add a trap to kill the npm process when the script exits
+
 if [ $? -ne 0 ]; then
     echo "Failed to build frontend"
     exit $?
@@ -64,12 +68,9 @@ python_pid=$!
 
 if [ $? -ne 0 ]; then
     echo "Failed to start backend"
-    kill $!
+    kill $python_pid  # Use the python_pid variable
+	kill $npm_pid  # Use the npm_pid variable
     exit $?
 fi
 
 # Wait for the Python process to finish
-wait $python_pid
-
-# Kill the npm process
-kill %1

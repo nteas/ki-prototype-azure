@@ -508,6 +508,7 @@ def read_files(
         if args.verbose:
             print(f"Processing '{filename}'")
         if args.remove:
+            # TODO: check these
             remove_blobs(filename)
             remove_from_index(filename)
         else:

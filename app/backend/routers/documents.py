@@ -1,13 +1,14 @@
 import datetime
 import os
 from typing import List
+from venv import logger
 from quart import (
     Blueprint,
     current_app,
     request,
     jsonify,
 )
-from uuid import uuid4
+from bson import ObjectId, json_util
 
 
 class Log:
@@ -15,9 +16,9 @@ class Log:
         self,
         user: str = "admin",
         change: str = "created",
-        _id: str = uuid4(),
+        _id: str = ObjectId(),
         message: str = None,
-        created_at: str = datetime.datetime,
+        created_at: str = datetime.datetime.now(),
     ):
         self.user = user
         self.change = change
@@ -29,10 +30,11 @@ class Log:
 class Document:
     def __init__(
         self,
+        _id: ObjectId = None,
         title: str = None,
         owner: str = "admin",
         classification: str = "public",
-        updated: str = datetime.datetime,
+        updated: str = datetime.datetime.now(),
         logs: List[Log] = [],
         frequency: str = "none",
         flagged: bool = False,
@@ -40,11 +42,10 @@ class Document:
         file: str = None,
         file_pages: [str] = [],
         url: str = None,
-        _id: str = uuid4(),
-        az_id: str = None,
-        created_at: str = datetime.datetime,
-        updated_at: str = datetime.datetime,
+        created_at: str = datetime.datetime.now(),
+        updated_at: str = datetime.datetime.now(),
     ):
+        self._id = _id
         self.type = type
         self.owner = owner
         self.classification = classification
@@ -53,8 +54,6 @@ class Document:
         self.file_pages = file_pages
         self.url = url
         self.frequency = frequency
-        self._id = _id
-        self.az_id = az_id
         self.flagged = flagged
         self.logs = logs
         self.created_at = created_at
@@ -65,6 +64,24 @@ class Document:
         else:
             self.title = title
 
+    def to_dict(self):
+        return {
+            "type": self.type,
+            "owner": self.owner,
+            "classification": self.classification,
+            "updated": self.updated,
+            "logs": self.logs,
+            "frequency": self.frequency,
+            "flagged": self.flagged,
+            "file": self.file,
+            "file_pages": self.file_pages,
+            "url": self.url,
+            "_id": str(self._id),
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+            "title": self.title,
+        }
+
 
 document_router = Blueprint("documents", __name__, url_prefix="/documents")
 
@@ -73,7 +90,7 @@ documents = []
 
 
 # Create a new document
-@document_router.route("/documents", methods=["POST"])
+@document_router.route("/", methods=["POST"])
 def create_document():
     data = request.json
     doc = Document(**data)
@@ -82,13 +99,24 @@ def create_document():
 
 
 # Get all documents
-@document_router.route("/documents", methods=["GET"])
+@document_router.route("/", methods=["GET"])
 def get_documents():
-    return jsonify([doc.__dict__ for doc in documents])
+    try:
+        db = current_app.config["mongodb"]
+        cursor = db.documents.find()
+
+        if not cursor:
+            raise Exception("No documents found")
+
+        return jsonify([Document(**doc).to_dict() for doc in cursor])
+    except Exception as ex:
+        print("Failed to get documents")
+        print("Exception: {}".format(ex))
+        return jsonify({"error": "Exception: {}".format(ex)})
 
 
 # Get a specific document by ID
-@document_router.route("/documents/<id>", methods=["GET"])
+@document_router.route("/<id>", methods=["GET"])
 def get_document(id):
     doc = next((doc for doc in documents if doc.id == id), None)
     if doc:
@@ -98,7 +126,7 @@ def get_document(id):
 
 
 # Update a specific document by ID
-@document_router.route("/documents/<id>", methods=["PUT"])
+@document_router.route("/<id>", methods=["PUT"])
 def update_document(id):
     data = request.json
     doc = next((doc for doc in documents if doc.id == id), None)
@@ -111,7 +139,7 @@ def update_document(id):
 
 
 # Delete a specific document by ID
-@document_router.route("/documents/<id>", methods=["DELETE"])
+@document_router.route("/<id>", methods=["DELETE"])
 def delete_document(id):
     global documents
     documents = [doc for doc in documents if doc.id != id]
@@ -119,7 +147,7 @@ def delete_document(id):
 
 
 # Add a log to a specific document by ID
-@document_router.route("/documents/<id>/logs", methods=["POST"])
+@document_router.route("/<id>/logs", methods=["POST"])
 async def add_log(id):
     data = await request.get_json()
     doc = next((doc for doc in documents if doc.id == id), None)
@@ -132,7 +160,7 @@ async def add_log(id):
 
 
 # Change the status of a specific log in a specific document by ID and log ID
-@document_router.route("/documents/<id>/logs/<log_id>", methods=["PUT"])
+@document_router.route("/<id>/logs/<log_id>", methods=["PUT"])
 async def change_log_status(id, log_id):
     data = await request.get_json()
     doc = next((doc for doc in documents if doc.id == id), None)
@@ -150,9 +178,7 @@ async def change_log_status(id, log_id):
 # get list og files from blob storage
 @document_router.route("/files", methods=["GET"])
 async def get_files():
-    from app import CONFIG_BLOB_CONTAINER_CLIENT
-
-    blob_container_client = current_app.config[CONFIG_BLOB_CONTAINER_CLIENT]
+    blob_container_client = current_app.config["blob_container_client"]
     blob_list = blob_container_client.list_blobs()
     # convert blob_list from AsyncItemPaged to list
     blob_list = [blob async for blob in blob_list]
@@ -162,30 +188,29 @@ async def get_files():
     return {"files": blob_names}
 
 
-# search for file name in cognitive search
+# migrate files in cognitive search to own database
 @document_router.route("/migrate", methods=["GET"])
 async def search():
-    from app import CONFIG_SEARCH_CLIENT, CONFIG_MONGODB
-
-    db = current_app.config[CONFIG_MONGODB]
-
     try:
-        search_client = current_app.config[CONFIG_SEARCH_CLIENT]
+        search_client = current_app.config["search_client"]
         search_term = request.args.get("q", "")
         search_results = await search_client.search(search_text=search_term, select=["id", "sourcepage", "sourcefile"])
 
         # Iterate over the search results using the get_next method
         docs = []
+        db = current_app.config["mongodb"]
         async for result in search_results:
-            doc = Document(file=result.get("sourcefile"), file_pages=[result.get("sourcepage")], az_id=result.get("id"))
-            # insert document if does not exist
-            await db.documents.update_one(
-                {"az_id": doc.az_id},
+            docs.append(result)
+            doc = Document(file=result.get("sourcefile")).to_dict()
+
+            doc.pop("_id", None)
+            doc.pop("file_pages", None)
+
+            db.documents.update_one(
+                {"file": result.get("sourcefile")},
                 {
                     "$setOnInsert": doc,
-                    "$setOnUpdate": {
-                        "$push": {"file_pages": result["sourcepage"]},
-                    },
+                    "$addToSet": {"file_pages": result.get("sourcepage")},
                 },
                 upsert=True,
             )

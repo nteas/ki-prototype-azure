@@ -166,7 +166,7 @@ async def chat_stream():
 
 @api_router.route("/logs", methods=["GET"])
 async def get_logs():
-    db = current_app.config[CONFIG_MONGODB]
+    db = current_app.config["mongodb"]
     logs_cursor = db.logs.find()
     logs_list = []
     for log in logs_cursor:
@@ -193,7 +193,7 @@ async def add_log():
             "thought_process": thought_process,
         }
 
-        db = current_app.config[CONFIG_MONGODB]
+        db = current_app.config["mongodb"]
         db.logs.insert_one(log)
 
         return {"success": True}
@@ -294,11 +294,11 @@ async def setup_clients():
 
         if mongodb_client:
             # Create database if it doesn't exist
-            current_app.config[CONFIG_MONGODB] = mongodb_client[CONFIG_DB_NAME]
+            current_app.config["mongodb"] = mongodb_client[CONFIG_DB_NAME]
             if CONFIG_DB_NAME not in mongodb_client.list_database_names():
                 # Create a database with 400 RU throughput that can be shared across
                 # the DB's collections
-                current_app.config[CONFIG_MONGODB].command({"customAction": "CreateDatabase", "offerThroughput": 400})
+                current_app.config["mongodb"].command({"customAction": "CreateDatabase", "offerThroughput": 400})
                 logging.info("Created db '%s' with shared throughput.", CONFIG_DB_NAME)
             else:
                 logging.info("Using database: '%s'.", CONFIG_DB_NAME)
