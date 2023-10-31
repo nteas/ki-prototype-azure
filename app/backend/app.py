@@ -31,7 +31,6 @@ from quart_cors import cors
 import pymongo
 from quart_schema import QuartSchema
 
-
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
 from core.authentication import AuthenticationHelper
@@ -46,7 +45,6 @@ CONFIG_AUTH_CLIENT = "auth_client"
 CONFIG_SEARCH_CLIENT = "search_client"
 CONFIG_MONGODB = "mongodb"
 CONFIG_DB_NAME = "ki-prototype"
-CONFIG_COLLECTION_NAME = "logs"
 
 
 bp = Blueprint("routes", __name__, static_folder="static")

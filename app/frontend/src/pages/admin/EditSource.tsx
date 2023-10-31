@@ -12,7 +12,6 @@ import { useState } from 'react';
 const data = {
 	type: 'PDF',
 	title: 'Veileder om helsefaglige tiltak ved koronavirus (covid-19) utbruddet',
-	name: 'Koronavirus - FHI',
 	owner: 'FHI',
 	classification: 'Offentlig',
 	updated: '01.01.2021',

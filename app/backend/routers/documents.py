@@ -1,3 +1,5 @@
+import datetime
+import os
 from typing import List
 from quart import (
     Blueprint,
@@ -5,46 +7,63 @@ from quart import (
     request,
     jsonify,
 )
+from uuid import uuid4
 
 
 class Log:
-    def __init__(self, id: str, created_at: str, user: str, change: str, status: str, message: str = None):
-        self.id = id
-        self.created_at = created_at
+    def __init__(
+        self,
+        user: str = "admin",
+        change: str = "created",
+        _id: str = uuid4(),
+        message: str = None,
+        created_at: str = datetime.datetime,
+    ):
         self.user = user
         self.change = change
+        self._id = _id
         self.message = message
-        self.status = status
+        self.created_at = created_at
 
 
 class Document:
     def __init__(
         self,
-        type: str,
-        title: str,
-        name: str,
-        owner: str,
-        classification: str,
-        updated: str,
-        frequency: str,
-        id: str,
-        flagged: bool,
-        logs: List[Log],
+        title: str = None,
+        owner: str = "admin",
+        classification: str = "public",
+        updated: str = datetime.datetime,
+        logs: List[Log] = [],
+        frequency: str = "none",
+        flagged: bool = False,
+        type: str = "file",
         file: str = None,
+        file_pages: [str] = [],
         url: str = None,
+        _id: str = uuid4(),
+        az_id: str = None,
+        created_at: str = datetime.datetime,
+        updated_at: str = datetime.datetime,
     ):
         self.type = type
-        self.title = title
-        self.name = name
         self.owner = owner
         self.classification = classification
         self.updated = updated
         self.file = file
+        self.file_pages = file_pages
         self.url = url
         self.frequency = frequency
-        self.id = id
+        self._id = _id
+        self.az_id = az_id
         self.flagged = flagged
         self.logs = logs
+        self.created_at = created_at
+        self.updated_at = updated_at
+
+        if self.file is not None and title is None:
+            self.title = os.path.basename(self.file)
+        else:
+            self.title = title
 
 
 document_router = Blueprint("documents", __name__, url_prefix="/documents")
@@ -137,7 +156,6 @@ async def get_files():
     blob_list = blob_container_client.list_blobs()
     # convert blob_list from AsyncItemPaged to list
     blob_list = [blob async for blob in blob_list]
-
     blob_names = []
     for blob in blob_list:
         blob_names.append(blob.name)
@@ -145,12 +163,35 @@ async def get_files():
 
 
 # search for file name in cognitive search
-@document_router.route("/search", methods=["GET"])
+@document_router.route("/migrate", methods=["GET"])
 async def search():
-    from app import CONFIG_SEARCH_CLIENT
+    from app import CONFIG_SEARCH_CLIENT, CONFIG_MONGODB
 
-    search_client = current_app.config[CONFIG_SEARCH_CLIENT]
-    search_term = request.args.get("q")
-    search_results = await search_client.search(search_text=search_term, include_total_count=True)
-    search_results = [result async for result in search_results]
-    return {"results": search_results}
+    db = current_app.config[CONFIG_MONGODB]
+
+    try:
+        search_client = current_app.config[CONFIG_SEARCH_CLIENT]
+        search_term = request.args.get("q", "")
+        search_results = await search_client.search(search_text=search_term, select=["id", "sourcepage", "sourcefile"])
+
+        # Iterate over the search results using the get_next method
+        docs = []
+        async for result in search_results:
+            doc = Document(file=result.get("sourcefile"), file_pages=[result.get("sourcepage")], az_id=result.get("id"))
+            # insert document if does not exist
+            await db.documents.update_one(
+                {"az_id": doc.az_id},
+                {
+                    "$setOnInsert": doc,
+                    "$setOnUpdate": {
+                        "$push": {"file_pages": result["sourcepage"]},
+                    },
+                },
+                upsert=True,
+            )
+
+        return {"success": True}
+    except Exception as ex:
+        print("Failed to migrate documents")
+        print("Exception: {}".format(ex))
+        return {"success": False}

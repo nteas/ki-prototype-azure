@@ -21,7 +21,7 @@ import { useNavigate } from 'react-router';
 const data = [
 	{
 		type: 'PDF',
-		name: 'Koronavirus - FHI',
+		title: 'Koronavirus - FHI',
 		owner: 'FHI',
 		classification: 'Offentlig',
 		updated: '01.01.2021',
@@ -30,7 +30,7 @@ const data = [
 	},
 	{
 		type: 'PDF',
-		name: 'Bananaramalamadingdong',
+		title: 'Bananaramalamadingdong',
 		owner: 'NTE',
 		classification: 'Offentlig',
 		updated: '13.10.2020',
@@ -39,7 +39,7 @@ const data = [
 	},
 	{
 		type: 'PDF',
-		name: 'Koronavirus - FHI',
+		title: 'Koronavirus - FHI',
 		owner: 'FHI',
 		classification: 'Offentlig',
 		updated: '01.01.2021',
@@ -48,7 +48,7 @@ const data = [
 	},
 	{
 		type: 'web',
-		name: 'Bananaramalamadingdong',
+		title: 'Bananaramalamadingdong',
 		owner: 'NTE',
 		classification: 'Offentlig',
 		updated: '13.10.2020',
@@ -116,7 +116,7 @@ export function Component(): JSX.Element {
 					Type
 				</div>
 				<div className={styles.col} style={{ flex: 5 }}>
-					Navn
+					Tittel
 				</div>
 				<div className={styles.col} style={{ flex: 3 }}>
 					Eier
@@ -150,7 +150,7 @@ export function Component(): JSX.Element {
 						</div>
 
 						<div className={styles.col} style={{ flex: 5 }}>
-							{item.name}
+							{item.title}
 						</div>
 
 						<div className={styles.col} style={{ flex: 3 }}>

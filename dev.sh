@@ -59,8 +59,17 @@ cd ../backend
 
 port=50505
 host=localhost
-./backend_env/bin/python -m quart --app main:app run --port "$port" --host "$host" --reload
+./backend_env/bin/python -m quart --app main:app run --port "$port" --host "$host" --reload &
+python_pid=$!
+
 if [ $? -ne 0 ]; then
     echo "Failed to start backend"
+    kill $!
     exit $?
 fi
+
+# Wait for the Python process to finish
+wait $python_pid
+
+# Kill the npm process
+kill %1
