@@ -3,9 +3,11 @@ import {
 	ChatAppResponse,
 	ChatAppResponseOrError,
 	ChatRequest,
+	Document,
+	Log,
 } from './models';
 import { useLogin } from '../authConfig';
-import { Log } from '../pages/logs/Logs';
+import { Log as TrackLog } from '../pages/logs/Logs';
 const BACKEND_URI = '/api';
 
 function getHeaders(idToken: string | undefined): Record<string, string> {
@@ -110,7 +112,7 @@ export async function logChat(props: AddLogProps): Promise<Response> {
 	});
 }
 
-export async function getChatLogs(): Promise<Log[]> {
+export async function getChatLogs(): Promise<TrackLog[]> {
 	return await fetch(`${BACKEND_URI}/logs`)
 		.then(res => res.json())
 		.then(data => data?.logs || []);

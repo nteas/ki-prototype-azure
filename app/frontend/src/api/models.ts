@@ -67,15 +67,14 @@ export type Log = {
 	change?: string;
 	_id?: string;
 	message?: string;
-	created_at?: Date;
+	created_at?: string;
 };
 
 export type Document = {
-	_id?: string;
+	_id: string;
 	title?: string;
 	owner?: string;
 	classification?: string;
-	updated?: Date;
 	logs?: Log[];
 	frequency?: string;
 	flagged?: boolean;
@@ -83,6 +82,6 @@ export type Document = {
 	file?: string;
 	file_pages?: string[];
 	url?: string;
-	created_at?: Date;
-	updated_at?: Date;
+	created_at?: string;
+	updated_at?: string;
 };

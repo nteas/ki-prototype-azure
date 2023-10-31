@@ -34,7 +34,6 @@ class Document:
         title: str = None,
         owner: str = "admin",
         classification: str = "public",
-        updated: str = datetime.datetime.now(),
         logs: List[Log] = [],
         frequency: str = "none",
         flagged: bool = False,
@@ -49,7 +48,6 @@ class Document:
         self.type = type
         self.owner = owner
         self.classification = classification
-        self.updated = updated
         self.file = file
         self.file_pages = file_pages
         self.url = url
@@ -69,7 +67,6 @@ class Document:
             "type": self.type,
             "owner": self.owner,
             "classification": self.classification,
-            "updated": self.updated,
             "logs": self.logs,
             "frequency": self.frequency,
             "flagged": self.flagged,

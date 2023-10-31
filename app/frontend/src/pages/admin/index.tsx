@@ -18,8 +18,7 @@ import AdminLayout from '../../components/Layout/AdminLayout';
 import Button from '../../components/Button/Button';
 
 import styles from './Admin.module.css';
-import { getDocuments } from '../../api';
-import { Document } from '../../api/models';
+import { getDocuments, Document } from '../../api';
 
 export function Component(): JSX.Element {
 	const [data, setData] = useState<Document[]>([]);
@@ -38,8 +37,8 @@ export function Component(): JSX.Element {
 		console.log('open');
 	};
 
-	const handleEditItem = (_id: string) => {
-		navigate(`edit/${_id}`);
+	const handleEditItem = (id: string) => {
+		navigate(`edit/${id}`);
 	};
 
 	const handleDeleteItem = () => {
