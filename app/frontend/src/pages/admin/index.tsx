@@ -1,3 +1,5 @@
+import { useNavigate } from 'react-router';
+import { useEffect, useState } from 'react';
 import Form from 'react-bootstrap/Form';
 import Badge from 'react-bootstrap/Badge';
 import InputGroup from 'react-bootstrap/InputGroup';
@@ -16,55 +18,28 @@ import AdminLayout from '../../components/Layout/AdminLayout';
 import Button from '../../components/Button/Button';
 
 import styles from './Admin.module.css';
-import { useNavigate } from 'react-router';
+import { getDocuments } from '../../api';
+import { Document } from '../../api/models';
 
-const data = [
-	{
-		type: 'PDF',
-		title: 'Koronavirus - FHI',
-		owner: 'FHI',
-		classification: 'Offentlig',
-		updated: '01.01.2021',
-		id: '1',
-		flagged: true,
-	},
-	{
-		type: 'PDF',
-		title: 'Bananaramalamadingdong',
-		owner: 'NTE',
-		classification: 'Offentlig',
-		updated: '13.10.2020',
-		id: '2',
-		flagged: false,
-	},
-	{
-		type: 'PDF',
-		title: 'Koronavirus - FHI',
-		owner: 'FHI',
-		classification: 'Offentlig',
-		updated: '01.01.2021',
-		id: '3',
-		flagged: false,
-	},
-	{
-		type: 'web',
-		title: 'Bananaramalamadingdong',
-		owner: 'NTE',
-		classification: 'Offentlig',
-		updated: '13.10.2020',
-		id: '4',
-		flagged: false,
-	},
-];
 export function Component(): JSX.Element {
+	const [data, setData] = useState<Document[]>([]);
 	const navigate = useNavigate();
+
+	// get data from api
+	useEffect(() => {
+		// fetch data
+		getDocuments().then(documents => {
+			console.log(documents);
+			setData(documents);
+		});
+	}, []);
 
 	const handleOpenItem = () => {
 		console.log('open');
 	};
 
-	const handleEditItem = (id: string) => {
-		navigate(`edit/${id}`);
+	const handleEditItem = (_id: string) => {
+		navigate(`edit/${_id}`);
 	};
 
 	const handleDeleteItem = () => {
@@ -133,16 +108,16 @@ export function Component(): JSX.Element {
 			</div>
 
 			<div className={styles.rows}>
-				{data.map(item => (
+				{data?.map(item => (
 					<div
 						className={`${styles.row} ${
 							item.flagged && styles.flagged
 						}`}
-						key={item.id}>
+						key={item._id}>
 						<div className={styles.col} style={{ flex: 1 }}>
 							<FontAwesomeIcon
 								icon={
-									item.type.includes('PDF')
+									item?.type?.includes('PDF')
 										? faFilePdf
 										: faGlobe
 								}
@@ -164,7 +139,7 @@ export function Component(): JSX.Element {
 						</div>
 
 						<div className={styles.col} style={{ flex: 2 }}>
-							{item.updated}
+							{item.updated_at}
 						</div>
 
 						<div
@@ -179,7 +154,7 @@ export function Component(): JSX.Element {
 
 							<button
 								className={styles.edit}
-								onClick={() => handleEditItem(item.id)}
+								onClick={() => handleEditItem(item._id)}
 								title="Rediger">
 								<FontAwesomeIcon icon={faCog} />
 							</button>

@@ -8,7 +8,7 @@ from quart import (
     request,
     jsonify,
 )
-from bson import ObjectId, json_util
+from bson import ObjectId
 
 
 class Log:
@@ -85,9 +85,6 @@ class Document:
 
 document_router = Blueprint("documents", __name__, url_prefix="/documents")
 
-# In-memory storage for documents
-documents = []
-
 
 # Create a new document
 @document_router.route("/", methods=["POST"])
@@ -108,7 +105,9 @@ def get_documents():
         if not cursor:
             raise Exception("No documents found")
 
-        return jsonify([Document(**doc).to_dict() for doc in cursor])
+        documents = [Document(**doc).to_dict() for doc in cursor]
+
+        return {"documents": documents}
     except Exception as ex:
         print("Failed to get documents")
         print("Exception: {}".format(ex))
