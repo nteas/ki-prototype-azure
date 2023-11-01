@@ -2,15 +2,12 @@ import os
 import logging
 import pymongo
 
-AZURE_MONGODB = os.getenv("AZURE_MONGODB")
-CONFIG_DB_NAME = "ki-prototype"
-db = None
 
+def get_mongodb_client():
+    AZURE_MONGODB = os.getenv("AZURE_MONGODB")
+    CONFIG_DB_NAME = "ki-prototype"
 
-def setup_mongodb():
     """Set up MongoDB client and make it available to the app."""
-    global db
-
     if not AZURE_MONGODB:
         logging.error("Missing AZURE_MONGODB environment variable.")
         return
@@ -25,6 +22,7 @@ def setup_mongodb():
             logging.info(f"Created db '{CONFIG_DB_NAME}' with shared throughput.")
         else:
             logging.info(f"Using database: '{CONFIG_DB_NAME}'.")
+        return db
     except pymongo.errors.ConnectionFailure:
         logging.error(f"Failed to connect to MongoDB at {AZURE_MONGODB}")
-        db = None
+        return None

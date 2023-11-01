@@ -4,8 +4,6 @@
 #
 #    pip-compile
 #
-aiofiles==23.2.1
-    # via quart
 aiohttp==3.8.5
     # via
     #   -r requirements.in
@@ -15,7 +13,10 @@ aiosignal==1.3.1
 annotated-types==0.6.0
     # via pydantic
 anyio==3.7.1
-    # via watchfiles
+    # via
+    #   fastapi
+    #   starlette
+    #   watchfiles
 asgiref==3.7.2
     # via opentelemetry-instrumentation-asgi
 async-timeout==4.0.3
@@ -45,10 +46,6 @@ azure-search-documents==11.4.0b6
     # via -r requirements.in
 azure-storage-blob==12.18.2
     # via -r requirements.in
-blinker==1.6.2
-    # via
-    #   flask
-    #   quart
 certifi==2023.7.22
     # via
     #   msrest
@@ -60,10 +57,7 @@ charset-normalizer==3.3.0
     #   aiohttp
     #   requests
 click==8.1.7
-    # via
-    #   flask
-    #   quart
-    #   uvicorn
+    # via uvicorn
 cryptography==41.0.4
     # via
     #   azure-identity
@@ -78,29 +72,18 @@ et-xmlfile==1.1.0
     # via openpyxl
 exceptiongroup==1.1.3
     # via anyio
+fastapi==0.104.1
+    # via -r requirements.in
 fixedint==0.1.6
     # via azure-monitor-opentelemetry-exporter
-flask==3.0.0
-    # via quart
 frozenlist==1.4.0
     # via
     #   aiohttp
     #   aiosignal
 h11==0.14.0
-    # via
-    #   hypercorn
-    #   uvicorn
-    #   wsproto
-h2==4.1.0
-    # via hypercorn
-hpack==4.0.0
-    # via h2
+    # via uvicorn
 httptools==0.6.0
     # via uvicorn
-hypercorn==0.14.4
-    # via quart
-hyperframe==6.0.1
-    # via h2
 idna==3.4
     # via
     #   anyio
@@ -113,19 +96,6 @@ isodate==0.6.1
     #   azure-search-documents
     #   azure-storage-blob
     #   msrest
-itsdangerous==2.1.2
-    # via
-    #   flask
-    #   quart
-jinja2==3.1.2
-    # via
-    #   flask
-    #   quart
-markupsafe==2.1.3
-    # via
-    #   jinja2
-    #   quart
-    #   werkzeug
 msal==1.24.1
     # via
     #   -r requirements.in
@@ -248,16 +218,12 @@ pandas-stubs==2.1.1.230928
     # via openai
 portalocker==2.8.2
     # via msal-extensions
-priority==2.0.0
-    # via hypercorn
 pycparser==2.21
     # via cffi
 pydantic==2.4.2
-    # via quart-schema
+    # via fastapi
 pydantic-core==2.10.1
     # via pydantic
-pyhumps==3.8.0
-    # via quart-schema
 pyjwt[crypto]==2.8.0
     # via
     #   msal
@@ -272,15 +238,6 @@ pytz==2023.3.post1
     # via pandas
 pyyaml==6.0.1
     # via uvicorn
-quart==0.19.3
-    # via
-    #   -r requirements.in
-    #   quart-cors
-    #   quart-schema
-quart-cors==0.7.0
-    # via -r requirements.in
-quart-schema==0.17.1
-    # via -r requirements.in
 regex==2023.8.8
     # via tiktoken
 requests==2.31.0
@@ -300,10 +257,10 @@ six==1.16.0
     #   python-dateutil
 sniffio==1.3.0
     # via anyio
+starlette==0.27.0
+    # via fastapi
 tiktoken==0.5.1
     # via -r requirements.in
-tomli==2.0.1
-    # via hypercorn
 tqdm==4.66.1
     # via openai
 types-pytz==2023.3.1.1
@@ -313,6 +270,7 @@ typing-extensions==4.8.0
     #   asgiref
     #   azure-core
     #   azure-storage-blob
+    #   fastapi
     #   opentelemetry-sdk
     #   pydantic
     #   pydantic-core
@@ -329,10 +287,6 @@ watchfiles==0.20.0
     # via uvicorn
 websockets==11.0.3
     # via uvicorn
-werkzeug==3.0.0
-    # via
-    #   flask
-    #   quart
 wrapt==1.15.0
     # via
     #   deprecated
@@ -340,8 +294,6 @@ wrapt==1.15.0
     #   opentelemetry-instrumentation-aiohttp-client
     #   opentelemetry-instrumentation-dbapi
     #   opentelemetry-instrumentation-urllib3
-wsproto==1.2.0
-    # via hypercorn
 yarl==1.9.2
     # via aiohttp
 zipp==3.17.0
