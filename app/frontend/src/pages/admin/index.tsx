@@ -18,7 +18,7 @@ import AdminLayout from '../../components/Layout/AdminLayout';
 import Button from '../../components/Button/Button';
 
 import styles from './Admin.module.css';
-import { getDocuments, Document } from '../../api';
+import { Document } from '../../api';
 
 export function Component(): JSX.Element {
 	const [data, setData] = useState<Document[]>([]);
@@ -27,11 +27,15 @@ export function Component(): JSX.Element {
 	// get data from api
 	useEffect(() => {
 		// fetch data
-		getDocuments().then(documents => {
-			console.log(documents);
-			setData(documents);
-		});
+		getDocuments().then(documents => setData(documents));
 	}, []);
+
+	// get all documents from /documents
+	async function getDocuments(): Promise<Document[]> {
+		return await fetch(`/api/documents`)
+			.then(res => res.json())
+			.then(data => data?.documents || []);
+	}
 
 	const handleOpenItem = () => {
 		console.log('open');

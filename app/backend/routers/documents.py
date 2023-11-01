@@ -43,6 +43,7 @@ class Document:
         url: str = None,
         created_at: str = datetime.datetime.now(),
         updated_at: str = datetime.datetime.now(),
+        **kwargs,
     ):
         self._id = _id
         self.type = type
@@ -61,6 +62,9 @@ class Document:
             self.title = os.path.basename(self.file)
         else:
             self.title = title
+
+        # Handle unexpected keyword arguments
+        self.extra_properties = {k: v for k, v in kwargs.items()}
 
     def to_dict(self):
         return {

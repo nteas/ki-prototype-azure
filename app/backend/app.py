@@ -203,6 +203,9 @@ async def add_log():
 
 @bp.before_request
 async def ensure_openai_token():
+    if request.headers.get("X-Forwarded-Proto") == "https":
+        request.url_scheme = "https"
+
     if openai.api_type != "azure_ad":
         return
     openai_token = current_app.config[CONFIG_OPENAI_TOKEN]

@@ -3,8 +3,6 @@ import {
 	ChatAppResponse,
 	ChatAppResponseOrError,
 	ChatRequest,
-	Document,
-	Log,
 } from './models';
 import { useLogin } from '../authConfig';
 import { Log as TrackLog } from '../pages/logs/Logs';
@@ -116,11 +114,4 @@ export async function getChatLogs(): Promise<TrackLog[]> {
 	return await fetch(`${BACKEND_URI}/logs`)
 		.then(res => res.json())
 		.then(data => data?.logs || []);
-}
-
-// get all documents from /documents
-export async function getDocuments(): Promise<Document[]> {
-	return await fetch(`${BACKEND_URI}/documents`)
-		.then(res => res.json())
-		.then(data => data?.documents || []);
 }
