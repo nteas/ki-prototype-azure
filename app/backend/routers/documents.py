@@ -1,8 +1,10 @@
 import datetime
 import os
 from typing import List
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from bson import ObjectId
+
+from core.db import get_mongodb_client
 
 
 class Log:
@@ -92,10 +94,18 @@ def create_document(request: Request):
 
 # Get all documents
 @document_router.get("/")
-def get_documents(request: Request):
+def get_documents(request: Request, db=Depends(get_mongodb_client)):
     try:
-        db = request.state.db
+        limit = int(request.get("limit", 10))
+        skip = int(request.get("skip", 0))
+
         cursor = db.documents.find()
+
+        if limit:
+            cursor = cursor.limit(limit)
+
+        if skip > 0:
+            cursor = cursor.skip(skip)
 
         if not cursor:
             raise Exception("No documents found")
@@ -184,7 +194,7 @@ async def get_files(request: Request):
 
 # migrate files in cognitive search to own database
 @document_router.get("/migrate")
-async def search(request: Request):
+async def search(request: Request, db=Depends(get_mongodb_client)):
     try:
         search_client = request.state.search_client
         search_term = request.args.get("q", "")
@@ -192,7 +202,6 @@ async def search(request: Request):
 
         # Iterate over the search results using the get_next method
         docs = []
-        db = request.state["mongodb"]
         async for result in search_results:
             docs.append(result)
             doc = Document(file=result.get("sourcefile")).to_dict()

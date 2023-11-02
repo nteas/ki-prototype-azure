@@ -120,7 +120,7 @@ export function Component(): JSX.Element {
 						<div className={styles.col} style={{ flex: 1 }}>
 							<FontAwesomeIcon
 								icon={
-									item?.type?.includes('PDF')
+									item?.type?.includes('file')
 										? faFilePdf
 										: faGlobe
 								}

@@ -5,15 +5,14 @@ import mimetypes
 import os
 from pathlib import Path
 from typing import AsyncGenerator
-
 import aiohttp
 import openai
 from fastapi import Depends, FastAPI, APIRouter, Request
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
-
 from routers.documents import document_router
 from core.context import get_auth_helper, get_azure_credential, get_blob_container_client, get_search_client
 
@@ -55,13 +54,13 @@ KB_FIELDS_SOURCEPAGE = os.getenv("KB_FIELDS_SOURCEPAGE", "sourcepage")
 
 
 app = FastAPI(debug=True)
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 
 api_router = APIRouter()
 
 
-# Empty page is recommended for login redirect to work.
-# See https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-browser/docs/initialization.md#redirecturi-considerations for more information
+# # Empty page is recommended for login redirect to work.
+# # See https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-browser/docs/initialization.md#redirecturi-considerations for more information
 @app.get("/redirect")
 async def redirect():
     return ""
@@ -83,9 +82,9 @@ async def index(path=""):
     return await app.send_static_file("index.html")
 
 
-# Serve content files from blob storage from within the app to keep the example self-contained.
-# *** NOTE *** this assumes that the content files are public, or at least that all users of the app
-# can access all the files. This is also slow and memory hungry.
+# # Serve content files from blob storage from within the app to keep the example self-contained.
+# # *** NOTE *** this assumes that the content files are public, or at least that all users of the app
+# # can access all the files. This is also slow and memory hungry.
 @api_router.get("/content/<path>")
 async def content_file(path, blob_container_client=Depends(get_blob_container_client)):
     blob = await blob_container_client.get_blob_client(path).download_blob()
@@ -102,9 +101,8 @@ async def content_file(path, blob_container_client=Depends(get_blob_container_cl
 
 # Send MSAL.js settings to the client UI
 @api_router.get("/auth_setup")
-def auth_setup():
-    logging.info("---------------------------------------------------------")
-    return "data"
+def auth_setup(auth_helper=Depends(get_auth_helper)):
+    return auth_helper.get_auth_setup_for_client()
 
 
 @api_router.post("/ask")
@@ -237,6 +235,13 @@ def create_app():
     logging.basicConfig(level=os.getenv("APP_LOG_LEVEL", default_level))
 
     if allowed_origin := os.getenv("ALLOWED_ORIGIN"):
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=[allowed_origin],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
         logging.info("CORS enabled for %s", allowed_origin)
 
     return app
