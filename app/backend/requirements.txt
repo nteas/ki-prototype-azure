@@ -96,6 +96,8 @@ isodate==0.6.1
     #   azure-search-documents
     #   azure-storage-blob
     #   msrest
+motor==3.3.1
+    # via -r requirements.in
 msal==1.24.1
     # via
     #   -r requirements.in
@@ -229,7 +231,7 @@ pyjwt[crypto]==2.8.0
     #   msal
     #   pyjwt
 pymongo==4.5.0
-    # via -r requirements.in
+    # via motor
 python-dateutil==2.8.2
     # via pandas
 python-dotenv==1.0.0

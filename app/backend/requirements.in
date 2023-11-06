@@ -11,5 +11,5 @@ aiohttp
 opentelemetry-instrumentation-asgi
 opentelemetry-instrumentation-requests
 opentelemetry-instrumentation-aiohttp-client
-pymongo
+motor
 fastapi

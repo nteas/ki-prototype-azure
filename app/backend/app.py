@@ -10,12 +10,13 @@ import openai
 from fastapi import Depends, FastAPI, APIRouter, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.responses import StreamingResponse
+from starlette.responses import StreamingResponse, FileResponse
 
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
 from routers.documents import document_router
 from core.context import get_auth_helper, get_azure_credential, get_blob_container_client, get_search_client
+from core.db import connect_and_init_db, close_db_connect
 
 
 # Replace these with your own values, either in environment variables or directly here
@@ -33,39 +34,38 @@ KB_FIELDS_CONTENT = os.getenv("KB_FIELDS_CONTENT", "content")
 KB_FIELDS_SOURCEPAGE = os.getenv("KB_FIELDS_SOURCEPAGE", "sourcepage")
 
 
-app = FastAPI(debug=True)
-app.mount("/static", StaticFiles(directory="static", html=True), name="static")
+app = FastAPI(debug=os.environ["AZURE_ENV_NAME"] == "dev")
+app.mount("/assets", StaticFiles(directory="static/assets", html=True), name="assets")
 
-api_router = APIRouter()
+app.add_event_handler("startup", connect_and_init_db)
+app.add_event_handler("shutdown", close_db_connect)
+
+root_router = APIRouter()
 
 
-# # Empty page is recommended for login redirect to work.
-# # See https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-browser/docs/initialization.md#redirecturi-considerations for more information
-@app.get("/redirect")
+@root_router.get("/redirect")
 async def redirect():
     return ""
 
 
-@app.get("/favicon.ico")
+@root_router.get("/favicon.ico")
 async def favicon():
-    return await app.send_static_file("favicon.ico")
+    return FileResponse("static/favicon.ico")
 
 
-@app.get("/assets/<path:path>")
-async def assets(path):
-    return await app.send_static_file(Path("assets") / path)
+@root_router.get("/")
+@root_router.get("/{path:path}")
+async def index(path: str = ""):
+    return FileResponse("static/index.html")
 
 
-@app.get("/")
-@app.get("/<path:path>")
-async def index(path=""):
-    return await app.send_static_file("index.html")
+api_router = APIRouter()
 
 
 # # Serve content files from blob storage from within the app to keep the example self-contained.
 # # *** NOTE *** this assumes that the content files are public, or at least that all users of the app
 # # can access all the files. This is also slow and memory hungry.
-@api_router.get("/content/<path>")
+@api_router.get("/content/{path}")
 async def content_file(path, blob_container_client=Depends(get_blob_container_client)):
     blob = await blob_container_client.get_blob_client(path).download_blob()
     if not blob.properties or not blob.properties.has_key("content_settings"):
@@ -76,7 +76,7 @@ async def content_file(path, blob_container_client=Depends(get_blob_container_cl
     blob_file = io.BytesIO()
     await blob.readinto(blob_file)
     blob_file.seek(0)
-    return await api_router.send_file(blob_file, mimetype=mime_type, as_attachment=False, attachment_filename=path)
+    return StreamingResponse(blob_file, media_type=mime_type)
 
 
 # Send MSAL.js settings to the client UI
@@ -207,8 +207,9 @@ async def before_request(request: Request, call_next):
 
 
 def create_app():
-    api_router.include_router(document_router, prefix="/documents")
     app.include_router(api_router, prefix="/api")
+    app.include_router(document_router, prefix="/api/documents")
+    app.include_router(root_router)
 
     # Level should be one of https://docs.python.org/3/library/logging.html#logging-levels
     default_level = "INFO"  # In development, log more verbosely

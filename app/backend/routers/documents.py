@@ -4,7 +4,7 @@ from typing import List
 from fastapi import APIRouter, Depends, Request
 from bson import ObjectId
 
-from core.db import get_mongodb_client
+from core.db import get_db
 
 
 class Log:
@@ -93,13 +93,13 @@ def create_document(request: Request):
 
 
 # Get all documents
-@document_router.get("/")
-def get_documents(request: Request, db=Depends(get_mongodb_client)):
+@document_router.get("")
+async def get_documents(request: Request, db=Depends(get_db)):
     try:
         limit = int(request.get("limit", 10))
         skip = int(request.get("skip", 0))
 
-        cursor = db.documents.find()
+        cursor = db["documents"].find()
 
         if limit:
             cursor = cursor.limit(limit)
@@ -110,7 +110,8 @@ def get_documents(request: Request, db=Depends(get_mongodb_client)):
         if not cursor:
             raise Exception("No documents found")
 
-        documents = [Document(**doc).to_dict() for doc in cursor]
+        raw_documents = await cursor.to_list(length=100)
+        documents = [Document(**doc).to_dict() for doc in raw_documents]
 
         return {"documents": documents}
     except Exception as ex:
@@ -194,7 +195,7 @@ async def get_files(request: Request):
 
 # migrate files in cognitive search to own database
 @document_router.get("/migrate")
-async def search(request: Request, db=Depends(get_mongodb_client)):
+async def search(request: Request, db=Depends(get_db)):
     try:
         search_client = request.state.search_client
         search_term = request.args.get("q", "")
@@ -209,7 +210,7 @@ async def search(request: Request, db=Depends(get_mongodb_client)):
             doc.pop("_id", None)
             doc.pop("file_pages", None)
 
-            db.documents.update_one(
+            await db["documents"].update_one(
                 {"file": result.get("sourcefile")},
                 {
                     "$setOnInsert": doc,
