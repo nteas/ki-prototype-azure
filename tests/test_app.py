@@ -7,6 +7,8 @@ import quart.testing.app
 
 import app
 
+CONFIG_SEARCH_CLIENT = "search_client"
+
 
 @pytest.mark.asyncio
 async def test_missing_env_vars():

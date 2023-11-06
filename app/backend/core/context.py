@@ -26,7 +26,7 @@ def get_search_client():
     azure_credential = get_azure_credential()
     return SearchClient(
         endpoint=f"https://{os.environ['AZURE_SEARCH_SERVICE']}.search.windows.net",
-        index_name=os.environ("AZURE_SEARCH_INDEX"),
+        index_name=os.environ["AZURE_SEARCH_INDEX"],
         credential=azure_credential,
     )
 
@@ -34,7 +34,7 @@ def get_search_client():
 def get_blob_container_client():
     azure_credential = get_azure_credential()
     blob_client = BlobServiceClient(
-        account_url=f"https://{os.environ('AZURE_STORAGE_ACCOUNT')}.blob.core.windows.net", credential=azure_credential
+        account_url=f"https://{os.environ['AZURE_STORAGE_ACCOUNT']}.blob.core.windows.net", credential=azure_credential
     )
 
     return blob_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"])
