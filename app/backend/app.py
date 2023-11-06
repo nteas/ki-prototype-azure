@@ -14,6 +14,7 @@ from starlette.responses import StreamingResponse, FileResponse, JSONResponse
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
 from routers.documents import document_router
+from core.db import close_db_connect, connect_and_init_db
 from core.context import get_auth_helper, get_azure_credential, get_blob_container_client, get_search_client
 
 
@@ -34,6 +35,19 @@ KB_FIELDS_SOURCEPAGE = os.getenv("KB_FIELDS_SOURCEPAGE", "sourcepage")
 env = os.getenv("AZURE_ENV_NAME", "dev")
 app = FastAPI(debug=env == "dev")
 app.mount("/assets", StaticFiles(directory="static/assets", html=True), name="assets")
+
+
+@app.on_event("startup")
+def startup_event():
+    logging.info("Starting up...")
+    connect_and_init_db()
+
+
+@app.on_event("shutdown")
+def shutdown_event():
+    logging.info("Shutting down...")
+    close_db_connect()
+
 
 root_router = APIRouter()
 

@@ -1,20 +1,31 @@
 import os
 import logging
-import pymongo
+from pymongo import MongoClient
+
+db_client: MongoClient = None
 
 
-def get_db():
-    mongodb_client: None
+def get_db() -> MongoClient:
+    return db_client["ki-prototype"]
+
+
+def connect_and_init_db():
     AZURE_MONGODB = os.getenv("AZURE_MONGODB")
+
+    global db_client
     try:
-        mongodb_client = pymongo.MongoClient(AZURE_MONGODB)
+        db_client = MongoClient(AZURE_MONGODB, serverSelectionTimeoutMS=5000)
         logging.info("Connected to mongo.")
-        yield mongodb_client["ki-prototype"]
-    except pymongo.errors.ConnectionFailure:
-        logging.error("Failed to connect to MongoDB at %s", AZURE_MONGODB)
-        mongodb_client = None
+    except Exception as e:
+        logging.exception(f"Could not connect to mongo: {e}")
         raise
-    finally:
-        logging.info("Closing mongo connection.")
-        mongodb_client.close()
-        mongodb_client = None
+
+
+def close_db_connect():
+    global db_client
+    if db_client is None:
+        logging.warning("Connection is None, nothing to close.")
+        return
+    db_client.close()
+    db_client = None
+    logging.info("Mongo connection closed.")

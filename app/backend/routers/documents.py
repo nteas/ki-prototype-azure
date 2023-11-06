@@ -1,4 +1,5 @@
 import datetime
+import logging
 import os
 from typing import List
 from fastapi import APIRouter, Depends, Request
@@ -122,10 +123,14 @@ async def get_documents(request: Request, db=Depends(get_db)):
 
 # Get a specific document by ID
 @document_router.get("/{id}")
-def get_document(id):
-    doc = next((doc for doc in documents if doc.id == id), None)
+def get_document(id, db=Depends(get_db)):
+    if not id:
+        return {"error": "Document not found"}
+
+    doc = db.documents.find_one({"_id": ObjectId(id)})
+
     if doc:
-        return doc.__dict__
+        return Document(**doc).to_dict()
     else:
         return {"error": "Document not found"}
 

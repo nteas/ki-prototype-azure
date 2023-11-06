@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import Form from 'react-bootstrap/Form';
 
 import AdminLayout from '../../components/Layout/AdminLayout';
@@ -7,45 +9,45 @@ import styles from './CreateSource.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck } from '@fortawesome/pro-regular-svg-icons';
 import { faEye, faTrash, faXmark } from '@fortawesome/pro-solid-svg-icons';
-import { useState } from 'react';
 
-const data = {
-	type: 'PDF',
-	title: 'Veileder om helsefaglige tiltak ved koronavirus (covid-19) utbruddet',
-	owner: 'FHI',
-	classification: 'Offentlig',
-	updated: '01.01.2021',
-	file: 'https://www.fhi.no/publ/2020/veileder-om-helsefaglige-tiltak-ved-koronavirus-covid-19-utbruddet/',
-	url: 'https://nte.no/om-nte',
-	frequency: 'Ukentlig',
-	id: '1',
-	flagged: true,
-	logs: [
-		{
-			id: '1',
-			created: '02.02.2021',
-			user: 'Erlend Østerås',
-			change: 'flagged',
-			message:
-				'Melding fra Ola Nordmann: Det ser ut som flere av punktene i disse betingelsene er utdatert eller har store mangler. Kan noen se på dette?',
-		},
-		{
-			id: '2',
-			created: '01.02.2021',
-			user: 'Terje Sakariassen',
-			change: 'Endret eier',
-		},
-		{
-			id: '3',
-			created: '01.01.2021',
-			user: 'Erlend Østerås',
-			change: 'Opprettet',
-		},
-	],
-};
+interface Log {
+	user: string;
+	change: string;
+	_id: string;
+	message: string;
+	created_at: Date;
+}
+
+interface Document {
+	_id: string;
+	title: string;
+	owner: string;
+	classification: string;
+	logs: Log[];
+	frequency: string;
+	flagged: boolean;
+	type: string;
+	file: string;
+	file_pages: string[];
+	url: string;
+	created_at: Date;
+	updated_at: Date;
+}
 
 export function Component(): JSX.Element {
-	const [isFile, setIsFile] = useState<boolean>(data.type === 'PDF');
+	const [data, setData] = useState<Document>();
+	const [isFile, setIsFile] = useState<boolean>(data?.type !== 'web');
+	const { id } = useParams();
+
+	useEffect(() => {
+		if (!id) return;
+		// fetch data
+		getDocument(id).then(res => setData(res));
+	}, []);
+
+	async function getDocument(_id: string): Promise<Document> {
+		return await fetch(`/api/documents/${_id}`).then(res => res.json());
+	}
 
 	return (
 		<AdminLayout
@@ -83,9 +85,9 @@ export function Component(): JSX.Element {
 					<div className={styles.row}>
 						<Form.Group>
 							<Form.Label>Fil</Form.Label>
-							{data.file ? (
+							{data?.file ? (
 								<div className={styles.fileRow}>
-									<span>{data.file}</span>
+									<span>{data?.file}</span>
 									<Button
 										variant="danger"
 										icon={
@@ -113,7 +115,7 @@ export function Component(): JSX.Element {
 								<Form.Label>URL</Form.Label>
 								<Form.Control
 									name="url"
-									defaultValue={data.url}
+									defaultValue={data?.url}
 									required
 								/>
 							</Form.Group>
@@ -125,7 +127,7 @@ export function Component(): JSX.Element {
 								<Form.Select
 									aria-label="Velg oppdateringsfrekvens"
 									name="frequency"
-									defaultValue={data.frequency}
+									defaultValue={data?.frequency}
 									required>
 									<option>Velg</option>
 									<option value="Daglig">Daglig</option>
@@ -142,7 +144,7 @@ export function Component(): JSX.Element {
 						<Form.Label>Tittel</Form.Label>
 						<Form.Control
 							name="title"
-							defaultValue={data.title}
+							defaultValue={data?.title}
 							required
 						/>
 					</Form.Group>
@@ -153,7 +155,7 @@ export function Component(): JSX.Element {
 						<Form.Label>Eier</Form.Label>
 						<Form.Select
 							aria-label="Velg eier"
-							defaultValue={data.owner}
+							defaultValue={data?.owner}
 							required>
 							<option>Velg</option>
 							<option value="1">One</option>
@@ -166,7 +168,7 @@ export function Component(): JSX.Element {
 						<Form.Label>Klassifisering</Form.Label>
 						<Form.Select
 							aria-label="Velg klassifisering"
-							defaultValue={data.classification}
+							defaultValue={data?.classification}
 							required>
 							<option>Velg</option>
 							<option value="Offentlig">Offentlig</option>
@@ -198,40 +200,42 @@ export function Component(): JSX.Element {
 				</div>
 			</Form>
 
-			<h2 className={styles.title}>Endringslogg</h2>
+			{data?.logs && data?.logs?.length > 0 && (
+				<>
+					<h2 className={styles.title}>Endringslogg</h2>
 
-			{data.logs.length > 0 && (
-				<div className={styles.logList}>
-					{data.logs.map(log => (
-						<div
-							key={log.id}
-							className={`${styles.log} ${
-								log.change === 'flagged' && styles.flagged
-							}`}>
-							<div className={styles.logRow}>
-								<span className={styles.logTitle}>
-									{log.change === 'flagged'
-										? 'Kilde ble flagget'
-										: log.change}
-								</span>
-
-								<span className={styles.logTime}>
-									{log.created}
-								</span>
-							</div>
-
-							{log.message && (
+					<div className={styles.logList}>
+						{data.logs.map(log => (
+							<div
+								key={log?._id}
+								className={`${styles.log} ${
+									log.change === 'flagged' && styles.flagged
+								}`}>
 								<div className={styles.logRow}>
-									<span>{log.message}</span>
-								</div>
-							)}
+									<span className={styles.logTitle}>
+										{log.change === 'flagged'
+											? 'Kilde ble flagget'
+											: log.change}
+									</span>
 
-							<div className={styles.logRow}>
-								<span>Av {log.user}</span>
+									<span className={styles.logTime}>
+										{log?.created_at?.toDateString()}
+									</span>
+								</div>
+
+								{log.message && (
+									<div className={styles.logRow}>
+										<span>{log.message}</span>
+									</div>
+								)}
+
+								<div className={styles.logRow}>
+									<span>Av {log.user}</span>
+								</div>
 							</div>
-						</div>
-					))}
-				</div>
+						))}
+					</div>
+				</>
 			)}
 		</AdminLayout>
 	);
