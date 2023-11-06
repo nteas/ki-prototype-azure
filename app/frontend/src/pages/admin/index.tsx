@@ -32,7 +32,7 @@ export function Component(): JSX.Element {
 
 	// get all documents from /documents
 	async function getDocuments(): Promise<Document[]> {
-		return await fetch(`/api/documents`)
+		return await fetch(`/api/documents/`)
 			.then(res => res.json())
 			.then(data => data?.documents || []);
 	}

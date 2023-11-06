@@ -93,7 +93,7 @@ def create_document(request: Request):
 
 
 # Get all documents
-@document_router.get("")
+@document_router.get("/")
 async def get_documents(request: Request, db=Depends(get_db)):
     try:
         limit = int(request.get("limit", 10))

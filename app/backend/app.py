@@ -15,7 +15,7 @@ from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
 from routers.documents import document_router
 from core.context import get_auth_helper, get_azure_credential, get_blob_container_client, get_search_client
-from core.db import connect_and_init_db, close_db_connect
+from core.db import get_db
 
 
 # Replace these with your own values, either in environment variables or directly here
@@ -35,9 +35,6 @@ KB_FIELDS_SOURCEPAGE = os.getenv("KB_FIELDS_SOURCEPAGE", "sourcepage")
 env = os.getenv("AZURE_ENV_NAME", "dev")
 app = FastAPI(debug=env == "dev")
 app.mount("/assets", StaticFiles(directory="static/assets", html=True), name="assets")
-
-app.add_event_handler("startup", connect_and_init_db)
-app.add_event_handler("shutdown", close_db_connect)
 
 root_router = APIRouter()
 

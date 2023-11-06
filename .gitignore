@@ -1,3 +1,4 @@
+dump/
 data/
 backend/.env
 poetry.lock
