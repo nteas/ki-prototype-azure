@@ -9,13 +9,12 @@ import openai
 from fastapi import Depends, FastAPI, APIRouter, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.responses import StreamingResponse, FileResponse
+from starlette.responses import StreamingResponse, FileResponse, JSONResponse
 
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
 from routers.documents import document_router
 from core.context import get_auth_helper, get_azure_credential, get_blob_container_client, get_search_client
-from core.db import get_db
 
 
 # Replace these with your own values, either in environment variables or directly here
@@ -199,7 +198,7 @@ async def before_request(request: Request, call_next):
         return await call_next(request)
     except Exception as e:
         logging.exception("Exception in before_request")
-        return {"error": str(e)}, 500
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
 def create_app():

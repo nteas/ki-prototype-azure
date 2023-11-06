@@ -20,21 +20,26 @@ import Button from '../../components/Button/Button';
 import styles from './Admin.module.css';
 import { Document } from '../../api';
 
+interface PaginateDocuments {
+	documents: Document[];
+	total: number;
+}
 export function Component(): JSX.Element {
-	const [data, setData] = useState<Document[]>([]);
+	const [data, setData] = useState<PaginateDocuments>({
+		documents: [],
+		total: 0,
+	});
 	const navigate = useNavigate();
 
 	// get data from api
 	useEffect(() => {
 		// fetch data
-		getDocuments().then(documents => setData(documents));
+		getDocuments().then(res => setData(res));
 	}, []);
 
 	// get all documents from /documents
-	async function getDocuments(): Promise<Document[]> {
-		return await fetch(`/api/documents/`)
-			.then(res => res.json())
-			.then(data => data?.documents || []);
+	async function getDocuments(): Promise<PaginateDocuments> {
+		return await fetch(`/api/documents/`).then(res => res.json());
 	}
 
 	const handleOpenItem = () => {
@@ -111,7 +116,7 @@ export function Component(): JSX.Element {
 			</div>
 
 			<div className={styles.rows}>
-				{data?.map(item => (
+				{data?.documents?.map(item => (
 					<div
 						className={`${styles.row} ${
 							item.flagged && styles.flagged
@@ -174,7 +179,9 @@ export function Component(): JSX.Element {
 			</div>
 
 			<div className={styles.bottomActions}>
-				<span>Viser {data.length} kilder</span>
+				<span>
+					Viser {data?.documents?.length} kilder av {data.total}
+				</span>
 
 				<Button
 					className={styles.button}

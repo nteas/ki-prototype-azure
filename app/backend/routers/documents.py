@@ -100,6 +100,7 @@ async def get_documents(request: Request, db=Depends(get_db)):
         skip = int(request.get("skip", 0))
 
         cursor = db.documents.find()
+        total = db.documents.count_documents({})
 
         if limit:
             cursor = cursor.limit(limit)
@@ -112,7 +113,7 @@ async def get_documents(request: Request, db=Depends(get_db)):
 
         documents = [Document(**doc).to_dict() for doc in cursor]
 
-        return {"documents": documents}
+        return {"documents": documents, "total": total}
     except Exception as ex:
         print("Failed to get documents")
         print("Exception: {}".format(ex))
