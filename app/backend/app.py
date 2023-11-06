@@ -3,7 +3,6 @@ import json
 import logging
 import mimetypes
 import os
-from pathlib import Path
 from typing import AsyncGenerator
 import aiohttp
 import openai
@@ -33,8 +32,8 @@ OPENAI_ORGANIZATION = os.environ["OPENAI_ORGANIZATION"]
 KB_FIELDS_CONTENT = os.getenv("KB_FIELDS_CONTENT", "content")
 KB_FIELDS_SOURCEPAGE = os.getenv("KB_FIELDS_SOURCEPAGE", "sourcepage")
 
-
-app = FastAPI(debug=os.environ["AZURE_ENV_NAME"] == "dev")
+env = os.getenv("AZURE_ENV_NAME", "dev")
+app = FastAPI(debug=env == "dev")
 app.mount("/assets", StaticFiles(directory="static/assets", html=True), name="assets")
 
 app.add_event_handler("startup", connect_and_init_db)

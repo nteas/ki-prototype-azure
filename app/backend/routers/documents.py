@@ -99,7 +99,7 @@ async def get_documents(request: Request, db=Depends(get_db)):
         limit = int(request.get("limit", 10))
         skip = int(request.get("skip", 0))
 
-        cursor = db["documents"].find()
+        cursor = db.documents.find()
 
         if limit:
             cursor = cursor.limit(limit)
@@ -110,8 +110,7 @@ async def get_documents(request: Request, db=Depends(get_db)):
         if not cursor:
             raise Exception("No documents found")
 
-        raw_documents = await cursor.to_list(length=100)
-        documents = [Document(**doc).to_dict() for doc in raw_documents]
+        documents = [Document(**doc).to_dict() for doc in cursor]
 
         return {"documents": documents}
     except Exception as ex:
@@ -210,7 +209,7 @@ async def search(request: Request, db=Depends(get_db)):
             doc.pop("_id", None)
             doc.pop("file_pages", None)
 
-            await db["documents"].update_one(
+            db.documents.update_one(
                 {"file": result.get("sourcefile")},
                 {
                     "$setOnInsert": doc,

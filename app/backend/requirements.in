@@ -1,6 +1,5 @@
 azure-identity
 azure-search-documents==11.4.0b6
-azure-monitor-opentelemetry
 azure-storage-blob
 msal
 msal-extensions
@@ -8,8 +7,5 @@ openai[datalib]
 tiktoken
 uvicorn[standard]
 aiohttp
-opentelemetry-instrumentation-asgi
-opentelemetry-instrumentation-requests
-opentelemetry-instrumentation-aiohttp-client
-motor
+pymongo
 fastapi

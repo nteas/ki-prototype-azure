@@ -1,27 +1,27 @@
 import os
 import logging
-from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import MongoClient
 
-db_client: AsyncIOMotorClient = None
+db_client: MongoClient = None
 
 
-async def get_db() -> AsyncIOMotorClient:
+def get_db() -> MongoClient:
     return db_client["ki-prototype"]
 
 
-async def connect_and_init_db():
+def connect_and_init_db():
     AZURE_MONGODB = os.getenv("AZURE_MONGODB")
 
     global db_client
     try:
-        db_client = AsyncIOMotorClient(AZURE_MONGODB)
+        db_client = MongoClient(AZURE_MONGODB)
         logging.info("Connected to mongo.")
     except Exception as e:
         logging.exception(f"Could not connect to mongo: {e}")
         raise
 
 
-async def close_db_connect():
+def close_db_connect():
     global db_client
     if db_client is None:
         logging.warning("Connection is None, nothing to close.")
