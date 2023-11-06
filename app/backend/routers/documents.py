@@ -34,7 +34,7 @@ class Document:
         logs: List[Log] = [],
         frequency: str = "none",
         flagged: bool = False,
-        type: str = "file",
+        type: str = "pdf",
         file: str = None,
         file_pages: [str] = [],
         url: str = None,
@@ -99,9 +99,37 @@ async def get_documents(request: Request, db=Depends(get_db)):
     try:
         limit = int(request.get("limit", 10))
         skip = int(request.get("skip", 0))
+        search = str(request.get("search", ""))
+        flagged = str(request.get("flagged", "false"))
+        pdf = str(request.get("pdf", "true"))
+        web = str(request.get("web", "true"))
 
-        cursor = db.documents.find()
-        total = db.documents.count_documents({})
+        typeQuery = []
+        logging.info(pdf)
+        logging.info(web)
+        if pdf == "true":
+            typeQuery.append("pdf")
+
+        if web == "true":
+            typeQuery.append("web")
+
+        query = {
+            "type": {"$in": typeQuery},
+        }
+
+        if search:
+            query["$or"] = [
+                {"title": {"$regex": search, "$options": "i"}},
+                {"file": {"$regex": search, "$options": "i"}},
+            ]
+
+        if flagged == "true":
+            query["flagged"] = True
+
+        logging.info(query)
+
+        cursor = db.documents.find(query)
+        total = db.documents.count_documents(query)
 
         if limit:
             cursor = cursor.limit(limit)

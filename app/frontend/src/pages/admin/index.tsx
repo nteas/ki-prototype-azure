@@ -20,6 +20,12 @@ import Button from '../../components/Button/Button';
 import styles from './Admin.module.css';
 import { Document } from '../../api';
 
+interface Filters {
+	search: string;
+	flagged: boolean;
+	pdf: boolean;
+	web: boolean;
+}
 interface PaginateDocuments {
 	documents: Document[];
 	total: number;
@@ -29,17 +35,32 @@ export function Component(): JSX.Element {
 		documents: [],
 		total: 0,
 	});
+	const [filters, setFilters] = useState<Filters>({
+		search: '',
+		flagged: false,
+		pdf: true,
+		web: true,
+	});
+
+	const updateFilters = (key: string, value: boolean | string) => {
+		console.log('update filters');
+		setFilters(prev => ({ ...prev, [key]: value }));
+	};
+
 	const navigate = useNavigate();
 
-	// get data from api
 	useEffect(() => {
-		// fetch data
-		getDocuments().then(res => setData(res));
-	}, []);
+		getDocuments();
+	}, [filters.flagged, filters.pdf, filters.web]);
 
 	// get all documents from /documents
-	async function getDocuments(): Promise<PaginateDocuments> {
-		return await fetch(`/api/documents/`).then(res => res.json());
+	async function getDocuments(): Promise<void> {
+		setData({ documents: [], total: 0 });
+		const query = new URLSearchParams(filters as any);
+
+		fetch(`/api/documents/?${query}`)
+			.then(res => res.json())
+			.then(json => setData(json));
 	}
 
 	const handleOpenItem = () => {
@@ -67,7 +88,15 @@ export function Component(): JSX.Element {
 
 			<div className={styles.filters}>
 				<InputGroup className={styles.search}>
-					<Form.Control placeholder="Søk etter kilde" />
+					<Form.Control
+						placeholder="Søk etter kilde"
+						onChange={e => updateFilters('search', e.target.value)}
+						onKeyUp={e => {
+							if (e.key !== 'Enter') return;
+
+							getDocuments();
+						}}
+					/>
 					<InputGroup.Text>
 						<FontAwesomeIcon icon={faMagnifyingGlass} />
 					</InputGroup.Text>
@@ -77,6 +106,7 @@ export function Component(): JSX.Element {
 					className={styles.check}
 					type="checkbox"
 					label="Vis kun flagget"
+					onChange={e => updateFilters('flagged', e.target.checked)}
 				/>
 
 				<Form.Check
@@ -84,6 +114,7 @@ export function Component(): JSX.Element {
 					type="switch"
 					label="Vis PDF-kilder"
 					defaultChecked={true}
+					onChange={e => updateFilters('pdf', e.target.checked)}
 				/>
 
 				<Form.Check
@@ -91,6 +122,7 @@ export function Component(): JSX.Element {
 					type="switch"
 					label="Vis web-kilder"
 					defaultChecked={true}
+					onChange={e => updateFilters('web', e.target.checked)}
 				/>
 			</div>
 
