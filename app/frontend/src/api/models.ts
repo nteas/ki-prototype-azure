@@ -62,23 +62,35 @@ export type ChatRequest = {
 	shouldStream?: boolean;
 };
 
+export enum DocumentTypeEnum {
+	PDF = 'pdf',
+	WEB = 'web',
+}
+
+export enum ClassificationEnum {
+	public = 'public',
+	internal = 'internal',
+	confidential = 'confidential',
+	powerSensitive = 'powerSensitive',
+}
+
 export type Log = {
 	user?: string;
 	change?: string;
-	_id?: string;
+	id?: string;
 	message?: string;
 	created_at?: string;
 };
 
 export type Document = {
-	_id: string;
+	id: string;
 	title?: string;
 	owner?: string;
-	classification?: string;
+	classification?: ClassificationEnum;
 	logs?: Log[];
 	frequency?: string;
 	flagged?: boolean;
-	type?: string;
+	type?: DocumentTypeEnum;
 	file?: string;
 	file_pages?: string[];
 	url?: string;

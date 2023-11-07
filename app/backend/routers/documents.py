@@ -1,85 +1,50 @@
 import datetime
 import logging
 import os
-from typing import List
+from typing import List, Optional
+import uuid
 from fastapi import APIRouter, Depends, Request
-from bson import ObjectId
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.db import get_db
 
 
-class Log:
-    def __init__(
-        self,
-        user: str = "admin",
-        change: str = "created",
-        _id: str = ObjectId(),
-        message: str = None,
-        created_at: str = datetime.datetime.now(),
-    ):
-        self.user = user
-        self.change = change
-        self._id = _id
-        self.message = message
-        self.created_at = created_at
+class Log(BaseModel):
+    user: str = Field(default="admin")
+    change: str = "created"
+    id: str = Field(default_factory=uuid.uuid4)
+    message: str = None
+    created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
 
 
-class Document:
-    def __init__(
-        self,
-        _id: ObjectId = None,
-        title: str = None,
-        owner: str = "admin",
-        classification: str = "public",
-        logs: List[Log] = [],
-        frequency: str = "none",
-        flagged: bool = False,
-        type: str = "pdf",
-        file: str = None,
-        file_pages: [str] = [],
-        url: str = None,
-        created_at: str = datetime.datetime.now(),
-        updated_at: str = datetime.datetime.now(),
-        **kwargs,
-    ):
-        self._id = _id
-        self.type = type
-        self.owner = owner
-        self.classification = classification
-        self.file = file
-        self.file_pages = file_pages
-        self.url = url
-        self.frequency = frequency
-        self.flagged = flagged
-        self.logs = logs
-        self.created_at = created_at
-        self.updated_at = updated_at
+class Document(BaseModel):
+    id: str = Field(default_factory=uuid.uuid4)
+    title: Optional[str] = Field(default=None)
+    owner: str = Field(default="admin")
+    classification: str = Field(default="public")
+    logs: List[Log] = Field(default=[])
+    frequency: str = Field(default="none")
+    flagged: bool = Field(default=False)
+    type: str = Field(default="pdf")
+    file: Optional[str] = Field(default=None)
+    file_pages: List[str] = Field(default=[])
+    url: Optional[str] = Field(default=None)
+    created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
+    updated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
 
-        if self.file is not None and title is None:
-            self.title = os.path.basename(self.file)
+    def __init__(self, **data):
+        data.pop("_id", None)  # Remove _id from the data if it exists
+        super().__init__(**data)
+
+    class Config:
+        extra = "allow"
+
+    @property
+    def title(self):
+        if self.file is not None and self.title is None:
+            return os.path.basename(self.file)
         else:
-            self.title = title
-
-        # Handle unexpected keyword arguments
-        self.extra_properties = {k: v for k, v in kwargs.items()}
-
-    def to_dict(self):
-        return {
-            "type": self.type,
-            "owner": self.owner,
-            "classification": self.classification,
-            "logs": self.logs,
-            "frequency": self.frequency,
-            "flagged": self.flagged,
-            "file": self.file,
-            "file_pages": self.file_pages,
-            "url": self.url,
-            "_id": str(self._id),
-            "created_at": self.created_at,
-            "updated_at": self.updated_at,
-            "title": self.title,
-        }
+            return self.title
 
 
 document_router = APIRouter()
@@ -87,11 +52,15 @@ document_router = APIRouter()
 
 # Create a new document
 @document_router.post("/")
-def create_document(request: Request):
-    data = request.json
-    doc = Document(**data)
-    documents.append(doc)
-    return doc.__dict__
+def create_document(doc: Document, db=Depends(get_db)):
+    try:
+        db.documents.insert_one(doc)
+
+        return doc
+    except Exception as ex:
+        print("Failed to create document")
+        print("Exception: {}".format(ex))
+        return {"error": "Exception: {}".format(ex)}
 
 
 # typing for get all documents request
@@ -116,6 +85,7 @@ async def get_documents(params: GetDocumentsRequest = Depends(), db=Depends(get_
             typeQuery.append("web")
 
         query = {
+            "deleted": {"$ne": True},
             "type": {"$in": typeQuery},
         }
 
@@ -127,8 +97,6 @@ async def get_documents(params: GetDocumentsRequest = Depends(), db=Depends(get_
 
         if params.flagged == "true":
             query["flagged"] = True
-
-        logging.info(query)
 
         cursor = db.documents.find(query)
         total = db.documents.count_documents(query)
@@ -142,7 +110,7 @@ async def get_documents(params: GetDocumentsRequest = Depends(), db=Depends(get_
         if not cursor:
             raise Exception("No documents found")
 
-        documents = [Document(**doc).to_dict() for doc in cursor]
+        documents = [Document(**doc) for doc in cursor]
 
         return {"documents": documents, "total": total}
     except Exception as ex:
@@ -157,53 +125,58 @@ def get_document(id, db=Depends(get_db)):
     if not id:
         return {"error": "Document not found"}
 
-    doc = db.documents.find_one({"_id": ObjectId(id)})
+    doc = db.documents.find_one({"id": id})
 
     if doc:
-        return Document(**doc).to_dict()
+        return Document(**doc)
     else:
         return {"error": "Document not found"}
 
 
 # Update a specific document by ID
 @document_router.post("/{id}")
-def update_document(id, request: Request):
-    data = request.json
-    doc = next((doc for doc in documents if doc.id == id), None)
+def update_document(id, request: Request, db=Depends(get_db)):
+    doc = db.documents.find_one({"id": id})
+
+    data = request.json()
+
     if doc:
         for key, value in data.items():
             setattr(doc, key, value)
-        return doc.__dict__
+        return doc
     else:
         return {"error": "Document not found"}
 
 
 # Delete a specific document by ID
-@document_router.post("/{id}")
-def delete_document(id):
-    global documents
-    documents = [doc for doc in documents if doc.id != id]
+@document_router.delete("/{id}")
+def delete_document(id, db=Depends(get_db)):
+    if not id:
+        return {"error": "Document not found"}
+
+    db.documents.updateOne({"id": id, "$set": {"deleted": True}})
+
     return {"message": "Document deleted"}
 
 
 # Add a log to a specific document by ID
 @document_router.post("/{id}/logs")
-async def add_log(id, request: Request):
+async def add_log(id, request: Request, db=Depends(get_db)):
     data = await request.get_json()
-    doc = next((doc for doc in documents if doc.id == id), None)
+    doc = db.documents.find_one({"id": id})
     if doc:
         log = Log(**data)
-        doc.logs.append(log)
-        return await log.__dict__
+        db.documents.update_one({"id": id}, {"$push": {"logs": log}})
+        return await log
     else:
         return await {"error": "Document not found"}
 
 
 # Change the status of a specific log in a specific document by ID and log ID
 @document_router.post("/{id}/logs/{log_id}")
-async def change_log_status(id, log_id, request: Request):
+async def change_log_status(id, log_id, request: Request, db=Depends(get_db)):
     data = await request.get_json()
-    doc = next((doc for doc in documents if doc.id == id), None)
+    doc = db.documents.find_one({"id": id})
     if doc:
         log = next((log for log in doc.logs if log.id == log_id), None)
         if log:
@@ -242,7 +215,7 @@ async def search(request: Request, db=Depends(get_db)):
             docs.append(result)
             doc = Document(file=result.get("sourcefile")).to_dict()
 
-            doc.pop("_id", None)
+            doc.pop("id", None)
             doc.pop("file_pages", None)
 
             db.documents.update_one(

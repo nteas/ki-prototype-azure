@@ -13,13 +13,13 @@ import { faEye, faTrash, faXmark } from '@fortawesome/pro-solid-svg-icons';
 interface Log {
 	user: string;
 	change: string;
-	_id: string;
+	id: string;
 	message: string;
 	created_at: Date;
 }
 
 interface Document {
-	_id: string;
+	id: string;
 	title: string;
 	owner: string;
 	classification: string;
@@ -45,8 +45,8 @@ export function Component(): JSX.Element {
 		getDocument(id).then(res => setData(res));
 	}, []);
 
-	async function getDocument(_id: string): Promise<Document> {
-		return await fetch(`/api/documents/${_id}`).then(res => res.json());
+	async function getDocument(id: string): Promise<Document> {
+		return await fetch(`/api/documents/${id}`).then(res => res.json());
 	}
 
 	return (
@@ -55,7 +55,7 @@ export function Component(): JSX.Element {
 			breadcrumbs={[
 				{
 					link: '#',
-					text: 'Legg til kilde',
+					text: data?.title,
 				},
 			]}>
 			<h2 className={styles.title}>Endre kilde</h2>
@@ -77,6 +77,7 @@ export function Component(): JSX.Element {
 							label="Nettside"
 							checked={!isFile}
 							onChange={() => setIsFile(false)}
+							disabled
 						/>
 					</div>
 				</div>
@@ -207,7 +208,7 @@ export function Component(): JSX.Element {
 					<div className={styles.logList}>
 						{data.logs.map(log => (
 							<div
-								key={log?._id}
+								key={log?.id}
 								className={`${styles.log} ${
 									log.change === 'flagged' && styles.flagged
 								}`}>

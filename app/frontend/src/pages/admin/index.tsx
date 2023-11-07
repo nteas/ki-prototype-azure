@@ -18,9 +18,16 @@ import AdminLayout from '../../components/Layout/AdminLayout';
 import Button from '../../components/Button/Button';
 
 import styles from './Admin.module.css';
-import { Document } from '../../api';
+import { Document, ClassificationEnum } from '../../api';
 import { Modal } from '../../components/Modal/Modal';
 
+// classification map
+const classificationMap = {
+	[ClassificationEnum.public]: 'Åpen',
+	[ClassificationEnum.internal]: 'Intern',
+	[ClassificationEnum.confidential]: 'Konfidensiell',
+	[ClassificationEnum.powerSensitive]: 'Kraftsensitiv',
+};
 interface Filters {
 	search: string;
 	flagged: boolean;
@@ -72,8 +79,12 @@ export function Component(): JSX.Element {
 		navigate(`edit/${id}`);
 	};
 
-	const handleDeleteItem = () => {
+	const handleDeleteItem = (id: string) => {
 		if (!confirm('Er du sikker på at du vil slette denne kilden?')) return;
+
+		fetch(`/api/documents/?${id}`).then(() => {
+			getDocuments();
+		});
 	};
 
 	return (
@@ -172,11 +183,11 @@ export function Component(): JSX.Element {
 						className={`${styles.row} ${
 							item.flagged && styles.flagged
 						}`}
-						key={item._id}>
+						key={item.id}>
 						<div className={styles.col} style={{ flex: 1 }}>
 							<FontAwesomeIcon
 								icon={
-									item?.type?.includes('file')
+									item?.type?.includes('pdf')
 										? faFilePdf
 										: faGlobe
 								}
@@ -193,7 +204,8 @@ export function Component(): JSX.Element {
 
 						<div className={styles.col} style={{ flex: 2 }}>
 							<Badge pill bg="primary">
-								{item.classification}
+								{item.classification &&
+									classificationMap[item.classification]}
 							</Badge>
 						</div>
 
@@ -213,14 +225,14 @@ export function Component(): JSX.Element {
 
 							<button
 								className={styles.edit}
-								onClick={() => handleEditItem(item._id)}
+								onClick={() => handleEditItem(item.id)}
 								title="Rediger">
 								<FontAwesomeIcon icon={faCog} />
 							</button>
 
 							<button
 								className={styles.delete}
-								onClick={handleDeleteItem}
+								onClick={() => handleDeleteItem(item.id)}
 								title="Slett">
 								<FontAwesomeIcon icon={faTrash} />
 							</button>

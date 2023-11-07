@@ -39,6 +39,7 @@ export function Component(): JSX.Element {
 							label="Nettside"
 							checked={!isFile}
 							onChange={() => setIsFile(false)}
+							disabled
 						/>
 					</div>
 				</div>

@@ -5,7 +5,7 @@ import styles from './Layout.module.css';
 
 interface Breadcrumb {
 	link: string;
-	text: string;
+	text?: string;
 }
 
 interface Props {
