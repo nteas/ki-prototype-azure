@@ -19,18 +19,23 @@ import Button from '../../components/Button/Button';
 
 import styles from './Admin.module.css';
 import { Document } from '../../api';
+import { Modal } from '../../components/Modal/Modal';
 
 interface Filters {
 	search: string;
 	flagged: boolean;
 	pdf: boolean;
 	web: boolean;
+	limit: number;
 }
 interface PaginateDocuments {
 	documents: Document[];
 	total: number;
 }
+
 export function Component(): JSX.Element {
+	const [viewDocument, setViewDocument] = useState<Document | null>(null);
+
 	const [data, setData] = useState<PaginateDocuments>({
 		documents: [],
 		total: 0,
@@ -40,9 +45,10 @@ export function Component(): JSX.Element {
 		flagged: false,
 		pdf: true,
 		web: true,
+		limit: 10,
 	});
 
-	const updateFilters = (key: string, value: boolean | string) => {
+	const updateFilters = (key: string, value: boolean | string | number) => {
 		console.log('update filters');
 		setFilters(prev => ({ ...prev, [key]: value }));
 	};
@@ -51,21 +57,16 @@ export function Component(): JSX.Element {
 
 	useEffect(() => {
 		getDocuments();
-	}, [filters.flagged, filters.pdf, filters.web]);
+	}, [filters.flagged, filters.pdf, filters.web, filters.limit]);
 
 	// get all documents from /documents
 	async function getDocuments(): Promise<void> {
-		setData({ documents: [], total: 0 });
 		const query = new URLSearchParams(filters as any);
 
 		fetch(`/api/documents/?${query}`)
 			.then(res => res.json())
 			.then(json => setData(json));
 	}
-
-	const handleOpenItem = () => {
-		console.log('open');
-	};
 
 	const handleEditItem = (id: string) => {
 		navigate(`edit/${id}`);
@@ -127,22 +128,40 @@ export function Component(): JSX.Element {
 			</div>
 
 			<div className={styles.head}>
-				<div className={styles.col} style={{ flex: 1 }}>
+				<div
+					onClick={() => console.log('ordering')}
+					className={styles.col}
+					style={{ flex: 1 }}>
 					Type
 				</div>
-				<div className={styles.col} style={{ flex: 5 }}>
+				<div
+					onClick={() => console.log('ordering')}
+					className={styles.col}
+					style={{ flex: 5 }}>
 					Tittel
 				</div>
-				<div className={styles.col} style={{ flex: 3 }}>
+				<div
+					onClick={() => console.log('ordering')}
+					className={styles.col}
+					style={{ flex: 3 }}>
 					Eier
 				</div>
-				<div className={styles.col} style={{ flex: 2 }}>
+				<div
+					onClick={() => console.log('ordering')}
+					className={styles.col}
+					style={{ flex: 2 }}>
 					Klassifisering
 				</div>
-				<div className={styles.col} style={{ flex: 2 }}>
+				<div
+					onClick={() => console.log('ordering')}
+					className={styles.col}
+					style={{ flex: 2 }}>
 					Oppdatert
 				</div>
-				<div className={styles.col} style={{ flex: 2 }}>
+				<div
+					onClick={() => console.log('ordering')}
+					className={styles.col}
+					style={{ flex: 2 }}>
 					Handlinger
 				</div>
 			</div>
@@ -187,7 +206,7 @@ export function Component(): JSX.Element {
 							style={{ flex: 2 }}>
 							<button
 								className={styles.open}
-								onClick={handleOpenItem}
+								onClick={() => setViewDocument(item)}
 								title="Åpne">
 								<FontAwesomeIcon icon={faEye} />
 							</button>
@@ -211,9 +230,22 @@ export function Component(): JSX.Element {
 			</div>
 
 			<div className={styles.bottomActions}>
-				<span>
+				<div
+					style={{
+						display: 'flex',
+						alignItems: 'center',
+						gap: '10px',
+					}}>
 					Viser {data?.documents?.length} kilder av {data.total}
-				</span>
+					{data?.documents?.length < data?.total && (
+						<Button
+							onClick={() =>
+								updateFilters('limit', filters.limit + 10)
+							}>
+							Last flere
+						</Button>
+					)}
+				</div>
 
 				<Button
 					className={styles.button}
@@ -222,8 +254,44 @@ export function Component(): JSX.Element {
 					Legg til kilde
 				</Button>
 			</div>
+
+			{viewDocument && (
+				<DocModal
+					onClose={() => setViewDocument(null)}
+					document={viewDocument}
+				/>
+			)}
 		</AdminLayout>
 	);
 }
 
-Component.displayName = 'AdminPage';
+const DocModal = ({
+	document,
+	onClose,
+}: {
+	document: Document;
+	onClose: () => void;
+}) => {
+	const [file, setFile] = useState<string | null>(null);
+
+	return (
+		<Modal onClose={onClose} title={document.title}>
+			<div className={styles.docList}>
+				{document?.file_pages
+					?.sort((a: string, b: string) => a.localeCompare(b))
+					.map((page, i) => (
+						<Button key={i} onClick={() => setFile(page)}>
+							{page}
+						</Button>
+					))}
+			</div>
+
+			{file && (
+				<iframe
+					className={styles.iframe}
+					src={`/api/content/${file}`}
+				/>
+			)}
+		</Modal>
+	);
+};

@@ -92,3 +92,16 @@
 	justify-content: space-between;
 	align-items: center;
 }
+
+.docList {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-bottom: 24px;
+}
+
+iframe {
+	width: 100%;
+	min-height: 65vh;
+	border: none;
+}

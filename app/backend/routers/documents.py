@@ -4,6 +4,7 @@ import os
 from typing import List
 from fastapi import APIRouter, Depends, Request
 from bson import ObjectId
+from pydantic import BaseModel
 
 from core.db import get_db
 
@@ -93,37 +94,38 @@ def create_document(request: Request):
     return doc.__dict__
 
 
+# typing for get all documents request
+class GetDocumentsRequest(BaseModel):
+    limit: int = 10
+    skip: int = 0
+    search: str = ""
+    flagged: str = "false"
+    pdf: str = "true"
+    web: str = "true"
+
+
 # Get all documents
 @document_router.get("/")
-async def get_documents(request: Request, db=Depends(get_db)):
+async def get_documents(params: GetDocumentsRequest = Depends(), db=Depends(get_db)):
     try:
-        limit = int(request.get("limit", 10))
-        skip = int(request.get("skip", 0))
-        search = str(request.get("search", ""))
-        flagged = str(request.get("flagged", "false"))
-        pdf = str(request.get("pdf", "true"))
-        web = str(request.get("web", "true"))
-
         typeQuery = []
-        logging.info(pdf)
-        logging.info(web)
-        if pdf == "true":
+        if params.pdf == "true":
             typeQuery.append("pdf")
 
-        if web == "true":
+        if params.web == "true":
             typeQuery.append("web")
 
         query = {
             "type": {"$in": typeQuery},
         }
 
-        if search:
+        if params.search:
             query["$or"] = [
-                {"title": {"$regex": search, "$options": "i"}},
-                {"file": {"$regex": search, "$options": "i"}},
+                {"title": {"$regex": params.search, "$options": "i"}},
+                {"file": {"$regex": params.search, "$options": "i"}},
             ]
 
-        if flagged == "true":
+        if params.flagged == "true":
             query["flagged"] = True
 
         logging.info(query)
@@ -131,11 +133,11 @@ async def get_documents(request: Request, db=Depends(get_db)):
         cursor = db.documents.find(query)
         total = db.documents.count_documents(query)
 
-        if limit:
-            cursor = cursor.limit(limit)
+        if params.limit:
+            cursor = cursor.limit(params.limit)
 
-        if skip > 0:
-            cursor = cursor.skip(skip)
+        if params.skip > 0:
+            cursor = cursor.skip(params.skip)
 
         if not cursor:
             raise Exception("No documents found")
