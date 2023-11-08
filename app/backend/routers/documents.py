@@ -177,6 +177,10 @@ async def upload_file(
         blob_container_client.delete_blob(doc["file"])
         remove_from_index(doc["file"])
 
+    if doc["file_pages"]:
+        for page in doc["file_pages"]:
+            remove_from_index(page)
+
     filename = file.filename
     pdf = await file.read()
     file_pages = []
