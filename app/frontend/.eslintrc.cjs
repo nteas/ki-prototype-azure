@@ -29,5 +29,6 @@ module.exports = {
 		'react/react-in-jsx-scope': 'off',
 		'react/jsx-uses-react': 'off',
 		'no-mixed-spaces-and-tabs': 'off',
+		'@typescript-eslint/no-explicit-any': 'off',
 	},
 };

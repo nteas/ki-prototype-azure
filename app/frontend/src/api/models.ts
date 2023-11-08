@@ -74,12 +74,20 @@ export enum ClassificationEnum {
 	powerSensitive = 'powerSensitive',
 }
 
+// classification map
+export const classificationMap = {
+	[ClassificationEnum.public]: 'Åpen',
+	[ClassificationEnum.internal]: 'Intern',
+	[ClassificationEnum.confidential]: 'Konfidensiell',
+	[ClassificationEnum.powerSensitive]: 'Kraftsensitiv',
+};
+
 export type Log = {
 	user?: string;
 	change?: string;
 	id?: string;
 	message?: string;
-	created_at?: string;
+	created_at: Date;
 };
 
 export type Document = {
@@ -94,6 +102,6 @@ export type Document = {
 	file?: string;
 	file_pages?: string[];
 	url?: string;
-	created_at?: string;
-	updated_at?: string;
+	created_at: Date;
+	updated_at: Date;
 };

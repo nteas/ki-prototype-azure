@@ -1,11 +1,16 @@
 azure-identity
 azure-search-documents==11.4.0b6
 azure-storage-blob
+azure-ai-formrecognizer
+azure-storage-file-datalake
 msal
 msal-extensions
 openai[datalib]
 tiktoken
+tenacity
 uvicorn[standard]
 aiohttp
 pymongo
 fastapi
+pypdf
+python-multipart

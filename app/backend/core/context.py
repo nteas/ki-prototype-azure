@@ -1,3 +1,4 @@
+import logging
 import os
 from azure.search.documents.aio import SearchClient
 from azure.storage.blob.aio import BlobServiceClient
@@ -19,7 +20,7 @@ def get_auth_helper():
 
 
 def get_azure_credential():
-    return DefaultAzureCredential(exclude_shared_token_cache_credential=True)
+    return DefaultAzureCredential(exclude_shared_token_cache_credential=True, logging_level=logging.ERROR)
 
 
 def get_search_client():

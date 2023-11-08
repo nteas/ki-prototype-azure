@@ -2,6 +2,7 @@ import { NavLink, Link, useNavigate } from 'react-router-dom';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
 
 import styles from './Layout.module.css';
+import Loading from '../Loading/Loading';
 
 interface Breadcrumb {
 	link: string;
@@ -13,6 +14,7 @@ interface Props {
 	children: React.ReactNode;
 	className?: string;
 	breadcrumbs?: Breadcrumb[];
+	loading?: boolean;
 }
 
 const AdminLayout = ({
@@ -20,6 +22,7 @@ const AdminLayout = ({
 	children,
 	className,
 	breadcrumbs = [],
+	loading = false,
 }: Props) => {
 	const navigate = useNavigate();
 
@@ -84,6 +87,8 @@ const AdminLayout = ({
 				</Breadcrumb>
 
 				{children}
+
+				{loading && <Loading />}
 			</main>
 
 			<footer className={styles.footer}>

@@ -18,16 +18,10 @@ import AdminLayout from '../../components/Layout/AdminLayout';
 import Button from '../../components/Button/Button';
 
 import styles from './Admin.module.css';
-import { Document, ClassificationEnum } from '../../api';
-import { Modal } from '../../components/Modal/Modal';
+import { Document, classificationMap } from '../../api';
+import DocModal from '../../components/Modal/DocModal';
+import { formatDate } from '../../libs/utils';
 
-// classification map
-const classificationMap = {
-	[ClassificationEnum.public]: 'Åpen',
-	[ClassificationEnum.internal]: 'Intern',
-	[ClassificationEnum.confidential]: 'Konfidensiell',
-	[ClassificationEnum.powerSensitive]: 'Kraftsensitiv',
-};
 interface Filters {
 	search: string;
 	flagged: boolean;
@@ -41,6 +35,7 @@ interface PaginateDocuments {
 }
 
 export function Component(): JSX.Element {
+	const [loading, setLoading] = useState<boolean>(true);
 	const [viewDocument, setViewDocument] = useState<Document | null>(null);
 
 	const [data, setData] = useState<PaginateDocuments>({
@@ -68,11 +63,13 @@ export function Component(): JSX.Element {
 
 	// get all documents from /documents
 	async function getDocuments(): Promise<void> {
+		setLoading(true);
 		const query = new URLSearchParams(filters as any);
 
 		fetch(`/api/documents/?${query}`)
 			.then(res => res.json())
-			.then(json => setData(json));
+			.then(json => setData(json))
+			.then(() => setLoading(false));
 	}
 
 	const handleEditItem = (id: string) => {
@@ -88,7 +85,7 @@ export function Component(): JSX.Element {
 	};
 
 	return (
-		<AdminLayout className={styles.layout}>
+		<AdminLayout className={styles.layout} loading={loading}>
 			<div className={styles.header}>
 				<Button
 					className={styles.button}
@@ -133,8 +130,9 @@ export function Component(): JSX.Element {
 					className={styles.check}
 					type="switch"
 					label="Vis web-kilder"
-					defaultChecked={true}
+					defaultChecked={false}
 					onChange={e => updateFilters('web', e.target.checked)}
+					disabled
 				/>
 			</div>
 
@@ -210,7 +208,7 @@ export function Component(): JSX.Element {
 						</div>
 
 						<div className={styles.col} style={{ flex: 2 }}>
-							{item.updated_at}
+							{formatDate(item.updated_at)}
 						</div>
 
 						<div
@@ -276,34 +274,3 @@ export function Component(): JSX.Element {
 		</AdminLayout>
 	);
 }
-
-const DocModal = ({
-	document,
-	onClose,
-}: {
-	document: Document;
-	onClose: () => void;
-}) => {
-	const [file, setFile] = useState<string | null>(null);
-
-	return (
-		<Modal onClose={onClose} title={document.title}>
-			<div className={styles.docList}>
-				{document?.file_pages
-					?.sort((a: string, b: string) => a.localeCompare(b))
-					.map((page, i) => (
-						<Button key={i} onClick={() => setFile(page)}>
-							{page}
-						</Button>
-					))}
-			</div>
-
-			{file && (
-				<iframe
-					className={styles.iframe}
-					src={`/api/content/${file}`}
-				/>
-			)}
-		</Modal>
-	);
-};

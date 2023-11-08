@@ -5,5 +5,5 @@ azure-ai-formrecognizer
 azure-storage-blob
 azure-storage-file-datalake
 openai[datalib]
-tiktoken
 tenacity
+tiktoken

@@ -10,7 +10,7 @@ interface Props {
 	children: React.ReactNode;
 }
 
-export const Modal = ({ onClose, title, children }: Props) => {
+const Modal = ({ onClose, title, children }: Props) => {
 	return createPortal(
 		<div className={styles.modalWrapper}>
 			<div className={styles.overlay} onClick={onClose} />
@@ -32,3 +32,5 @@ export const Modal = ({ onClose, title, children }: Props) => {
 		document.getElementById('portal') as Element
 	);
 };
+
+export default Modal;

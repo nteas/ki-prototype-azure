@@ -105,6 +105,7 @@
 }
 
 .main {
+	position: relative;
 	padding: 191px 12px 25px;
 	max-width: 1020px;
 	margin: 0 auto;
