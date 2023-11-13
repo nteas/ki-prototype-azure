@@ -265,17 +265,36 @@ async def upload_file(
 
 # Delete a specific document by ID
 @document_router.delete("/{id}")
-def delete_document(id, db=Depends(get_db), blob_container_client=Depends(get_blob_container_client)):
+async def delete_document(id, db=Depends(get_db), blob_container_client=Depends(get_blob_container_client)):
     if not id:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    doc = db.documents.find_one({"id": id, "$set": {"deleted": True}})
+    doc = db.documents.find_one({"id": id})
 
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    if doc.file:
-        blob_container_client.delete_blob(doc.file)
+    try:
+        azure_credentials = get_azure_credential()
+
+        if doc["file_pages"]:
+            try:
+                prefix = os.path.splitext(doc["file"])[0]
+                blobs = blob_container_client.list_blob_names(name_starts_with=prefix)
+                for b in blobs:
+                    print(f"\tRemoving blob {b}")
+                    await blob_container_client.delete_blob(b)
+                for page in doc["file_pages"]:
+                    logging.info("Removing page from index: {}".format(page))
+                    remove_from_index(page, azure_credentials)
+            except Exception as ex:
+                print("Failed to remove pages from index")
+
+        if doc["file"]:
+            blob_container_client.delete_blob(doc["file"])
+    except Exception as ex:
+        print("Failed to delete file on azure blob storage and search index")
+        print("Exception: {}".format(ex))
 
     db.documents.update_one({"id": id}, {"$set": {"deleted": True}})
 

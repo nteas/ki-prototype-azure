@@ -79,7 +79,7 @@ export function Component(): JSX.Element {
 	const handleDeleteItem = (id: string) => {
 		if (!confirm('Er du sikker på at du vil slette denne kilden?')) return;
 
-		fetch(`/api/documents/?${id}`).then(() => {
+		fetch(`/api/documents/${id}`, { method: 'DELETE' }).then(() => {
 			getDocuments();
 		});
 	};
