@@ -1,40 +1,15 @@
-import argparse
 import base64
-import glob
 import html
-import io
+import logging
 import os
 import re
-import tempfile
 import time
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 import openai
 import tiktoken
 from azure.ai.formrecognizer import DocumentAnalysisClient
-from azure.core.credentials import AzureKeyCredential, TokenCredential
-from azure.identity import AzureDeveloperCliCredential
 from azure.search.documents import SearchClient
-from azure.search.documents.indexes import SearchIndexClient
-from azure.search.documents.indexes.models import (
-    HnswParameters,
-    PrioritizedFields,
-    SearchableField,
-    SearchField,
-    SearchFieldDataType,
-    SearchIndex,
-    SemanticConfiguration,
-    SemanticField,
-    SemanticSettings,
-    SimpleField,
-    VectorSearch,
-    VectorSearchAlgorithmConfiguration,
-)
-from azure.storage.blob import BlobServiceClient
-from azure.storage.filedatalake import (
-    DataLakeServiceClient,
-)
-from pypdf import PdfReader, PdfWriter
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -42,18 +17,6 @@ from tenacity import (
     wait_random_exponential,
 )
 
-args = argparse.Namespace(
-    verbose=False,
-    openaihost="azure",
-    datalakestorageaccount=None,
-    datalakefilesystem=None,
-    datalakepath=None,
-    remove=False,
-    useacls=False,
-    skipblobs=False,
-    storageaccount=None,
-    container=None,
-)
 adls_gen2_creds = None
 storage_creds = None
 
@@ -71,7 +34,7 @@ SUPPORTED_BATCH_AOAI_MODEL = {"text-embedding-ada-002": {"token_limit": 8100, "m
 
 
 def calculate_tokens_emb_aoai(input: str):
-    encoding = tiktoken.encoding_for_model(args.openaimodelname)
+    encoding = tiktoken.encoding_for_model(os.getenv("AZURE_OPENAI_EMB_MODEL_NAME"))
     return len(encoding.encode(input))
 
 
@@ -80,56 +43,6 @@ def blob_name_from_file_page(filename, page=0):
         return os.path.splitext(os.path.basename(filename))[0] + f"-{page}" + ".pdf"
     else:
         return os.path.basename(filename)
-
-
-def upload_blobs(filename):
-    blob_service = BlobServiceClient(
-        account_url=f"https://{args.storageaccount}.blob.core.windows.net", credential=storage_creds
-    )
-    blob_container = blob_service.get_container_client(args.container)
-    if not blob_container.exists():
-        blob_container.create_container()
-
-    # if file is PDF split into pages and upload each page as a separate blob
-    if os.path.splitext(filename)[1].lower() == ".pdf":
-        reader = PdfReader(filename)
-        pages = reader.pages
-        for i in range(len(pages)):
-            blob_name = blob_name_from_file_page(filename, i)
-            if args.verbose:
-                print(f"\tUploading blob for page {i} -> {blob_name}")
-            f = io.BytesIO()
-            writer = PdfWriter()
-            writer.add_page(pages[i])
-            writer.write(f)
-            f.seek(0)
-            blob_container.upload_blob(blob_name, f, overwrite=True)
-    else:
-        blob_name = blob_name_from_file_page(filename)
-        with open(filename, "rb") as data:
-            blob_container.upload_blob(blob_name, data, overwrite=True)
-
-
-def remove_blobs(filename):
-    if args.verbose:
-        print(f"Removing blobs for '{filename or '<all>'}'")
-    blob_service = BlobServiceClient(
-        account_url=f"https://{args.storageaccount}.blob.core.windows.net", credential=storage_creds
-    )
-    blob_container = blob_service.get_container_client(args.container)
-    if blob_container.exists():
-        if filename is None:
-            blobs = iter(blob_container.list_blob_names())
-        else:
-            prefix = os.path.splitext(os.path.basename(filename))[0]
-            blobs = filter(
-                lambda b: re.match(f"{prefix}-\d+\.pdf", b),
-                blob_container.list_blob_names(name_starts_with=os.path.splitext(os.path.basename(prefix))[0]),
-            )
-        for b in blobs:
-            if args.verbose:
-                print(f"\tRemoving blob {b}")
-            blob_container.delete_blob(b)
 
 
 def table_to_html(table):
@@ -153,60 +66,51 @@ def table_to_html(table):
     return table_html
 
 
-def get_document_text(filename):
+def get_document_text(file, formrecognizer_creds):
     offset = 0
     page_map = []
-    if args.localpdfparser:
-        reader = PdfReader(filename)
-        pages = reader.pages
-        for page_num, p in enumerate(pages):
-            page_text = p.extract_text()
-            page_map.append((page_num, offset, page_text))
-            offset += len(page_text)
-    else:
-        if args.verbose:
-            print(f"Extracting text from '{filename}' using Azure Form Recognizer")
-        form_recognizer_client = DocumentAnalysisClient(
-            endpoint=f"https://{args.formrecognizerservice}.cognitiveservices.azure.com/",
-            credential=formrecognizer_creds,
-            headers={"x-ms-useragent": "azure-search-chat-demo/1.0.0"},
-        )
-        with open(filename, "rb") as f:
-            poller = form_recognizer_client.begin_analyze_document("prebuilt-layout", document=f)
-        form_recognizer_results = poller.result()
+    AZURE_FORMRECOGNIZER_SERVICE = os.getenv("AZURE_FORMRECOGNIZER_SERVICE")
+    print(f"Extracting text from file using Azure Form Recognizer")
+    form_recognizer_client = DocumentAnalysisClient(
+        endpoint=f"https://{AZURE_FORMRECOGNIZER_SERVICE}.cognitiveservices.azure.com/",
+        credential=formrecognizer_creds,
+        headers={"x-ms-useragent": "azure-search-chat-demo/1.0.0"},
+    )
+    poller = form_recognizer_client.begin_analyze_document("prebuilt-layout", document=file)
+    form_recognizer_results = poller.result()
 
-        for page_num, page in enumerate(form_recognizer_results.pages):
-            tables_on_page = [
-                table
-                for table in (form_recognizer_results.tables or [])
-                if table.bounding_regions and table.bounding_regions[0].page_number == page_num + 1
-            ]
+    for page_num, page in enumerate(form_recognizer_results.pages):
+        tables_on_page = [
+            table
+            for table in (form_recognizer_results.tables or [])
+            if table.bounding_regions and table.bounding_regions[0].page_number == page_num + 1
+        ]
 
-            # mark all positions of the table spans in the page
-            page_offset = page.spans[0].offset
-            page_length = page.spans[0].length
-            table_chars = [-1] * page_length
-            for table_id, table in enumerate(tables_on_page):
-                for span in table.spans:
-                    # replace all table spans with "table_id" in table_chars array
-                    for i in range(span.length):
-                        idx = span.offset - page_offset + i
-                        if idx >= 0 and idx < page_length:
-                            table_chars[idx] = table_id
+        # mark all positions of the table spans in the page
+        page_offset = page.spans[0].offset
+        page_length = page.spans[0].length
+        table_chars = [-1] * page_length
+        for table_id, table in enumerate(tables_on_page):
+            for span in table.spans:
+                # replace all table spans with "table_id" in table_chars array
+                for i in range(span.length):
+                    idx = span.offset - page_offset + i
+                    if idx >= 0 and idx < page_length:
+                        table_chars[idx] = table_id
 
-            # build page text by replacing characters in table spans with table html
-            page_text = ""
-            added_tables = set()
-            for idx, table_id in enumerate(table_chars):
-                if table_id == -1:
-                    page_text += form_recognizer_results.content[page_offset + idx]
-                elif table_id not in added_tables:
-                    page_text += table_to_html(tables_on_page[table_id])
-                    added_tables.add(table_id)
+        # build page text by replacing characters in table spans with table html
+        page_text = ""
+        added_tables = set()
+        for idx, table_id in enumerate(table_chars):
+            if table_id == -1:
+                page_text += form_recognizer_results.content[page_offset + idx]
+            elif table_id not in added_tables:
+                page_text += table_to_html(tables_on_page[table_id])
+                added_tables.add(table_id)
 
-            page_text += " "
-            page_map.append((page_num, offset, page_text))
-            offset += len(page_text)
+        page_text += " "
+        page_map.append((page_num, offset, page_text))
+        offset += len(page_text)
 
     return page_map
 
@@ -214,8 +118,7 @@ def get_document_text(filename):
 def split_text(page_map, filename):
     SENTENCE_ENDINGS = [".", "!", "?"]
     WORDS_BREAKS = [",", ";", ":", " ", "(", ")", "[", "]", "{", "}", "\t", "\n"]
-    if args.verbose:
-        print(f"Splitting '{filename}' into sections")
+    print(f"Splitting '{filename}' into sections")
 
     def find_page(offset):
         num_pages = len(page_map)
@@ -272,10 +175,9 @@ def split_text(page_map, filename):
             # If the section ends with an unclosed table, we need to start the next section with the table.
             # If table starts inside SENTENCE_SEARCH_LIMIT, we ignore it, as that will cause an infinite loop for tables longer than MAX_SECTION_LENGTH
             # If last table starts inside SECTION_OVERLAP, keep overlapping
-            if args.verbose:
-                print(
-                    f"Section ends with unclosed table, starting next section with the table at page {find_page(start)} offset {start} table start {last_table_start}"
-                )
+            print(
+                f"Section ends with unclosed table, starting next section with the table at page {find_page(start)} offset {start} table start {last_table_start}"
+            )
             start = min(end - SECTION_OVERLAP, start + last_table_start)
         else:
             start = end - SECTION_OVERLAP
@@ -298,7 +200,7 @@ def create_sections(
         section = {
             "id": f"{file_id}-page-{i}",
             "content": content,
-            "category": args.category,
+            "category": "",
             "sourcepage": blob_name_from_file_page(filename, pagenum),
             "sourcefile": filename,
         }
@@ -307,9 +209,8 @@ def create_sections(
         yield section
 
 
-def before_retry_sleep(retry_state):
-    if args.verbose:
-        print("Rate limited on the OpenAI embeddings API, sleeping before retrying...")
+def before_retry_sleep():
+    print("Rate limited on the OpenAI embeddings API, sleeping before retrying...")
 
 
 @retry(
@@ -320,7 +221,7 @@ def before_retry_sleep(retry_state):
 )
 def compute_embedding(text, embedding_deployment, embedding_model):
     refresh_openai_token()
-    embedding_args = {"deployment_id": embedding_deployment} if args.openaihost != "openai" else {}
+    embedding_args = {"deployment_id": embedding_deployment}
     return openai.Embedding.create(**embedding_args, model=embedding_model, input=text)["data"][0]["embedding"]
 
 
@@ -332,71 +233,11 @@ def compute_embedding(text, embedding_deployment, embedding_model):
 )
 def compute_embedding_in_batch(texts):
     refresh_openai_token()
-    embedding_args = {"deployment_id": args.openaideployment} if args.openaihost != "openai" else {}
-    emb_response = openai.Embedding.create(**embedding_args, model=args.openaimodelname, input=texts)
-    return [data.embedding for data in emb_response.data]
-
-
-def create_search_index():
-    if args.verbose:
-        print(f"Ensuring search index {args.index} exists")
-    index_client = SearchIndexClient(
-        endpoint=f"https://{args.searchservice}.search.windows.net/", credential=search_creds
+    embedding_args = {"deployment_id": os.getenv("AZURE_OPENAI_EMB_DEPLOYMENT")}
+    emb_response = openai.Embedding.create(
+        **embedding_args, model=os.getenv("AZURE_OPENAI_EMB_MODEL_NAME"), input=texts
     )
-    fields = [
-        SimpleField(name="id", type="Edm.String", key=True),
-        SearchableField(name="content", type="Edm.String", analyzer_name="en.microsoft"),
-        SearchField(
-            name="embedding",
-            type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
-            hidden=False,
-            searchable=True,
-            filterable=False,
-            sortable=False,
-            facetable=False,
-            vector_search_dimensions=1536,
-            vector_search_configuration="default",
-        ),
-        SimpleField(name="category", type="Edm.String", filterable=True, facetable=True),
-        SimpleField(name="sourcepage", type="Edm.String", filterable=True, facetable=True),
-        SimpleField(name="sourcefile", type="Edm.String", filterable=True, facetable=True),
-    ]
-    if args.useacls:
-        fields.append(
-            SimpleField(name="oids", type=SearchFieldDataType.Collection(SearchFieldDataType.String), filterable=True)
-        )
-        fields.append(
-            SimpleField(name="groups", type=SearchFieldDataType.Collection(SearchFieldDataType.String), filterable=True)
-        )
-
-    if args.index not in index_client.list_index_names():
-        index = SearchIndex(
-            name=args.index,
-            fields=fields,
-            semantic_settings=SemanticSettings(
-                configurations=[
-                    SemanticConfiguration(
-                        name="default",
-                        prioritized_fields=PrioritizedFields(
-                            title_field=None, prioritized_content_fields=[SemanticField(field_name="content")]
-                        ),
-                    )
-                ]
-            ),
-            vector_search=VectorSearch(
-                algorithm_configurations=[
-                    VectorSearchAlgorithmConfiguration(
-                        name="default", kind="hnsw", hnsw_parameters=HnswParameters(metric="cosine")
-                    )
-                ]
-            ),
-        )
-        if args.verbose:
-            print(f"Creating {args.index} search index")
-        index_client.create_index(index)
-    else:
-        if args.verbose:
-            print(f"Search index {args.index} already exists")
+    return [data.embedding for data in emb_response.data]
 
 
 def update_embeddings_in_batch(sections):
@@ -407,15 +248,15 @@ def update_embeddings_in_batch(sections):
     for s in sections:
         token_count += calculate_tokens_emb_aoai(s["content"])
         if (
-            token_count <= SUPPORTED_BATCH_AOAI_MODEL[args.openaimodelname]["token_limit"]
-            and len(batch_queue) < SUPPORTED_BATCH_AOAI_MODEL[args.openaimodelname]["max_batch_size"]
+            token_count <= SUPPORTED_BATCH_AOAI_MODEL[os.getenv("AZURE_OPENAI_EMB_MODEL_NAME")]["token_limit"]
+            and len(batch_queue)
+            < SUPPORTED_BATCH_AOAI_MODEL[os.getenv("AZURE_OPENAI_EMB_MODEL_NAME")]["max_batch_size"]
         ):
             batch_queue.append(s)
             copy_s.append(s)
         else:
             emb_responses = compute_embedding_in_batch([item["content"] for item in batch_queue])
-            if args.verbose:
-                print(f"Batch Completed. Batch size  {len(batch_queue)} Token count {token_count}")
+            print(f"Batch Completed. Batch size  {len(batch_queue)} Token count {token_count}")
             for emb, item in zip(emb_responses, batch_queue):
                 batch_response[item["id"]] = emb
             batch_queue = []
@@ -424,8 +265,7 @@ def update_embeddings_in_batch(sections):
 
     if batch_queue:
         emb_responses = compute_embedding_in_batch([item["content"] for item in batch_queue])
-        if args.verbose:
-            print(f"Batch Completed. Batch size  {len(batch_queue)} Token count {token_count}")
+        print(f"Batch Completed. Batch size  {len(batch_queue)} Token count {token_count}")
         for emb, item in zip(emb_responses, batch_queue):
             batch_response[item["id"]] = emb
 
@@ -434,11 +274,24 @@ def update_embeddings_in_batch(sections):
         yield s
 
 
-def index_sections(filename, sections, acls=None):
-    if args.verbose:
-        print(f"Indexing sections from '{filename}' into search index '{args.index}'")
+def index_sections(
+    filename,
+    sections,
+    search_creds,
+    acls=None,
+):
+    AZURE_SEARCH_SERVICE = os.getenv("AZURE_SEARCH_SERVICE")
+    AZURE_SEARCH_INDEX = os.getenv("AZURE_SEARCH_INDEX")
+
+    print(f"Indexing sections from '{filename}' into search index '{AZURE_SEARCH_INDEX}'")
+
+    if not search_creds:
+        raise Exception("Search credentials not provided")
+
     search_client = SearchClient(
-        endpoint=f"https://{args.searchservice}.search.windows.net/", index_name=args.index, credential=search_creds
+        endpoint=f"https://{AZURE_SEARCH_SERVICE}.search.windows.net/",
+        index_name=AZURE_SEARCH_INDEX,
+        credential=search_creds,
     )
     i = 0
     batch = []
@@ -450,33 +303,40 @@ def index_sections(filename, sections, acls=None):
         if i % 1000 == 0:
             results = search_client.upload_documents(documents=batch)
             succeeded = sum([1 for r in results if r.succeeded])
-            if args.verbose:
-                print(f"\tIndexed {len(results)} sections, {succeeded} succeeded")
+            print(f"\tIndexed {len(results)} sections, {succeeded} succeeded")
             batch = []
 
     if len(batch) > 0:
         results = search_client.upload_documents(documents=batch)
         succeeded = sum([1 for r in results if r.succeeded])
-        if args.verbose:
-            print(f"\tIndexed {len(results)} sections, {succeeded} succeeded")
+        print(f"\tIndexed {len(results)} sections, {succeeded} succeeded")
 
 
-def remove_from_index(filename):
-    if args.verbose:
-        print(f"Removing sections from '{filename or '<all>'}' from search index '{args.index}'")
+def remove_from_index(filename, search_creds):
+    if not search_creds:
+        raise Exception("Search credentials not provided")
+
+    AZURE_SEARCH_SERVICE = os.getenv("AZURE_SEARCH_SERVICE")
+    AZURE_SEARCH_INDEX = os.getenv("AZURE_SEARCH_INDEX")
+
     search_client = SearchClient(
-        endpoint=f"https://{args.searchservice}.search.windows.net/", index_name=args.index, credential=search_creds
+        endpoint=f"https://{AZURE_SEARCH_SERVICE}.search.windows.net/",
+        index_name=AZURE_SEARCH_INDEX,
+        credential=search_creds,
     )
-    while True:
-        filter = None if filename is None else f"sourcefile eq '{os.path.basename(filename)}'"
-        r = search_client.search("", filter=filter, top=1000, include_total_count=True)
-        if r.get_count() == 0:
-            break
-        removed_docs = search_client.delete_documents(documents=[{"id": d["id"]} for d in r])
-        if args.verbose:
+
+    try:
+        while True:
+            filter = None if filename is None else f"sourcefile eq '{os.path.basename(filename)}'"
+            r = search_client.search("", filter=filter, top=1000, include_total_count=True)
+            if r.get_count() == 0:
+                break
+            removed_docs = search_client.delete_documents(documents=[{"id": d["id"]} for d in r])
             print(f"\tRemoved {len(removed_docs)} sections from index")
-        # It can take a few seconds for search results to reflect changes, so wait a bit
-        time.sleep(2)
+            # It can take a few seconds for search results to reflect changes, so wait a bit
+            time.sleep(2)
+    except Exception as e:
+        print(f"Error removing sections from index: {e}")
 
 
 def refresh_openai_token():
@@ -491,110 +351,3 @@ def refresh_openai_token():
         token_cred = open_ai_token_cache[CACHE_KEY_TOKEN_CRED]
         openai.api_key = token_cred.get_token("https://cognitiveservices.azure.com/.default").token
         open_ai_token_cache[CACHE_KEY_CREATED_TIME] = time.time()
-
-
-def read_files(
-    path_pattern: str,
-    use_vectors: bool,
-    vectors_batch_support: bool,
-    embedding_deployment: Optional[str] = None,
-    embedding_model: Optional[str] = None,
-):
-    """
-    Recursively read directory structure under `path_pattern`
-    and execute indexing for the individual files
-    """
-    for filename in glob.glob(path_pattern):
-        if args.verbose:
-            print(f"Processing '{filename}'")
-        if args.remove:
-            # TODO: check these
-            remove_blobs(filename)
-            remove_from_index(filename)
-        else:
-            if os.path.isdir(filename):
-                read_files(filename + "/*", use_vectors, vectors_batch_support)
-                continue
-            try:
-                if not args.skipblobs:
-                    upload_blobs(filename)
-                page_map = get_document_text(filename)
-                sections = create_sections(
-                    os.path.basename(filename),
-                    page_map,
-                    use_vectors and not vectors_batch_support,
-                    embedding_deployment,
-                    embedding_model,
-                )
-                if use_vectors and vectors_batch_support:
-                    sections = update_embeddings_in_batch(sections)
-                index_sections(os.path.basename(filename), sections)
-            except Exception as e:
-                print(f"\tGot an error while reading {filename} -> {e} --> skipping file")
-
-
-def read_adls_gen2_files(
-    use_vectors: bool,
-    vectors_batch_support: bool,
-    embedding_deployment: Optional[str] = None,
-    embedding_model: Optional[str] = None,
-):
-    datalake_service = DataLakeServiceClient(
-        account_url=f"https://{args.datalakestorageaccount}.dfs.core.windows.net", credential=adls_gen2_creds
-    )
-    filesystem_client = datalake_service.get_file_system_client(file_system=args.datalakefilesystem)
-    paths = filesystem_client.get_paths(path=args.datalakepath, recursive=True)
-    for path in paths:
-        if not path.is_directory:
-            if args.remove:
-                remove_blobs(path.name)
-                remove_from_index(path.name)
-            else:
-                temp_file_path = os.path.join(tempfile.gettempdir(), os.path.basename(path.name))
-                try:
-                    temp_file = open(temp_file_path, "wb")
-                    file_client = filesystem_client.get_file_client(path)
-                    file_client.download_file().readinto(temp_file)
-
-                    acls: Optional[dict[str, list]] = None
-                    if args.useacls:
-                        # Parse out user ids and group ids
-                        acls = {"oids": [], "groups": []}
-                        # https://learn.microsoft.com/python/api/azure-storage-file-datalake/azure.storage.filedatalake.datalakefileclient?view=azure-python#azure-storage-filedatalake-datalakefileclient-get-access-control
-                        # Request ACLs as GUIDs
-                        acl_list = file_client.get_access_control(upn=False)["acl"]
-                        # https://learn.microsoft.com/azure/storage/blobs/data-lake-storage-access-control
-                        # ACL Format: user::rwx,group::r-x,other::r--,user:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:r--
-                        acl_list = acl_list.split(",")
-                        for acl in acl_list:
-                            acl_parts: list = acl.split(":")
-                            if len(acl_parts) != 3:
-                                continue
-                            if len(acl_parts[1]) == 0:
-                                continue
-                            if acl_parts[0] == "user" and "r" in acl_parts[2]:
-                                acls["oids"].append(acl_parts[1])
-                            if acl_parts[0] == "group" and "r" in acl_parts[2]:
-                                acls["groups"].append(acl_parts[1])
-
-                    if not args.skipblobs:
-                        upload_blobs(temp_file.name)
-                    page_map = get_document_text(temp_file.name)
-                    sections = create_sections(
-                        os.path.basename(path.name),
-                        page_map,
-                        use_vectors and not vectors_batch_support,
-                        embedding_deployment,
-                        embedding_model,
-                    )
-                    if use_vectors and vectors_batch_support:
-                        sections = update_embeddings_in_batch(sections)
-                    index_sections(os.path.basename(path.name), sections, acls)
-                except Exception as e:
-                    print(f"\tGot an error while reading {path.name} -> {e} --> skipping file")
-                finally:
-                    try:
-                        temp_file.close()
-                        os.remove(temp_file_path)
-                    except Exception as e:
-                        print(f"\tGot an error while deleting {temp_file_path} -> {e}")

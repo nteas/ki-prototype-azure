@@ -6,6 +6,11 @@ import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel, Field
+from pypdf import PdfReader, PdfWriter
+from azure.identity import AzureDeveloperCliCredential
+
+from core.db import get_db
+from core.context import get_azure_credential, get_blob_container_client
 from core.utilities import (
     blob_name_from_file_page,
     get_document_text,
@@ -14,10 +19,6 @@ from core.utilities import (
     create_sections,
     index_sections,
 )
-from core.context import get_blob_container_client
-from pypdf import PdfReader, PdfWriter
-
-from core.db import get_db
 
 
 class Log(BaseModel):
@@ -30,12 +31,12 @@ class Log(BaseModel):
 
 class Document(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    title: Optional[str] = Field(default=None)
+    title: str = Field(default=None)
     owner: str = Field(default="admin")
     classification: str = Field(default="public")
     logs: List[Log] = Field(default=[])
-    frequency: str = Field(default="none")
-    flagged: bool = Field(default=False)
+    frequency: Optional[str] = Field(default="none")
+    flagged: Optional[bool] = Field(default=False)
     type: str = Field(default="pdf")
     file: Optional[str] = Field(default=None)
     file_pages: List[str] = Field(default=[])
@@ -46,16 +47,20 @@ class Document(BaseModel):
     def __init__(self, **data):
         data.pop("_id", None)  # Remove _id from the data if it exists
         super().__init__(**data)
+        self._title = self.title
 
     class Config:
         extra = "allow"
 
     @property
     def title(self):
-        if self.file is not None and self.title is None:
-            return os.path.basename(self.file)
+        if hasattr(self, "_title"):
+            if self.file is not None and self._title is None:
+                return os.path.basename(self.file)
+            else:
+                return self._title
         else:
-            return self.title
+            return None
 
 
 document_router = APIRouter()
@@ -65,7 +70,7 @@ document_router = APIRouter()
 @document_router.post("/")
 def create_document(doc: Document, db=Depends(get_db)):
     try:
-        db.documents.insert_one(doc)
+        db.documents.insert_one(doc.model_dump())
 
         return doc
     except Exception as ex:
@@ -166,63 +171,96 @@ async def update_document(id, request: Request, db=Depends(get_db)):
 # Upload a file to blob storage and update document
 @document_router.post("/{id}/file")
 async def upload_file(
-    id, file: UploadFile = File(...), db=Depends(get_db), blob_container_client=Depends(get_blob_container_client)
+    id,
+    file: UploadFile = File(...),
+    db=Depends(get_db),
+    blob_container_client=Depends(get_blob_container_client),
 ):
-    doc = db.documents.find_one({"id": id})
+    try:
+        doc = db.documents.find_one({"id": id})
 
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found")
 
-    if doc["file"]:
-        blob_container_client.delete_blob(doc["file"])
-        remove_from_index(doc["file"])
+        azure_credentials = get_azure_credential()
 
-    if doc["file_pages"]:
-        for page in doc["file_pages"]:
-            remove_from_index(page)
+        if doc["file_pages"]:
+            try:
+                prefix = os.path.splitext(doc["file"])[0]
+                blobs = blob_container_client.list_blob_names(name_starts_with=prefix)
+                for b in blobs:
+                    print(f"\tRemoving blob {b}")
+                    await blob_container_client.delete_blob(b)
+                for page in doc["file_pages"]:
+                    logging.info("Removing page from index: {}".format(page))
+                    remove_from_index(page, azure_credentials)
+            except Exception as ex:
+                print("Failed to remove pages from index")
 
-    filename = file.filename
-    pdf = await file.read()
-    file_pages = []
+        filename = file.filename
+        pdf = await file.read()
+        file_pages = []
 
-    # upload file to blob storage
-    if os.path.splitext(filename)[1].lower() == ".pdf":
-        reader = PdfReader(io.BytesIO(pdf))
-        pages = reader.pages
-        for i in range(len(pages)):
-            blob_name = blob_name_from_file_page(filename, i)
-            f = io.BytesIO()
-            writer = PdfWriter()
-            writer.add_page(pages[i])
-            writer.write(f)
-            f.seek(0)
-            blob_container_client.upload_blob(blob_name, f, overwrite=True)
-            file_pages.append(blob_name)
+        # upload file to blob storage
+        if os.path.splitext(filename)[1].lower() == ".pdf":
+            reader = PdfReader(io.BytesIO(pdf))
+            pages = reader.pages
+            for i in range(len(pages)):
+                blob_name = blob_name_from_file_page(filename, i)
+                f = io.BytesIO()
+                writer = PdfWriter()
+                writer.add_page(pages[i])
+                writer.write(f)
+                f.seek(0)
 
-            # TODO: index after all changes are made?
-            # should be own route operation
-            # page_map = get_document_text(pages[i])
-            # sections = create_sections(
-            #     os.path.basename(filename),
-            #     page_map,
-            #     True,
-            #     True,
-            #     os.getenv("AZURE_OPENAI_EMB_MODEL_NAME", "text-embedding-ada-002"),
-            # )
-            # sections = update_embeddings_in_batch(sections)
-            # index_sections(os.path.basename(filename), sections)
-    else:
-        blob_name = blob_name_from_file_page(filename)
+                await blob_container_client.upload_blob(blob_name, f, overwrite=True)
 
-        blob_container_client.upload_blob(blob_name, pdf, overwrite=True)
+                file_pages.append(blob_name)
+        else:
+            blob_name = blob_name_from_file_page(filename)
 
-    # update document
-    doc["file"] = filename
-    doc["file_pages"] = file_pages
-    doc["logs"].append(Log(change="update_file", message="File updated"))
-    doc = Document(**doc)
+            blob_container_client.upload_blob(blob_name, pdf, overwrite=True)
 
-    db.documents.update_one({"id": id}, {"$set": doc.model_dump()})
+        # update document
+        doc["file"] = filename
+        doc["file_pages"] = file_pages
+        doc["logs"].append(Log(change="update_file", message="File updated"))
+        doc = Document(**doc)
+
+        db.documents.update_one({"id": id}, {"$set": doc.model_dump()})
+
+        # update index
+        file_bytes = await file.read()
+
+        print("Getting document text")
+
+        AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID")
+        formrecognizer_creds = AzureDeveloperCliCredential(tenant_id=AZURE_TENANT_ID, process_timeout=60)
+        page_map = get_document_text(file_bytes, formrecognizer_creds)
+
+        print("Got text. creating sections")
+
+        sections = create_sections(
+            os.path.basename(filename),
+            page_map,
+            True,
+            True,
+            os.getenv("AZURE_OPENAI_EMB_MODEL_NAME", "text-embedding-ada-002"),
+        )
+        print("Got sections. updating embeddings")
+
+        sections = update_embeddings_in_batch(sections)
+
+        print("Updated embeddings. indexing sections")
+        index_sections(os.path.basename(filename), sections)
+
+        print("Indexed sections")
+
+        return doc
+    except Exception as ex:
+        print("Failed to upload file")
+        print("Exception: {}".format(ex))
+        raise HTTPException(status_code=500, detail="Failed to upload file")
 
 
 # Delete a specific document by ID
@@ -291,8 +329,7 @@ async def get_files(request: Request):
 async def search(request: Request, db=Depends(get_db)):
     try:
         search_client = request.state.search_client
-        search_term = request.args.get("q", "")
-        search_results = await search_client.search(search_text=search_term, select=["id", "sourcepage", "sourcefile"])
+        search_results = await search_client.search(search_text="", select=["id", "sourcepage", "sourcefile"])
 
         # Iterate over the search results using the get_next method
         docs = []

@@ -79,6 +79,9 @@ export function Component(): JSX.Element {
 
 		fetch(`/api/documents/${id}`, {
 			method: 'PUT',
+			headers: {
+				'Content-Type': 'application/json',
+			},
 			body: JSON.stringify(body),
 		})
 			.then(res => res.json())
