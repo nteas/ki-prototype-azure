@@ -81,18 +81,37 @@
 }
 
 .citation {
+	border: none;
 	color: #056089;
-	border-radius: 5px;
+	border-top-left-radius: 5px;
+	border-bottom-left-radius: 5px;
 	background: #ceecf9;
 	font-size: 14px;
 	font-weight: 600;
 	line-height: 18px; /* 128.571% */
 	padding: 5px 10px;
-	margin-left: 5px;
 }
 
 .citation:hover {
 	text-decoration: underline;
+}
+
+.citationFlag {
+	border: none;
+	color: #056089;
+	border-top-right-radius: 5px;
+	border-bottom-right-radius: 5px;
+	background: #ceecf9;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 18px; /* 128.571% */
+	padding: 5px 10px;
+	margin-left: 2px;
+}
+
+.citationFlag.citationFlagged {
+	background-color: var(--coral);
+	color: var(--red);
 }
 
 .button {

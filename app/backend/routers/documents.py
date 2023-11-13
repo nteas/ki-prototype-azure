@@ -149,6 +149,65 @@ def get_document(id, db=Depends(get_db)):
         raise HTTPException(status_code=404, detail="Document not found")
 
 
+# Check if document is flagged based on citation / file_page
+@document_router.get("/flag/{citation}")
+def get_document(citation, db=Depends(get_db)):
+    if not citation:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    doc = db.documents.find_one({"file_pages": citation})
+
+    if doc:
+        return {"flagged": doc["flagged"]}
+    else:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+
+# Flag a specific document by citation / file_page
+@document_router.post("/flag/{filename}")
+def flag_document(filename, db=Depends(get_db)):
+    if not filename:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    doc = db.documents.find_one({"file_pages": filename})
+
+    if doc:
+        message = "Document flagged"
+        change = "flagged"
+        if doc["flagged"]:
+            message = "Document unflagged"
+            change = "unflagged"
+
+        log = Log(change=change, message=message)
+
+        db.documents.update_one(
+            {"id": doc["id"]}, {"$set": {"flagged": not doc["flagged"]}, "$push": {"logs": log.model_dump()}}
+        )
+
+        return {"flagged": not doc["flagged"]}
+    else:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+
+# Update a specific document by ID
+@document_router.put("/{id}")
+async def update_document(id, request: Request, db=Depends(get_db)):
+    # get request body
+    data = await request.json()
+
+    doc = db.documents.find_one({"id": id})
+
+    for key, value in data.items():
+        doc[key] = value
+
+    if doc:
+        db.documents.update_one({"id": id}, {"$set": Document(**doc).model_dump()})
+
+        return Document(**doc)
+    else:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+
 # Update a specific document by ID
 @document_router.put("/{id}")
 async def update_document(id, request: Request, db=Depends(get_db)):

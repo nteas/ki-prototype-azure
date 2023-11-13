@@ -34,6 +34,8 @@ interface PaginateDocuments {
 	total: number;
 }
 
+const DEFAULT_LIMIT = 20;
+
 export function Component(): JSX.Element {
 	const [loading, setLoading] = useState<boolean>(true);
 	const [viewDocument, setViewDocument] = useState<Document | null>(null);
@@ -47,7 +49,7 @@ export function Component(): JSX.Element {
 		flagged: false,
 		pdf: true,
 		web: true,
-		limit: 10,
+		limit: DEFAULT_LIMIT,
 	});
 
 	const updateFilters = (key: string, value: boolean | string | number) => {
@@ -250,7 +252,10 @@ export function Component(): JSX.Element {
 					{data?.documents?.length < data?.total && (
 						<Button
 							onClick={() =>
-								updateFilters('limit', filters.limit + 10)
+								updateFilters(
+									'limit',
+									filters.limit + DEFAULT_LIMIT
+								)
 							}>
 							Last flere
 						</Button>

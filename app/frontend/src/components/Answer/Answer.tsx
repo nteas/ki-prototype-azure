@@ -1,12 +1,14 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Input } from '@fluentui/react-components';
 import DOMPurify from 'dompurify';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
+	faFlag,
 	faStars,
 	faStar as faStarSolid,
 } from '@fortawesome/pro-solid-svg-icons';
 import {
+	faFlag as flagOutline,
 	faClipboard,
 	faLightbulb,
 	faStar,
@@ -93,13 +95,12 @@ export const Answer = ({
 					{parsedAnswer.citations.map((x, i) => {
 						const path = getCitationFilePath(x);
 						return (
-							<a
+							<Citation
 								key={i}
-								className={styles.citation}
-								title={x}
-								onClick={() => onCitationClicked(path)}>
-								{`${++i}. ${x}`}
-							</a>
+								index={i}
+								citation={x}
+								onCitationClick={() => onCitationClicked(path)}
+							/>
 						);
 					})}
 				</div>
@@ -186,3 +187,53 @@ export const Answer = ({
 		</div>
 	);
 };
+
+interface CitationProps {
+	index: number;
+	citation: string;
+	onCitationClick: () => void;
+}
+
+function Citation({ index, citation, onCitationClick }: CitationProps) {
+	const [isFlagged, setIsFlagged] = useState(false);
+
+	useEffect(() => {
+		fetch(`/api/documents/flag/${citation}`)
+			.then(res => res.json())
+			.then(res => setIsFlagged(res.flagged))
+			.catch(err => console.error(err));
+	}, []);
+
+	function onFlagClick(filename: string) {
+		console.log('flag citation', filename);
+
+		fetch(`/api/documents/flag/${filename}`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+		})
+			.then(res => res.json())
+			.then(res => setIsFlagged(res.flagged))
+			.catch(err => console.error(err));
+	}
+
+	return (
+		<div className={styles.citationWrapper}>
+			<button
+				className={styles.citation}
+				title={citation}
+				onClick={onCitationClick}>
+				{`${++index}. ${citation}`}
+			</button>
+
+			<button
+				className={`${styles.citationFlag} ${
+					isFlagged && styles.citationFlagged
+				}`}
+				onClick={() => onFlagClick(citation)}>
+				<FontAwesomeIcon icon={isFlagged ? flagOutline : faFlag} />
+			</button>
+		</div>
+	);
+}
