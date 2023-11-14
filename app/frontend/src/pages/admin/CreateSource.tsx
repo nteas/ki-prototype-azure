@@ -9,6 +9,7 @@ import Button from '../../components/Button/Button';
 
 import styles from './CreateSource.module.css';
 import { ClassificationEnum, classificationMap } from '../../api/models';
+import { apiFetch } from '../../api';
 
 export function Component(): JSX.Element {
 	const [loading, setLoading] = useState<boolean>(false);
@@ -46,7 +47,7 @@ export function Component(): JSX.Element {
 			return;
 		}
 
-		const newDoc = await fetch(`/api/documents/`, {
+		const newDoc = await apiFetch(`/api/documents/`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -63,7 +64,7 @@ export function Component(): JSX.Element {
 			const fileData = new FormData();
 			fileData.append('file', file);
 
-			await fetch(`/api/documents/${newDoc.id}/file`, {
+			await apiFetch(`/api/documents/${newDoc.id}/file`, {
 				method: 'POST',
 				body: fileData,
 			}).catch(err => console.error(err));

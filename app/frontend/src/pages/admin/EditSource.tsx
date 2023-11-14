@@ -9,7 +9,12 @@ import styles from './CreateSource.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck } from '@fortawesome/pro-regular-svg-icons';
 import { faEye, faTrash, faXmark } from '@fortawesome/pro-solid-svg-icons';
-import { ClassificationEnum, classificationMap, Document } from '../../api';
+import {
+	apiFetch,
+	ClassificationEnum,
+	classificationMap,
+	Document,
+} from '../../api';
 import DocModal from '../../components/Modal/DocModal';
 import { formatDate } from '../../libs/utils';
 
@@ -31,7 +36,7 @@ export function Component(): JSX.Element {
 
 		setLoading(true);
 
-		fetch(`/api/documents/${id}`)
+		apiFetch(`/api/documents/${id}`)
 			.then(res => res.json())
 			.then(res => setData(res))
 			.catch(err => console.error(err))
@@ -55,7 +60,7 @@ export function Component(): JSX.Element {
 			const fileData = new FormData();
 			fileData.append('file', file);
 
-			await fetch(`/api/documents/${id}/file`, {
+			await apiFetch(`/api/documents/${id}/file`, {
 				method: 'POST',
 				body: fileData,
 			}).catch(err => console.error(err));
@@ -78,7 +83,7 @@ export function Component(): JSX.Element {
 			return;
 		}
 
-		fetch(`/api/documents/${id}`, {
+		apiFetch(`/api/documents/${id}`, {
 			method: 'PUT',
 			headers: {
 				'Content-Type': 'application/json',
@@ -94,7 +99,7 @@ export function Component(): JSX.Element {
 	const handleDeleteItem = () => {
 		if (!confirm('Er du sikker på at du vil slette denne kilden?')) return;
 
-		fetch(`/api/documents/${id}`, { method: 'DELETE' }).then(() => {
+		apiFetch(`/api/documents/${id}`, { method: 'DELETE' }).then(() => {
 			navigate(-1);
 		});
 	};
@@ -301,12 +306,13 @@ export function Component(): JSX.Element {
 					<h2 className={styles.title}>Endringslogg</h2>
 
 					<div className={styles.logList}>
-						{data.logs.map(log => (
+						{data.logs.map((log, i) => (
 							<div
 								key={log?.id}
 								className={`${styles.log} ${
 									log.change === 'flagged' &&
 									data?.flagged_pages?.length > 0 &&
+									i === 0 &&
 									styles.flagged
 								}`}>
 								<div className={styles.logRow}>

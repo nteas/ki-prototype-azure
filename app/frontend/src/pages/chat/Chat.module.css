@@ -52,14 +52,9 @@
 
 .chatMessageStream {
 	width: 100%;
-	overflow-y: auto;
-	display: flex;
-	flex-direction: column;
-	flex: 1;
-}
-
-.chatMessageStream > div {
-	overflow: visible;
+	max-height: 70vh;
+	overflow: auto;
+	padding-bottom: 120px;
 }
 
 .chatMessageGpt {

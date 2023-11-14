@@ -16,7 +16,7 @@ import {
 
 import styles from './Answer.module.css';
 
-import { ChatAppResponse, getCitationFilePath } from '../../api';
+import { ChatAppResponse, apiFetch, getCitationFilePath } from '../../api';
 import { parseAnswerToHtml } from './AnswerParser';
 import analytics from '../../libs/analytics';
 
@@ -61,7 +61,7 @@ export const Answer = ({
 	}
 
 	async function flagCitations(message: string) {
-		return await fetch('/api/documents/flag', {
+		return await apiFetch('/api/documents/flag', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -121,7 +121,7 @@ export const Answer = ({
 								onCitationClick={() => onCitationClicked(path)}
 								updateFlags={() => updateFlaggedCitations(x)}
 								isFlagged={flaggedCitations.includes(x)}
-								disabled={isFeedbackGiven.current}
+								isFeedbackGiven={isFeedbackGiven}
 							/>
 						);
 					})}
@@ -187,12 +187,12 @@ export const Answer = ({
 										feedback === 0
 											? 'not_specified'
 											: feedback,
-									comment: e.currentTarget.comment.value,
+									comment: e?.currentTarget?.comment?.value,
 								});
 
 								if (flaggedCitations?.length > 0) {
 									await flagCitations(
-										e.currentTarget.comment.value
+										e?.currentTarget?.comment?.value
 									);
 								}
 
@@ -227,7 +227,7 @@ interface CitationProps {
 	onCitationClick: () => void;
 	updateFlags: (citation: string) => void;
 	isFlagged: boolean;
-	disabled: boolean;
+	isFeedbackGiven: React.MutableRefObject<boolean>;
 }
 
 function Citation({
@@ -236,12 +236,17 @@ function Citation({
 	onCitationClick,
 	updateFlags,
 	isFlagged,
-	disabled,
+	isFeedbackGiven,
 }: CitationProps) {
 	useEffect(() => {
-		fetch(`/api/documents/flag/${citation}`)
+		if (isFlagged) return;
+
+		apiFetch(`/api/documents/flag/${citation}`)
 			.then(res => res.json())
-			.then(res => res.flagged && updateFlags(res.flagged))
+			.then(res => {
+				isFeedbackGiven.current = res.flagged;
+				res.flagged && updateFlags(res.flagged);
+			})
 			.catch(err => console.error(err));
 	}, []);
 
@@ -259,7 +264,7 @@ function Citation({
 					isFlagged && styles.citationFlagged
 				}`}
 				onClick={() => updateFlags(citation)}
-				disabled={disabled}>
+				disabled={isFeedbackGiven.current}>
 				<FontAwesomeIcon icon={isFlagged ? faFlag : flagOutline} />
 			</button>
 		</div>

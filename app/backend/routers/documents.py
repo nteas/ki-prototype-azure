@@ -172,7 +172,7 @@ class FlagCitations(BaseModel):
 
 # Flag a specific document by citation / file_page
 @document_router.post("/flag")
-def flag_document(data: FlagCitations, db=Depends(get_db)):
+def flag_document(request: Request, data: FlagCitations, db=Depends(get_db)):
     if not data.citations:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -182,7 +182,7 @@ def flag_document(data: FlagCitations, db=Depends(get_db)):
         if doc:
             change = "flagged"
             message = data.message + ": " + citation
-            log = Log(change=change, message=message)
+            log = Log(user=request.state.userId, change=change, message=message)
 
             db.documents.update_one({"id": doc["id"]}, {"$push": {"logs": log.model_dump(), "flagged_pages": citation}})
         else:
@@ -223,6 +223,7 @@ async def update_document(id, request: Request, db=Depends(get_db)):
 @document_router.post("/{id}/file")
 async def upload_file(
     id,
+    request: Request,
     file: UploadFile = File(...),
     db=Depends(get_db),
     blob_container_client=Depends(get_blob_container_client),
@@ -275,7 +276,7 @@ async def upload_file(
         # update document
         doc["file"] = filename
         doc["file_pages"] = file_pages
-        doc["logs"].append(Log(change="update_file", message="File updated"))
+        doc["logs"].append(Log(user=request.state.userId, change="update_file", message="File updated"))
         doc = Document(**doc)
 
         db.documents.update_one({"id": id}, {"$set": doc.model_dump()})
@@ -316,7 +317,9 @@ async def upload_file(
 
 # Delete a specific document by ID
 @document_router.delete("/{id}")
-async def delete_document(id, db=Depends(get_db), blob_container_client=Depends(get_blob_container_client)):
+async def delete_document(
+    id, request: Request, db=Depends(get_db), blob_container_client=Depends(get_blob_container_client)
+):
     if not id:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -347,7 +350,9 @@ async def delete_document(id, db=Depends(get_db), blob_container_client=Depends(
         print("Failed to delete file on azure blob storage and search index")
         print("Exception: {}".format(ex))
 
-    db.documents.update_one({"id": id}, {"$set": {"deleted": True}})
+    log = Log(user=request.state.userId, change="deleted", message="Document deleted")
+
+    db.documents.update_one({"id": id}, {"$set": {"deleted": True}, "$push": {"logs": log.model_dump()}})
 
     return {"message": "Document deleted"}
 
@@ -356,6 +361,7 @@ async def delete_document(id, db=Depends(get_db), blob_container_client=Depends(
 @document_router.post("/{id}/logs")
 async def add_log(id, request: Request, db=Depends(get_db)):
     data = await request.get_json()
+    data["user"] = request.state.userId
     doc = db.documents.find_one({"id": id})
     if doc:
         log = Log(**data)
@@ -369,6 +375,7 @@ async def add_log(id, request: Request, db=Depends(get_db)):
 @document_router.post("/{id}/logs/{log_id}")
 async def change_log_status(id, log_id, request: Request, db=Depends(get_db)):
     data = await request.get_json()
+    data["user"] = request.state.userId
     doc = db.documents.find_one({"id": id})
     if doc:
         log = next((log for log in doc.logs if log.id == log_id), None)

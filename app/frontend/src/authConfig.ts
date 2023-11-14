@@ -46,7 +46,21 @@ async function fetchAuthSetup(): Promise<AuthSetup> {
 	if (!response.ok) {
 		throw new Error(`auth setup response was not ok: ${response.status}`);
 	}
-	return await response.json();
+	const json = await response.json();
+
+	try {
+		const userId = json.msalConfig.auth.authority.split('/').pop();
+
+		if (!userId) {
+			throw new Error('userId was undefined');
+		}
+
+		localStorage.setItem('ajs_user_id', userId);
+	} catch (error) {
+		console.log(error);
+	}
+
+	return json as AuthSetup;
 }
 
 const authSetup = await fetchAuthSetup();

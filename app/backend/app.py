@@ -209,7 +209,16 @@ async def before_request(request: Request, call_next):
 
         # Store on request.state for later use inside requests
         request.state.openai_token = openai_token
-        return await call_next(request)
+
+        # get userId from request headers
+        userId = request.headers.get("userId")
+
+        # set userId in request state
+        request.state.userId = userId
+
+        response = await call_next(request)
+
+        return response
     except Exception as e:
         logging.exception("Exception in before_request")
         return JSONResponse(content={"error": str(e)}, status_code=500)

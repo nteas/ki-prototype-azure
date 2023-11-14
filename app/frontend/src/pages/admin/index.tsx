@@ -18,7 +18,7 @@ import AdminLayout from '../../components/Layout/AdminLayout';
 import Button from '../../components/Button/Button';
 
 import styles from './Admin.module.css';
-import { Document, classificationMap } from '../../api';
+import { Document, apiFetch, classificationMap } from '../../api';
 import DocModal from '../../components/Modal/DocModal';
 import { formatDate } from '../../libs/utils';
 
@@ -68,7 +68,7 @@ export function Component(): JSX.Element {
 		setLoading(true);
 		const query = new URLSearchParams(filters as any);
 
-		fetch(`/api/documents/?${query}`)
+		apiFetch(`/api/documents/?${query}`)
 			.then(res => res.json())
 			.then(json => setData(json))
 			.then(() => setLoading(false));
@@ -81,7 +81,7 @@ export function Component(): JSX.Element {
 	const handleDeleteItem = (id: string) => {
 		if (!confirm('Er du sikker på at du vil slette denne kilden?')) return;
 
-		fetch(`/api/documents/${id}`, { method: 'DELETE' }).then(() => {
+		apiFetch(`/api/documents/${id}`, { method: 'DELETE' }).then(() => {
 			getDocuments();
 		});
 	};
