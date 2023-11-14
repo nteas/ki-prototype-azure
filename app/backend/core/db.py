@@ -16,6 +16,9 @@ def connect_and_init_db():
     try:
         db_client = MongoClient(AZURE_MONGODB, serverSelectionTimeoutMS=5000)
         logging.info("Connected to mongo.")
+
+        if "documents" not in db_client["ki-prototype"].list_collection_names():
+            db_client["ki-prototype"].create_collection("documents")
     except Exception as e:
         logging.exception(f"Could not connect to mongo: {e}")
         raise

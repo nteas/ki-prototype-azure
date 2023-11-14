@@ -46,21 +46,13 @@ class Document(BaseModel):
 
     def __init__(self, **data):
         data.pop("_id", None)  # Remove _id from the data if it exists
+        if data.get("title") is None and data.get("file") is not None:
+            data["title"] = os.path.basename(data["file"])
+
         super().__init__(**data)
-        self._title = self.title
 
     class Config:
         extra = "allow"
-
-    @property
-    def title(self):
-        if hasattr(self, "_title"):
-            if self.file is not None and self._title is None:
-                return os.path.basename(self.file)
-            else:
-                return self._title
-        else:
-            return None
 
 
 document_router = APIRouter()
@@ -389,45 +381,13 @@ async def change_log_status(id, log_id, request: Request, db=Depends(get_db)):
 
 
 # get list og files from blob storage
-@document_router.get("/files")
-async def get_files(request: Request):
-    blob_container_client = request.state.blob_container_client
-    blob_list = blob_container_client.list_blobs()
-    # convert blob_list from AsyncItemPaged to list
-    blob_list = [blob async for blob in blob_list]
-    blob_names = []
-    for blob in blob_list:
-        blob_names.append(blob.name)
-    return {"files": blob_names}
-
-
-# migrate files in cognitive search to own database
-@document_router.get("/migrate")
-async def search(request: Request, db=Depends(get_db)):
-    try:
-        search_client = request.state.search_client
-        search_results = await search_client.search(search_text="", select=["id", "sourcepage", "sourcefile"])
-
-        # Iterate over the search results using the get_next method
-        docs = []
-        async for result in search_results:
-            docs.append(result)
-            doc = Document(file=result.get("sourcefile")).to_dict()
-
-            doc.pop("id", None)
-            doc.pop("file_pages", None)
-
-            db.documents.update_one(
-                {"file": result.get("sourcefile")},
-                {
-                    "$setOnInsert": doc,
-                    "$addToSet": {"file_pages": result.get("sourcepage")},
-                },
-                upsert=True,
-            )
-
-        return {"success": True}
-    except Exception as ex:
-        print("Failed to migrate documents")
-        print("Exception: {}".format(ex))
-        return {"success": False}
+# @document_router.get("/files")
+# async def get_files(request: Request):
+#     blob_container_client = request.state.blob_container_client
+#     blob_list = blob_container_client.list_blobs()
+#     # convert blob_list from AsyncItemPaged to list
+#     blob_list = [blob async for blob in blob_list]
+#     blob_names = []
+#     for blob in blob_list:
+#         blob_names.append(blob.name)
+#     return {"files": blob_names}

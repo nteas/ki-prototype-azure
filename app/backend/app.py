@@ -13,8 +13,8 @@ from starlette.responses import StreamingResponse, FileResponse, JSONResponse
 
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
-from routers.documents import document_router
-from core.db import close_db_connect, connect_and_init_db
+from routers.documents import document_router, Document
+from core.db import close_db_connect, connect_and_init_db, get_db
 from core.context import get_auth_helper, get_azure_credential, get_blob_container_client, get_search_client
 
 
@@ -193,6 +193,39 @@ async def chat_stream(request: Request, search_client=Depends(get_search_client)
     except Exception as e:
         logging.exception("Exception in /chat")
         return {"error": str(e)}, 500
+
+
+# migrate files in cognitive search to own database
+# @api_router.get("/migrate")
+# async def search(search_client=Depends(get_search_client), db=Depends(get_db)):
+#     try:
+#         search_results = await search_client.search(search_text="", select=["id", "sourcepage", "sourcefile"])
+
+#         # Iterate over the search results using the get_next method
+#         docs = []
+#         async for result in search_results:
+#             docs.append(result)
+#             doc = Document(file=result.get("sourcefile")).model_dump(exclude={"title"})
+
+#             doc.pop("id", None)
+#             doc.pop("file_pages", None)
+
+#             logging.info("upserting doc")
+
+#             db.documents.update_one(
+#                 {"file": result.get("sourcefile")},
+#                 {
+#                     "$setOnInsert": doc,
+#                     "$addToSet": {"file_pages": result.get("sourcepage")},
+#                 },
+#                 upsert=True,
+#             )
+
+#         return {"success": True}
+#     except Exception as ex:
+#         print("Failed to migrate documents")
+#         print("Exception: {}".format(ex))
+#         return {"success": False}
 
 
 @app.middleware("http")
