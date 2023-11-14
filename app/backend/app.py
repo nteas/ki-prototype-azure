@@ -207,7 +207,6 @@ async def chat_stream(request: Request, search_client=Depends(get_search_client)
 #             docs.append(result)
 #             doc = Document(file=result.get("sourcefile")).model_dump(exclude={"title"})
 
-#             doc.pop("id", None)
 #             doc.pop("file_pages", None)
 
 #             logging.info("upserting doc")

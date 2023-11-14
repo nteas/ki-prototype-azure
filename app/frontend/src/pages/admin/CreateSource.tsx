@@ -39,8 +39,6 @@ export function Component(): JSX.Element {
 			body[key] = value;
 		}
 
-		console.log(body);
-
 		// if no values have changed, return
 		if (Object.keys(body).length === 0) {
 			setLoading(false);
