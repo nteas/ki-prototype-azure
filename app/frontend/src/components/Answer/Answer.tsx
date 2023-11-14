@@ -244,8 +244,9 @@ function Citation({
 		apiFetch(`/api/documents/flag/${citation}`)
 			.then(res => res.json())
 			.then(res => {
-				isFeedbackGiven.current = res.flagged;
-				res.flagged && updateFlags(res.flagged);
+				if (!res.flagged) return;
+				isFeedbackGiven.current = true;
+				updateFlags(citation);
 			})
 			.catch(err => console.error(err));
 	}, []);
