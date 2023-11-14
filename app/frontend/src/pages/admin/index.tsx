@@ -181,7 +181,7 @@ export function Component(): JSX.Element {
 				{data?.documents?.map(item => (
 					<div
 						className={`${styles.row} ${
-							item.flagged && styles.flagged
+							item?.flagged_pages?.length > 0 && styles.flagged
 						}`}
 						key={item.id}>
 						<div className={styles.col} style={{ flex: 1 }}>
@@ -194,7 +194,10 @@ export function Component(): JSX.Element {
 							/>
 						</div>
 
-						<div className={styles.col} style={{ flex: 5 }}>
+						<div
+							className={styles.col}
+							style={{ flex: 5, cursor: 'pointer' }}
+							onClick={() => handleEditItem(item.id)}>
 							{item.title}
 						</div>
 
@@ -203,7 +206,10 @@ export function Component(): JSX.Element {
 						</div>
 
 						<div className={styles.col} style={{ flex: 2 }}>
-							<Badge pill bg="primary">
+							<Badge
+								pill
+								bg="primary"
+								className={styles[item?.classification || '']}>
 								{item.classification &&
 									classificationMap[item.classification]}
 							</Badge>

@@ -42,6 +42,7 @@ export const Answer = ({
 	showFollowupQuestions,
 }: Props) => {
 	const [feedback, setFeedback] = useState(0);
+	const [flaggedCitations, setFlaggedCitations] = useState<string[]>([]);
 	const isFeedbackGiven = useRef<boolean>(false);
 	const messageContent = answer.choices[0].message.content;
 	const parsedAnswer = useMemo(
@@ -50,6 +51,24 @@ export const Answer = ({
 	);
 
 	const sanitizedAnswerHtml = DOMPurify.sanitize(parsedAnswer.answerHtml);
+
+	function updateFlaggedCitations(citation: string) {
+		if (flaggedCitations.includes(citation)) {
+			setFlaggedCitations(prev => prev.filter(x => x !== citation));
+		} else {
+			setFlaggedCitations(prev => [...prev, citation]);
+		}
+	}
+
+	async function flagCitations(message: string) {
+		return await fetch('/api/documents/flag', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({ citations: flaggedCitations, message }),
+		});
+	}
 
 	return (
 		<div
@@ -100,6 +119,9 @@ export const Answer = ({
 								index={i}
 								citation={x}
 								onCitationClick={() => onCitationClicked(path)}
+								updateFlags={() => updateFlaggedCitations(x)}
+								isFlagged={flaggedCitations.includes(x)}
+								disabled={isFeedbackGiven.current}
 							/>
 						);
 					})}
@@ -151,17 +173,28 @@ export const Answer = ({
 						))}
 					</div>
 
-					{feedback > 0 && (
+					{(feedback > 0 || flaggedCitations?.length > 0) && (
 						<form
 							className={styles.form}
-							onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
+							onSubmit={async (
+								e: React.FormEvent<HTMLFormElement>
+							) => {
 								e.preventDefault();
 
 								analytics.track('Feedback Given', {
 									answer: messageContent,
-									result: feedback,
+									result:
+										feedback === 0
+											? 'not_specified'
+											: feedback,
 									comment: e.currentTarget.comment.value,
 								});
+
+								if (flaggedCitations?.length > 0) {
+									await flagCitations(
+										e.currentTarget.comment.value
+									);
+								}
 
 								isFeedbackGiven.current = true;
 
@@ -192,31 +225,25 @@ interface CitationProps {
 	index: number;
 	citation: string;
 	onCitationClick: () => void;
+	updateFlags: (citation: string) => void;
+	isFlagged: boolean;
+	disabled: boolean;
 }
 
-function Citation({ index, citation, onCitationClick }: CitationProps) {
-	const [isFlagged, setIsFlagged] = useState(false);
-
+function Citation({
+	index,
+	citation,
+	onCitationClick,
+	updateFlags,
+	isFlagged,
+	disabled,
+}: CitationProps) {
 	useEffect(() => {
 		fetch(`/api/documents/flag/${citation}`)
 			.then(res => res.json())
-			.then(res => setIsFlagged(res.flagged))
+			.then(res => res.flagged && updateFlags(res.flagged))
 			.catch(err => console.error(err));
 	}, []);
-
-	function onFlagClick(filename: string) {
-		console.log('flag citation', filename);
-
-		fetch(`/api/documents/flag/${filename}`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-		})
-			.then(res => res.json())
-			.then(res => setIsFlagged(res.flagged))
-			.catch(err => console.error(err));
-	}
 
 	return (
 		<div className={styles.citationWrapper}>
@@ -231,8 +258,9 @@ function Citation({ index, citation, onCitationClick }: CitationProps) {
 				className={`${styles.citationFlag} ${
 					isFlagged && styles.citationFlagged
 				}`}
-				onClick={() => onFlagClick(citation)}>
-				<FontAwesomeIcon icon={isFlagged ? flagOutline : faFlag} />
+				onClick={() => updateFlags(citation)}
+				disabled={disabled}>
+				<FontAwesomeIcon icon={isFlagged ? faFlag : flagOutline} />
 			</button>
 		</div>
 	);

@@ -21,6 +21,7 @@ body {
 
 :root,
 [data-bs-theme='light'] {
+	--green: #5ba070;
 	--coral: #fadcd5;
 	--blue: #0079ad !important;
 	--bs-blue: #0079ad !important;

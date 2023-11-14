@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import Form from 'react-bootstrap/Form';
 
 import AdminLayout from '../../components/Layout/AdminLayout';
@@ -19,6 +19,7 @@ export function Component(): JSX.Element {
 	const [data, setData] = useState<Document>();
 	const [isFile, setIsFile] = useState<boolean>(data?.type !== 'web');
 	const { id } = useParams();
+	const navigate = useNavigate();
 
 	useEffect(() => {
 		// fetch data
@@ -87,8 +88,29 @@ export function Component(): JSX.Element {
 			.then(res => res.json())
 			.then(res => setData(res))
 			.catch(err => console.error(err))
-			.finally(() => setLoading(false));
+			.finally(() => navigate(-1));
 	}
+
+	const handleDeleteItem = () => {
+		if (!confirm('Er du sikker på at du vil slette denne kilden?')) return;
+
+		fetch(`/api/documents/${id}`, { method: 'DELETE' }).then(() => {
+			navigate(-1);
+		});
+	};
+
+	const getLogLabel = (change?: string) => {
+		switch (change) {
+			case 'flagged':
+				return 'Kilde ble flagget';
+
+			case 'updated':
+				return 'Kilde ble oppdatert';
+
+			default:
+				return change;
+		}
+	};
 
 	return (
 		<AdminLayout
@@ -258,6 +280,7 @@ export function Component(): JSX.Element {
 						<Button
 							variant="outline-danger"
 							type="button"
+							onClick={() => handleDeleteItem()}
 							icon={<FontAwesomeIcon icon={faTrash} />}>
 							Slett
 						</Button>
@@ -282,13 +305,13 @@ export function Component(): JSX.Element {
 							<div
 								key={log?.id}
 								className={`${styles.log} ${
-									log.change === 'flagged' && styles.flagged
+									log.change === 'flagged' &&
+									data?.flagged_pages?.length > 0 &&
+									styles.flagged
 								}`}>
 								<div className={styles.logRow}>
 									<span className={styles.logTitle}>
-										{log.change === 'flagged'
-											? 'Kilde ble flagget'
-											: log.change}
+										{getLogLabel(log?.change)}
 									</span>
 
 									<span className={styles.logTime}>

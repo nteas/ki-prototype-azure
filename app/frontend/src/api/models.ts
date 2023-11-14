@@ -97,10 +97,10 @@ export type Document = {
 	classification?: ClassificationEnum;
 	logs?: Log[];
 	frequency?: string;
-	flagged?: boolean;
 	type?: DocumentTypeEnum;
 	file?: string;
-	file_pages?: string[];
+	flagged_pages: string[];
+	file_pages: string[];
 	url?: string;
 	created_at: Date;
 	updated_at: Date;

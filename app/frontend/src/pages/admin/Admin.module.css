@@ -71,6 +71,17 @@
 	padding: 8px 16px;
 }
 
+.internal {
+	background-color: var(--green) !important;
+}
+.confidential {
+	background-color: var(--coral) !important;
+	color: var(--red);
+}
+.powerSensitive {
+	background-color: var(--red) !important;
+}
+
 .actions {
 	display: flex;
 	gap: 10px;

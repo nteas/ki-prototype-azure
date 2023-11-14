@@ -36,7 +36,7 @@ class Document(BaseModel):
     classification: str = Field(default="public")
     logs: List[Log] = Field(default=[])
     frequency: Optional[str] = Field(default="none")
-    flagged: Optional[bool] = Field(default=False)
+    flagged_pages: List[str] = Field(default=[])
     type: str = Field(default="pdf")
     file: Optional[str] = Field(default=None)
     file_pages: List[str] = Field(default=[])
@@ -112,7 +112,7 @@ async def get_documents(params: GetDocumentsRequest = Depends(), db=Depends(get_
             ]
 
         if params.flagged == "true":
-            query["flagged"] = True
+            query["flagged_pages"] = {"$exists": True, "$ne": []}
 
         cursor = db.documents.find(query)
         total = db.documents.count_documents(query)
@@ -144,6 +144,8 @@ def get_document(id, db=Depends(get_db)):
     doc = db.documents.find_one({"id": id})
 
     if doc:
+        doc["logs"] = sorted(doc["logs"], key=lambda x: x["created_at"], reverse=True)
+
         return Document(**doc)
     else:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -155,38 +157,38 @@ def get_document(citation, db=Depends(get_db)):
     if not citation:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    doc = db.documents.find_one({"file_pages": citation})
+    doc = db.documents.find_one({"flagged_pages": citation})
 
     if doc:
-        return {"flagged": doc["flagged"]}
+        return {"flagged": True}
     else:
-        raise HTTPException(status_code=404, detail="Document not found")
+        return {"flagged": False}
+
+
+class FlagCitations(BaseModel):
+    citations: List[str] = Field(default=[])
+    message: str = Field(default=None)
 
 
 # Flag a specific document by citation / file_page
-@document_router.post("/flag/{filename}")
-def flag_document(filename, db=Depends(get_db)):
-    if not filename:
+@document_router.post("/flag")
+def flag_document(data: FlagCitations, db=Depends(get_db)):
+    if not data.citations:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    doc = db.documents.find_one({"file_pages": filename})
+    for citation in data.citations:
+        doc = db.documents.find_one({"file_pages": citation})
 
-    if doc:
-        message = "Document flagged"
-        change = "flagged"
-        if doc["flagged"]:
-            message = "Document unflagged"
-            change = "unflagged"
+        if doc:
+            change = "flagged"
+            message = data.message + ": " + citation
+            log = Log(change=change, message=message)
 
-        log = Log(change=change, message=message)
+            db.documents.update_one({"id": doc["id"]}, {"$push": {"logs": log.model_dump(), "flagged_pages": citation}})
+        else:
+            logging.info("Document not found")
 
-        db.documents.update_one(
-            {"id": doc["id"]}, {"$set": {"flagged": not doc["flagged"]}, "$push": {"logs": log.model_dump()}}
-        )
-
-        return {"flagged": not doc["flagged"]}
-    else:
-        raise HTTPException(status_code=404, detail="Document not found")
+    return {"message": "Documents flagged"}
 
 
 # Update a specific document by ID
@@ -197,32 +199,22 @@ async def update_document(id, request: Request, db=Depends(get_db)):
 
     doc = db.documents.find_one({"id": id})
 
-    for key, value in data.items():
-        doc[key] = value
-
     if doc:
-        db.documents.update_one({"id": id}, {"$set": Document(**doc).model_dump()})
+        doc = Document(**doc)
+        update_data = doc.model_dump()
 
-        return Document(**doc)
-    else:
-        raise HTTPException(status_code=404, detail="Document not found")
+        for key, value in data.items():
+            update_data[key] = value
 
+        update_data["flagged_pages"] = []
 
-# Update a specific document by ID
-@document_router.put("/{id}")
-async def update_document(id, request: Request, db=Depends(get_db)):
-    # get request body
-    data = await request.json()
+        log = Log(change="updated", message="Document updated")
 
-    doc = db.documents.find_one({"id": id})
+        update_data["logs"].append(log.model_dump())
 
-    for key, value in data.items():
-        doc[key] = value
+        db.documents.update_one({"id": id}, {"$set": update_data})
 
-    if doc:
-        db.documents.update_one({"id": id}, {"$set": Document(**doc).model_dump()})
-
-        return Document(**doc)
+        return
     else:
         raise HTTPException(status_code=404, detail="Document not found")
 
