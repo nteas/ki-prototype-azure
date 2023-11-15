@@ -79,6 +79,8 @@ class GetDocumentsRequest(BaseModel):
     flagged: str = "false"
     pdf: str = "true"
     web: str = "true"
+    order_by: str = "created_at"
+    order: int = -1
 
 
 # Get all documents
@@ -114,6 +116,9 @@ async def get_documents(params: GetDocumentsRequest = Depends(), db=Depends(get_
 
         if params.skip > 0:
             cursor = cursor.skip(params.skip)
+
+        if params.order_by and params.order:
+            cursor = cursor.sort(params.order_by, params.order)
 
         if not cursor:
             raise Exception("No documents found")
@@ -228,42 +233,35 @@ async def upload_file(
 
         azure_credentials = get_azure_credential()
 
-        if doc["file_pages"]:
-            try:
-                prefix = os.path.splitext(doc["file"])[0]
-                blobs = blob_container_client.list_blob_names(name_starts_with=prefix)
-                for b in blobs:
-                    print(f"\tRemoving blob {b}")
-                    await blob_container_client.delete_blob(b)
-                for page in doc["file_pages"]:
-                    logging.info("Removing page from index: {}".format(page))
-                    remove_from_index(page, azure_credentials)
-            except Exception as ex:
-                print("Failed to remove pages from index")
+        for page in doc["file_pages"]:
+            print(f"Removing blob {page}")
+            await blob_container_client.delete_blob(page)
+
+            logging.info(f"Removing page from index: {page}")
+            remove_from_index(page, azure_credentials)
 
         filename = file.filename
         pdf = await file.read()
+        await file.close()
         file_pages = []
 
         # upload file to blob storage
-        if os.path.splitext(filename)[1].lower() == ".pdf":
-            reader = PdfReader(io.BytesIO(pdf))
-            pages = reader.pages
-            for i in range(len(pages)):
-                blob_name = blob_name_from_file_page(filename, i)
-                f = io.BytesIO()
-                writer = PdfWriter()
-                writer.add_page(pages[i])
-                writer.write(f)
-                f.seek(0)
+        if os.path.splitext(filename)[1].lower() != ".pdf":
+            raise HTTPException(status_code=500, detail="File is not a PDF")
 
-                await blob_container_client.upload_blob(blob_name, f, overwrite=True)
+        reader = PdfReader(io.BytesIO(pdf))
+        pages = reader.pages
+        for i in range(len(pages)):
+            blob_name = blob_name_from_file_page(filename, i)
+            f = io.BytesIO()
+            writer = PdfWriter()
+            writer.add_page(pages[i])
+            writer.write(f)
+            f.seek(0)
 
-                file_pages.append(blob_name)
-        else:
-            blob_name = blob_name_from_file_page(filename)
+            await blob_container_client.upload_blob(blob_name, f, overwrite=True)
 
-            blob_container_client.upload_blob(blob_name, pdf, overwrite=True)
+            file_pages.append(blob_name)
 
         # update document
         doc["file"] = filename
@@ -274,36 +272,35 @@ async def upload_file(
         db.documents.update_one({"id": id}, {"$set": doc.model_dump()})
 
         # update index
-        file_bytes = await file.read()
 
-        print("Getting document text")
+        logging.info("Getting document text")
 
-        AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID")
-        formrecognizer_creds = AzureDeveloperCliCredential(tenant_id=AZURE_TENANT_ID, process_timeout=60)
-        page_map = get_document_text(file_bytes, formrecognizer_creds)
+        azure_credentials = AzureDeveloperCliCredential(tenant_id=os.environ["AZURE_TENANT_ID"], process_timeout=60)
+        page_map = await get_document_text(pdf, azure_credentials)
 
-        print("Got text. creating sections")
+        logging.info("Got text. creating sections")
 
-        sections = create_sections(
-            os.path.basename(filename),
-            page_map,
-            True,
-            True,
-            os.getenv("AZURE_OPENAI_EMB_MODEL_NAME", "text-embedding-ada-002"),
+        sections = list(
+            create_sections(
+                filename,
+                page_map,
+                os.environ["AZURE_OPENAI_EMB_DEPLOYMENT"],
+                os.getenv("AZURE_OPENAI_EMB_MODEL_NAME", "text-embedding-ada-002"),
+            )
         )
-        print("Got sections. updating embeddings")
+        logging.info("Got sections. updating embeddings")
 
         sections = update_embeddings_in_batch(sections)
 
-        print("Updated embeddings. indexing sections")
-        index_sections(os.path.basename(filename), sections)
+        logging.info("Updated embeddings. indexing sections")
+        index_sections(filename, sections, azure_credentials)
 
-        print("Indexed sections")
+        logging.info("Indexed sections")
 
         return doc
     except Exception as ex:
-        print("Failed to upload file")
-        print("Exception: {}".format(ex))
+        logging.info("Failed to upload file")
+        logging.info("Exception: {}".format(ex))
         raise HTTPException(status_code=500, detail="Failed to upload file")
 
 
@@ -321,23 +318,18 @@ async def delete_document(
         raise HTTPException(status_code=404, detail="Document not found")
 
     try:
-        azure_credentials = get_azure_credential()
+        azure_credentials = AzureDeveloperCliCredential(tenant_id=os.environ["AZURE_TENANT_ID"], process_timeout=60)
+
+        logging.info("Removing document from index: {}".format(doc["file_pages"]))
 
         if doc["file_pages"]:
-            try:
-                prefix = os.path.splitext(doc["file"])[0]
-                blobs = blob_container_client.list_blob_names(name_starts_with=prefix)
-                for b in blobs:
-                    print(f"\tRemoving blob {b}")
-                    await blob_container_client.delete_blob(b)
-                for page in doc["file_pages"]:
-                    logging.info("Removing page from index: {}".format(page))
-                    remove_from_index(page, azure_credentials)
-            except Exception as ex:
-                print("Failed to remove pages from index")
+            for page in doc["file_pages"]:
+                print(f"Removing blob {page}")
+                await blob_container_client.delete_blob(page)
 
-        if doc["file"]:
-            blob_container_client.delete_blob(doc["file"])
+                logging.info(f"Removing page from index: {page}")
+                remove_from_index(page, azure_credentials)
+
     except Exception as ex:
         print("Failed to delete file on azure blob storage and search index")
         print("Exception: {}".format(ex))

@@ -39,10 +39,7 @@ def calculate_tokens_emb_aoai(input: str):
 
 
 def blob_name_from_file_page(filename, page=0):
-    if os.path.splitext(filename)[1].lower() == ".pdf":
-        return os.path.splitext(os.path.basename(filename))[0] + f"-{page}" + ".pdf"
-    else:
-        return os.path.basename(filename)
+    return os.path.splitext(filename)[0] + f"-{page}" + ".pdf"
 
 
 def table_to_html(table):
@@ -66,53 +63,57 @@ def table_to_html(table):
     return table_html
 
 
-def get_document_text(file, formrecognizer_creds):
-    offset = 0
-    page_map = []
-    AZURE_FORMRECOGNIZER_SERVICE = os.getenv("AZURE_FORMRECOGNIZER_SERVICE")
-    print(f"Extracting text from file using Azure Form Recognizer")
-    form_recognizer_client = DocumentAnalysisClient(
-        endpoint=f"https://{AZURE_FORMRECOGNIZER_SERVICE}.cognitiveservices.azure.com/",
-        credential=formrecognizer_creds,
-        headers={"x-ms-useragent": "azure-search-chat-demo/1.0.0"},
-    )
-    poller = form_recognizer_client.begin_analyze_document("prebuilt-layout", document=file)
-    form_recognizer_results = poller.result()
+async def get_document_text(file, formrecognizer_creds):
+    try:
+        offset = 0
+        page_map = []
+        AZURE_FORMRECOGNIZER_SERVICE = os.getenv("AZURE_FORMRECOGNIZER_SERVICE")
+        form_recognizer_client = DocumentAnalysisClient(
+            endpoint=f"https://{AZURE_FORMRECOGNIZER_SERVICE}.cognitiveservices.azure.com/",
+            credential=formrecognizer_creds,
+            headers={"x-ms-useragent": "azure-search-chat-demo/1.0.0"},
+        )
 
-    for page_num, page in enumerate(form_recognizer_results.pages):
-        tables_on_page = [
-            table
-            for table in (form_recognizer_results.tables or [])
-            if table.bounding_regions and table.bounding_regions[0].page_number == page_num + 1
-        ]
+        poller = form_recognizer_client.begin_analyze_document("prebuilt-layout", document=file)
+        form_recognizer_results = poller.result()
 
-        # mark all positions of the table spans in the page
-        page_offset = page.spans[0].offset
-        page_length = page.spans[0].length
-        table_chars = [-1] * page_length
-        for table_id, table in enumerate(tables_on_page):
-            for span in table.spans:
-                # replace all table spans with "table_id" in table_chars array
-                for i in range(span.length):
-                    idx = span.offset - page_offset + i
-                    if idx >= 0 and idx < page_length:
-                        table_chars[idx] = table_id
+        for page_num, page in enumerate(form_recognizer_results.pages):
+            tables_on_page = [
+                table
+                for table in (form_recognizer_results.tables or [])
+                if table.bounding_regions and table.bounding_regions[0].page_number == page_num + 1
+            ]
 
-        # build page text by replacing characters in table spans with table html
-        page_text = ""
-        added_tables = set()
-        for idx, table_id in enumerate(table_chars):
-            if table_id == -1:
-                page_text += form_recognizer_results.content[page_offset + idx]
-            elif table_id not in added_tables:
-                page_text += table_to_html(tables_on_page[table_id])
-                added_tables.add(table_id)
+            # mark all positions of the table spans in the page
+            page_offset = page.spans[0].offset
+            page_length = page.spans[0].length
+            table_chars = [-1] * page_length
+            for table_id, table in enumerate(tables_on_page):
+                for span in table.spans:
+                    # replace all table spans with "table_id" in table_chars array
+                    for i in range(span.length):
+                        idx = span.offset - page_offset + i
+                        if idx >= 0 and idx < page_length:
+                            table_chars[idx] = table_id
 
-        page_text += " "
-        page_map.append((page_num, offset, page_text))
-        offset += len(page_text)
+            # build page text by replacing characters in table spans with table html
+            page_text = ""
+            added_tables = set()
+            for idx, table_id in enumerate(table_chars):
+                if table_id == -1:
+                    page_text += form_recognizer_results.content[page_offset + idx]
+                elif table_id not in added_tables:
+                    page_text += table_to_html(tables_on_page[table_id])
+                    added_tables.add(table_id)
 
-    return page_map
+            page_text += " "
+            page_map.append((page_num, offset, page_text))
+            offset += len(page_text)
+
+        return page_map
+    except Exception as e:
+        print(f"Error extracting text from file: {e}")
+        raise e
 
 
 def split_text(page_map, filename):
@@ -193,7 +194,7 @@ def filename_to_id(filename):
 
 
 def create_sections(
-    filename, page_map, use_vectors, embedding_deployment: Optional[str] = None, embedding_model: Optional[str] = None
+    filename, page_map, embedding_deployment: Optional[str] = None, embedding_model: Optional[str] = None
 ):
     file_id = filename_to_id(filename)
     for i, (content, pagenum) in enumerate(split_text(page_map, filename)):
@@ -204,8 +205,9 @@ def create_sections(
             "sourcepage": blob_name_from_file_page(filename, pagenum),
             "sourcefile": filename,
         }
-        if use_vectors:
-            section["embedding"] = compute_embedding(content, embedding_deployment, embedding_model)
+
+        section["embedding"] = compute_embedding(content, embedding_deployment, embedding_model)
+
         yield section
 
 
@@ -220,9 +222,13 @@ def before_retry_sleep():
     before_sleep=before_retry_sleep,
 )
 def compute_embedding(text, embedding_deployment, embedding_model):
-    refresh_openai_token()
-    embedding_args = {"deployment_id": embedding_deployment}
-    return openai.Embedding.create(**embedding_args, model=embedding_model, input=text)["data"][0]["embedding"]
+    try:
+        refresh_openai_token()
+        embedding_args = {"deployment_id": embedding_deployment}
+        return openai.Embedding.create(**embedding_args, model=embedding_model, input=text)["data"][0]["embedding"]
+    except Exception as e:
+        print(f"Error computing embedding for text: {e}")
+        raise e
 
 
 @retry(
@@ -232,12 +238,16 @@ def compute_embedding(text, embedding_deployment, embedding_model):
     before_sleep=before_retry_sleep,
 )
 def compute_embedding_in_batch(texts):
-    refresh_openai_token()
-    embedding_args = {"deployment_id": os.getenv("AZURE_OPENAI_EMB_DEPLOYMENT")}
-    emb_response = openai.Embedding.create(
-        **embedding_args, model=os.getenv("AZURE_OPENAI_EMB_MODEL_NAME"), input=texts
-    )
-    return [data.embedding for data in emb_response.data]
+    try:
+        refresh_openai_token()
+        embedding_args = {"deployment_id": os.getenv("AZURE_OPENAI_EMB_DEPLOYMENT")}
+        emb_response = openai.Embedding.create(
+            **embedding_args, model=os.getenv("AZURE_OPENAI_EMB_MODEL_NAME"), input=texts
+        )
+        return [data.embedding for data in emb_response.data]
+    except Exception as e:
+        print(f"Error computing embedding for text: {e}")
+        raise e
 
 
 def update_embeddings_in_batch(sections):
@@ -323,6 +333,10 @@ def remove_from_index(filename, search_creds):
         endpoint=f"https://{AZURE_SEARCH_SERVICE}.search.windows.net/",
         index_name=AZURE_SEARCH_INDEX,
         credential=search_creds,
+    )
+
+    logging.info(
+        f"Removing sections from '{filename or '<all>'}' from search index '{os.environ['AZURE_SEARCH_INDEX']}'"
     )
 
     try:
