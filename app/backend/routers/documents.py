@@ -314,36 +314,41 @@ async def upload_file(
 async def delete_document(
     id, request: Request, db=Depends(get_db), blob_container_client=Depends(get_blob_container_client)
 ):
-    if not id:
-        raise HTTPException(status_code=404, detail="Document not found")
+    try:
+        if not id:
+            raise HTTPException(status_code=404, detail="Document not found")
 
-    doc = db.documents.find_one({"id": id})
+        doc = db.documents.find_one({"id": id})
 
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found")
 
-    azure_credentials = AzureDeveloperCliCredential(tenant_id=os.environ["AZURE_TENANT_ID"], process_timeout=60)
+        azure_credentials = AzureDeveloperCliCredential(tenant_id=os.environ["AZURE_TENANT_ID"], process_timeout=60)
 
-    logging.info("Removing document from index: {}".format(doc["file_pages"]))
+        logging.info("Removing document from index: {}".format(doc["file_pages"]))
 
-    if doc["file_pages"]:
-        for page in doc["file_pages"]:
-            try:
-                logging.info(f"Removing blob {page}")
-                await blob_container_client.delete_blob(page)
-            except Exception as ex:
-                logging.info("Failed to remove blob from storage {}".format(ex))
+        if doc["file_pages"]:
+            for page in doc["file_pages"]:
+                try:
+                    logging.info(f"Removing blob {page}")
+                    await blob_container_client.delete_blob(page)
+                except Exception as ex:
+                    logging.info("Failed to remove blob from storage {}".format(ex))
 
-            try:
-                remove_from_index(page, azure_credentials)
-            except Exception as ex:
-                logging.info("Failed to remove from index {}".format(ex))
+                try:
+                    remove_from_index(page, azure_credentials)
+                except Exception as ex:
+                    logging.info("Failed to remove from index {}".format(ex))
 
-    log = Log(user=request.state.userId, change="deleted", message="Document deleted")
+        log = Log(user=request.state.userId, change="deleted", message="Document deleted")
 
-    db.documents.update_one({"id": id}, {"$set": {"deleted": True}, "$push": {"logs": log.model_dump()}})
+        db.documents.update_one({"id": id}, {"$set": {"deleted": True}, "$push": {"logs": log.model_dump()}})
 
-    return {"message": "Document deleted"}
+        return {"message": "Document deleted"}
+    except Exception as ex:
+        logging.info("Failed to delete document")
+        logging.info("Exception: {}".format(ex))
+        raise HTTPException(status_code=500, detail="Failed to delete document")
 
 
 # Add a log to a specific document by ID

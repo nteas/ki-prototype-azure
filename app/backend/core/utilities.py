@@ -9,13 +9,14 @@ from typing import Any, Optional
 import openai
 import tiktoken
 from azure.ai.formrecognizer import DocumentAnalysisClient
-from azure.search.documents import SearchClient
 from tenacity import (
     retry,
     retry_if_exception_type,
     stop_after_attempt,
     wait_random_exponential,
 )
+
+from core.context import get_search_client
 
 adls_gen2_creds = None
 storage_creds = None
@@ -114,6 +115,9 @@ async def get_document_text(file, formrecognizer_creds):
     except Exception as e:
         print(f"Error extracting text from file: {e}")
         raise e
+    finally:
+        await form_recognizer_client.close()
+        print("Done extracting text")
 
 
 def split_text(page_map, filename):
@@ -290,57 +294,48 @@ def index_sections(
     search_creds,
     acls=None,
 ):
-    AZURE_SEARCH_SERVICE = os.getenv("AZURE_SEARCH_SERVICE")
-    AZURE_SEARCH_INDEX = os.getenv("AZURE_SEARCH_INDEX")
+    try:
+        AZURE_SEARCH_INDEX = os.getenv("AZURE_SEARCH_INDEX")
 
-    print(f"Indexing sections from '{filename}' into search index '{AZURE_SEARCH_INDEX}'")
+        print(f"Indexing sections from '{filename}' into search index '{AZURE_SEARCH_INDEX}'")
 
-    if not search_creds:
-        raise Exception("Search credentials not provided")
+        if not search_creds:
+            raise Exception("Search credentials not provided")
 
-    search_client = SearchClient(
-        endpoint=f"https://{AZURE_SEARCH_SERVICE}.search.windows.net/",
-        index_name=AZURE_SEARCH_INDEX,
-        credential=search_creds,
-    )
+        search_client = get_search_client()
 
-    i = 0
-    batch = []
-    for s in sections:
-        if acls:
-            s.update(acls)
-        batch.append(s)
-        i += 1
-        if i % 1000 == 0:
+        i = 0
+        batch = []
+        for s in sections:
+            if acls:
+                s.update(acls)
+            batch.append(s)
+            i += 1
+            if i % 1000 == 0:
+                results = search_client.upload_documents(documents=batch)
+                succeeded = sum([1 for r in results if r.succeeded])
+                print(f"\tIndexed {len(results)} sections, {succeeded} succeeded")
+                batch = []
+
+        if len(batch) > 0:
             results = search_client.upload_documents(documents=batch)
             succeeded = sum([1 for r in results if r.succeeded])
             print(f"\tIndexed {len(results)} sections, {succeeded} succeeded")
-            batch = []
-
-    if len(batch) > 0:
-        results = search_client.upload_documents(documents=batch)
-        succeeded = sum([1 for r in results if r.succeeded])
-        print(f"\tIndexed {len(results)} sections, {succeeded} succeeded")
+    finally:
+        print("Done indexing sections")
 
 
 def remove_from_index(filename, search_creds):
     if not search_creds:
         raise Exception("Search credentials not provided")
 
-    AZURE_SEARCH_SERVICE = os.getenv("AZURE_SEARCH_SERVICE")
-    AZURE_SEARCH_INDEX = os.getenv("AZURE_SEARCH_INDEX")
-
-    search_client = SearchClient(
-        endpoint=f"https://{AZURE_SEARCH_SERVICE}.search.windows.net/",
-        index_name=AZURE_SEARCH_INDEX,
-        credential=search_creds,
-    )
-
-    logging.info(
-        f"Removing sections from '{filename or '<all>'}' from search index '{os.environ['AZURE_SEARCH_INDEX']}'"
-    )
-
     try:
+        search_client = get_search_client()
+
+        logging.info(
+            f"Removing sections from '{filename or '<all>'}' from search index '{os.environ['AZURE_SEARCH_INDEX']}'"
+        )
+
         while True:
             filter = None if filename is None else f"sourcefile eq '{os.path.basename(filename)}'"
             r = search_client.search("", filter=filter, top=1000, include_total_count=True)
@@ -352,6 +347,8 @@ def remove_from_index(filename, search_creds):
             time.sleep(2)
     except Exception as e:
         print(f"Error removing sections from index: {e}")
+    finally:
+        print("Done removing sections from index")
 
 
 def refresh_openai_token():

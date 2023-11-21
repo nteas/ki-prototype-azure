@@ -4,7 +4,6 @@ import logging
 import mimetypes
 import os
 from typing import AsyncGenerator
-import aiohttp
 import openai
 from fastapi import Depends, FastAPI, APIRouter, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -14,7 +13,7 @@ from starlette.responses import StreamingResponse, FileResponse, JSONResponse
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
 from routers.documents import document_router, Document
-from core.db import close_db_connect, connect_and_init_db, get_db
+from core.db import get_db
 from core.context import get_auth_helper, get_azure_credential, get_blob_container_client, get_search_client
 
 
@@ -38,15 +37,12 @@ app.mount("/assets", StaticFiles(directory="static/assets", html=True), name="as
 
 
 @app.on_event("startup")
-def startup_event():
+async def startup_event():
     logging.info("Starting up...")
-    connect_and_init_db()
 
-
-@app.on_event("shutdown")
-def shutdown_event():
-    logging.info("Shutting down...")
-    close_db_connect()
+    azure_credential = get_azure_credential()
+    openai_token = await azure_credential.get_token("https://cognitiveservices.azure.com/.default")
+    openai.api_key = openai_token.token
 
 
 root_router = APIRouter()
@@ -76,16 +72,20 @@ api_router = APIRouter()
 # # can access all the files. This is also slow and memory hungry.
 @api_router.get("/content/{path}")
 async def content_file(path, blob_container_client=Depends(get_blob_container_client)):
-    blob = await blob_container_client.get_blob_client(path).download_blob()
-    if not blob.properties or not blob.properties.has_key("content_settings"):
-        return {"error": "Blob not found"}, 404
-    mime_type = blob.properties["content_settings"]["content_type"]
-    if mime_type == "application/octet-stream":
-        mime_type = mimetypes.guess_type(path)[0] or "application/octet-stream"
-    blob_file = io.BytesIO()
-    await blob.readinto(blob_file)
-    blob_file.seek(0)
-    return StreamingResponse(blob_file, media_type=mime_type)
+    try:
+        blob = await blob_container_client.get_blob_client(path).download_blob()
+        if not blob.properties or not blob.properties.has_key("content_settings"):
+            return {"error": "Blob not found"}, 404
+        mime_type = blob.properties["content_settings"]["content_type"]
+        if mime_type == "application/octet-stream":
+            mime_type = mimetypes.guess_type(path)[0] or "application/octet-stream"
+        blob_file = io.BytesIO()
+        await blob.readinto(blob_file)
+        blob_file.seek(0)
+        return StreamingResponse(blob_file, media_type=mime_type)
+    except Exception as e:
+        logging.exception("Exception in /content")
+        return {"error": str(e)}, 500
 
 
 # Send MSAL.js settings to the client UI
@@ -115,9 +115,8 @@ async def ask(request: Request, search_client=Depends(get_search_client)):
             KB_FIELDS_CONTENT,
         )
         # Workaround for: https://github.com/openai/openai-python/issues/371
-        async with aiohttp.ClientSession() as s:
-            openai.aiosession.set(s)
-            r = await impl.run(request_json["question"], request_json.get("overrides") or {}, auth_claims)
+
+        r = await impl.run(request_json["question"], request_json.get("overrides") or {}, auth_claims)
         return r
     except Exception as e:
         logging.exception("Exception in /ask")
@@ -145,12 +144,8 @@ async def chat(request: Request, search_client=Depends(get_search_client)):
             KB_FIELDS_SOURCEPAGE,
             KB_FIELDS_CONTENT,
         )
-        # Workaround for: https://github.com/openai/openai-python/issues/371
-        async with aiohttp.ClientSession() as s:
-            openai.aiosession.set(s)
-            r = await impl.run_without_streaming(
-                request_json["history"], request_json.get("overrides", {}), auth_claims
-            )
+
+        r = await impl.run_without_streaming(request_json["history"], request_json.get("overrides", {}), auth_claims)
         return r
     except Exception as e:
         logging.exception("Exception in /chat")
@@ -158,8 +153,11 @@ async def chat(request: Request, search_client=Depends(get_search_client)):
 
 
 async def format_as_ndjson(r: AsyncGenerator[dict, None]) -> AsyncGenerator[str, None]:
-    async for event in r:
-        yield json.dumps(event, ensure_ascii=False) + "\n"
+    try:
+        async for event in r:
+            yield json.dumps(event, ensure_ascii=False) + "\n"
+    finally:
+        await r.aclose()
 
 
 @api_router.post("/chat_stream")
@@ -231,17 +229,6 @@ async def chat_stream(request: Request, search_client=Depends(get_search_client)
 async def before_request(request: Request, call_next):
     # Used by the OpenAI SDK
     try:
-        openai.api_type = "azure_ad"
-        openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
-        openai.api_version = "2023-07-01-preview"
-
-        azure_credential = get_azure_credential()
-        openai_token = await azure_credential.get_token("https://cognitiveservices.azure.com/.default")
-        openai.api_key = openai_token.token
-
-        # Store on request.state for later use inside requests
-        request.state.openai_token = openai_token
-
         # get userId from request headers
         userId = request.headers.get("userId")
 
@@ -260,6 +247,10 @@ def create_app():
     app.include_router(api_router, prefix="/api")
     app.include_router(document_router, prefix="/api/documents")
     app.include_router(root_router)
+
+    openai.api_type = "azure_ad"
+    openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
+    openai.api_version = "2023-07-01-preview"
 
     # Level should be one of https://docs.python.org/3/library/logging.html#logging-levels
     default_level = "INFO"  # In development, log more verbosely

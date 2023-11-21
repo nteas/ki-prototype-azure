@@ -23,19 +23,27 @@ def get_azure_credential():
     return DefaultAzureCredential(exclude_shared_token_cache_credential=True, logging_level=logging.ERROR)
 
 
-def get_search_client():
-    azure_credential = get_azure_credential()
-    return SearchClient(
-        endpoint=f"https://{os.environ['AZURE_SEARCH_SERVICE']}.search.windows.net",
-        index_name=os.environ["AZURE_SEARCH_INDEX"],
-        credential=azure_credential,
-    )
+async def get_search_client():
+    try:
+        azure_credential = get_azure_credential()
+        yield SearchClient(
+            endpoint=f"https://{os.environ['AZURE_SEARCH_SERVICE']}.search.windows.net",
+            index_name=os.environ["AZURE_SEARCH_INDEX"],
+            credential=azure_credential,
+        )
+    finally:
+        await azure_credential.close()
 
 
-def get_blob_container_client():
-    azure_credential = get_azure_credential()
-    blob_client = BlobServiceClient(
-        account_url=f"https://{os.environ['AZURE_STORAGE_ACCOUNT']}.blob.core.windows.net", credential=azure_credential
-    )
+async def get_blob_container_client():
+    try:
+        azure_credential = get_azure_credential()
+        blob_client = BlobServiceClient(
+            account_url=f"https://{os.environ['AZURE_STORAGE_ACCOUNT']}.blob.core.windows.net",
+            credential=azure_credential,
+        )
 
-    return blob_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"])
+        yield blob_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"])
+    finally:
+        await azure_credential.close()
+        await blob_client.close()
