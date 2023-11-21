@@ -303,6 +303,7 @@ def index_sections(
         index_name=AZURE_SEARCH_INDEX,
         credential=search_creds,
     )
+
     i = 0
     batch = []
     for s in sections:

@@ -10,7 +10,7 @@ from pypdf import PdfReader, PdfWriter
 from azure.identity import AzureDeveloperCliCredential
 
 from core.db import get_db
-from core.context import get_azure_credential, get_blob_container_client
+from core.context import get_blob_container_client
 from core.utilities import (
     blob_name_from_file_page,
     get_document_text,
@@ -66,8 +66,8 @@ def create_document(doc: Document, db=Depends(get_db)):
 
         return doc
     except Exception as ex:
-        print("Failed to create document")
-        print("Exception: {}".format(ex))
+        logging.info("Failed to create document")
+        logging.info("Exception: {}".format(ex))
         return {"error": "Exception: {}".format(ex)}
 
 
@@ -127,8 +127,8 @@ async def get_documents(params: GetDocumentsRequest = Depends(), db=Depends(get_
 
         return {"documents": documents, "total": total}
     except Exception as ex:
-        print("Failed to get documents")
-        print("Exception: {}".format(ex))
+        logging.info("Failed to get documents")
+        logging.info("Exception: {}".format(ex))
         raise HTTPException(status_code=404, detail="Document not found")
 
 
@@ -231,14 +231,20 @@ async def upload_file(
         if not doc:
             raise HTTPException(status_code=404, detail="Document not found")
 
-        azure_credentials = get_azure_credential()
+        azure_credentials = AzureDeveloperCliCredential(tenant_id=os.environ["AZURE_TENANT_ID"], process_timeout=60)
 
-        for page in doc["file_pages"]:
-            print(f"Removing blob {page}")
-            await blob_container_client.delete_blob(page)
+        if doc["file_pages"]:
+            for page in doc["file_pages"]:
+                try:
+                    logging.info(f"Removing blob {page}")
+                    await blob_container_client.delete_blob(page)
+                except Exception as ex:
+                    logging.info("Failed to remove blob from storage {}".format(ex))
 
-            logging.info(f"Removing page from index: {page}")
-            remove_from_index(page, azure_credentials)
+                try:
+                    remove_from_index(page, azure_credentials)
+                except Exception as ex:
+                    logging.info("Failed to remove from index {}".format(ex))
 
         filename = file.filename
         pdf = await file.read()
@@ -275,7 +281,6 @@ async def upload_file(
 
         logging.info("Getting document text")
 
-        azure_credentials = AzureDeveloperCliCredential(tenant_id=os.environ["AZURE_TENANT_ID"], process_timeout=60)
         page_map = await get_document_text(pdf, azure_credentials)
 
         logging.info("Got text. creating sections")
@@ -317,22 +322,22 @@ async def delete_document(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    try:
-        azure_credentials = AzureDeveloperCliCredential(tenant_id=os.environ["AZURE_TENANT_ID"], process_timeout=60)
+    azure_credentials = AzureDeveloperCliCredential(tenant_id=os.environ["AZURE_TENANT_ID"], process_timeout=60)
 
-        logging.info("Removing document from index: {}".format(doc["file_pages"]))
+    logging.info("Removing document from index: {}".format(doc["file_pages"]))
 
-        if doc["file_pages"]:
-            for page in doc["file_pages"]:
-                print(f"Removing blob {page}")
+    if doc["file_pages"]:
+        for page in doc["file_pages"]:
+            try:
+                logging.info(f"Removing blob {page}")
                 await blob_container_client.delete_blob(page)
+            except Exception as ex:
+                logging.info("Failed to remove blob from storage {}".format(ex))
 
-                logging.info(f"Removing page from index: {page}")
+            try:
                 remove_from_index(page, azure_credentials)
-
-    except Exception as ex:
-        print("Failed to delete file on azure blob storage and search index")
-        print("Exception: {}".format(ex))
+            except Exception as ex:
+                logging.info("Failed to remove from index {}".format(ex))
 
     log = Log(user=request.state.userId, change="deleted", message="Document deleted")
 
