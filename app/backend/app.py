@@ -15,6 +15,7 @@ from approaches.retrievethenread import RetrieveThenReadApproach
 from routers.documents import document_router, Document
 from core.db import close_db_connect, connect_and_init_db, get_db
 from core.context import get_auth_helper, get_azure_credential, get_blob_container_client, get_search_client
+from opencensus.ext.azure.log_exporter import AzureLogHandler
 
 
 # Replace these with your own values, either in environment variables or directly here
@@ -273,7 +274,12 @@ def create_app():
     default_level = "INFO"  # In development, log more verbosely
     if os.getenv("WEBSITE_HOSTNAME"):  # In production, don't log as heavily
         default_level = "WARNING"
-    logging.basicConfig(level=os.getenv("APP_LOG_LEVEL", default_level))
+
+    handlers = None
+    if os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"):
+        handlers = [AzureLogHandler()]
+
+    logging.basicConfig(level=os.getenv("APP_LOG_LEVEL", default_level), handlers=handlers)
 
     if allowed_origin := os.getenv("ALLOWED_ORIGIN"):
         app.add_middleware(
