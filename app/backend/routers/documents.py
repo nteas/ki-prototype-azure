@@ -7,7 +7,6 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel, Field
 from pypdf import PdfReader, PdfWriter
-from azure.identity import AzureDeveloperCliCredential
 
 from core.db import get_db
 from core.context import get_blob_container_client
