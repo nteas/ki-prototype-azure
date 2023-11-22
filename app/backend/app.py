@@ -13,7 +13,7 @@ from starlette.responses import StreamingResponse, FileResponse, JSONResponse
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
 from routers.documents import document_router, Document
-from core.db import get_db
+from core.db import close_db_connect, connect_and_init_db, get_db
 from core.context import get_auth_helper, get_azure_credential, get_blob_container_client, get_search_client
 
 
@@ -38,11 +38,12 @@ app.mount("/assets", StaticFiles(directory="static/assets", html=True), name="as
 
 @app.on_event("startup")
 async def startup_event():
-    logging.info("Starting up...")
+    connect_and_init_db()
 
-    azure_credential = get_azure_credential()
-    openai_token = await azure_credential.get_token("https://cognitiveservices.azure.com/.default")
-    openai.api_key = openai_token.token
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    close_db_connect()
 
 
 root_router = APIRouter()
@@ -73,7 +74,11 @@ api_router = APIRouter()
 @api_router.get("/content/{path}")
 async def content_file(path, blob_container_client=Depends(get_blob_container_client)):
     try:
-        blob = await blob_container_client.get_blob_client(path).download_blob()
+        blob = (
+            await blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"])
+            .get_blob_client(path)
+            .download_blob()
+        )
         if not blob.properties or not blob.properties.has_key("content_settings"):
             return {"error": "Blob not found"}, 404
         mime_type = blob.properties["content_settings"]["content_type"]
@@ -86,6 +91,8 @@ async def content_file(path, blob_container_client=Depends(get_blob_container_cl
     except Exception as e:
         logging.exception("Exception in /content")
         return {"error": str(e)}, 500
+    finally:
+        await blob_container_client.close()
 
 
 # Send MSAL.js settings to the client UI
@@ -121,6 +128,8 @@ async def ask(request: Request, search_client=Depends(get_search_client)):
     except Exception as e:
         logging.exception("Exception in /ask")
         return {"error": str(e)}, 500
+    finally:
+        await search_client.close()
 
 
 @api_router.post("/chat")
@@ -150,6 +159,8 @@ async def chat(request: Request, search_client=Depends(get_search_client)):
     except Exception as e:
         logging.exception("Exception in /chat")
         return {"error": str(e)}, 500
+    finally:
+        await search_client.close()
 
 
 async def format_as_ndjson(r: AsyncGenerator[dict, None]) -> AsyncGenerator[str, None]:
@@ -191,6 +202,8 @@ async def chat_stream(request: Request, search_client=Depends(get_search_client)
     except Exception as e:
         logging.exception("Exception in /chat")
         return {"error": str(e)}, 500
+    finally:
+        await search_client.close()
 
 
 # migrate files in cognitive search to own database
@@ -200,9 +213,7 @@ async def chat_stream(request: Request, search_client=Depends(get_search_client)
 #         search_results = await search_client.search(search_text="", select=["id", "sourcepage", "sourcefile"])
 
 #         # Iterate over the search results using the get_next method
-#         docs = []
 #         async for result in search_results:
-#             docs.append(result)
 #             doc = Document(file=result.get("sourcefile")).model_dump(exclude={"title"})
 
 #             doc.pop("file_pages", None)
@@ -230,6 +241,10 @@ async def before_request(request: Request, call_next):
     # Used by the OpenAI SDK
     try:
         # get userId from request headers
+        azure_credential = get_azure_credential()
+        openai_token = await azure_credential.get_token("https://cognitiveservices.azure.com/.default")
+        openai.api_key = openai_token.token
+
         userId = request.headers.get("userId")
 
         # set userId in request state
@@ -241,6 +256,8 @@ async def before_request(request: Request, call_next):
     except Exception as e:
         logging.exception("Exception in before_request")
         return JSONResponse(content={"error": str(e)}, status_code=500)
+    finally:
+        await azure_credential.close()
 
 
 def create_app():

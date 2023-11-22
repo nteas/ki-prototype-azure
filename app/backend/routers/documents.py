@@ -234,17 +234,19 @@ async def upload_file(
         azure_credentials = AzureDeveloperCliCredential(tenant_id=os.environ["AZURE_TENANT_ID"], process_timeout=60)
 
         if doc["file_pages"]:
+            try:
+                await remove_from_index(doc["file"], azure_credentials)
+            except Exception as ex:
+                logging.info("Failed to remove from index {}".format(ex))
+
             for page in doc["file_pages"]:
                 try:
                     logging.info(f"Removing blob {page}")
-                    await blob_container_client.delete_blob(page)
+                    await blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"]).delete_blob(
+                        page
+                    )
                 except Exception as ex:
                     logging.info("Failed to remove blob from storage {}".format(ex))
-
-                try:
-                    remove_from_index(page, azure_credentials)
-                except Exception as ex:
-                    logging.info("Failed to remove from index {}".format(ex))
 
         filename = file.filename
         pdf = await file.read()
@@ -265,7 +267,9 @@ async def upload_file(
             writer.write(f)
             f.seek(0)
 
-            await blob_container_client.upload_blob(blob_name, f, overwrite=True)
+            await blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"]).upload_blob(
+                blob_name, f, overwrite=True
+            )
 
             file_pages.append(blob_name)
 
@@ -281,7 +285,7 @@ async def upload_file(
 
         logging.info("Getting document text")
 
-        page_map = await get_document_text(pdf, azure_credentials)
+        page_map = get_document_text(pdf, azure_credentials)
 
         logging.info("Got text. creating sections")
 
@@ -298,7 +302,7 @@ async def upload_file(
         sections = update_embeddings_in_batch(sections)
 
         logging.info("Updated embeddings. indexing sections")
-        index_sections(filename, sections, azure_credentials)
+        await index_sections(filename, sections, azure_credentials)
 
         logging.info("Indexed sections")
 
@@ -307,6 +311,8 @@ async def upload_file(
         logging.info("Failed to upload file")
         logging.info("Exception: {}".format(ex))
         raise HTTPException(status_code=500, detail="Failed to upload file")
+    finally:
+        await blob_container_client.close()
 
 
 # Delete a specific document by ID
@@ -325,20 +331,22 @@ async def delete_document(
 
         azure_credentials = AzureDeveloperCliCredential(tenant_id=os.environ["AZURE_TENANT_ID"], process_timeout=60)
 
-        logging.info("Removing document from index: {}".format(doc["file_pages"]))
+        logging.info("Removing document from index: {}".format(doc["file"]))
 
         if doc["file_pages"]:
+            try:
+                await remove_from_index(doc["file"], azure_credentials)
+            except Exception as ex:
+                logging.info("Failed to remove from index {}".format(ex))
+
             for page in doc["file_pages"]:
                 try:
                     logging.info(f"Removing blob {page}")
-                    await blob_container_client.delete_blob(page)
+                    await blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"]).delete_blob(
+                        page
+                    )
                 except Exception as ex:
                     logging.info("Failed to remove blob from storage {}".format(ex))
-
-                try:
-                    remove_from_index(page, azure_credentials)
-                except Exception as ex:
-                    logging.info("Failed to remove from index {}".format(ex))
 
         log = Log(user=request.state.userId, change="deleted", message="Document deleted")
 
@@ -349,6 +357,8 @@ async def delete_document(
         logging.info("Failed to delete document")
         logging.info("Exception: {}".format(ex))
         raise HTTPException(status_code=500, detail="Failed to delete document")
+    finally:
+        await blob_container_client.close()
 
 
 # Add a log to a specific document by ID
@@ -386,7 +396,7 @@ async def change_log_status(id, log_id, request: Request, db=Depends(get_db)):
 # @document_router.get("/files")
 # async def get_files(request: Request):
 #     blob_container_client = request.state.blob_container_client
-#     blob_list = blob_container_client.list_blobs()
+#     blob_list = blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"]).list_blobs()
 #     # convert blob_list from AsyncItemPaged to list
 #     blob_list = [blob async for blob in blob_list]
 #     blob_names = []

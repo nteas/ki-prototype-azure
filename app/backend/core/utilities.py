@@ -5,7 +5,6 @@ import os
 import re
 import time
 from typing import Any, Optional
-
 import openai
 import tiktoken
 from azure.ai.formrecognizer import DocumentAnalysisClient
@@ -64,16 +63,16 @@ def table_to_html(table):
     return table_html
 
 
-async def get_document_text(file, formrecognizer_creds):
+def get_document_text(file, formrecognizer_creds):
+    AZURE_FORMRECOGNIZER_SERVICE = os.getenv("AZURE_FORMRECOGNIZER_SERVICE")
+    form_recognizer_client = DocumentAnalysisClient(
+        endpoint=f"https://{AZURE_FORMRECOGNIZER_SERVICE}.cognitiveservices.azure.com/",
+        credential=formrecognizer_creds,
+        headers={"x-ms-useragent": "azure-search-chat-demo/1.0.0"},
+    )
     try:
         offset = 0
         page_map = []
-        AZURE_FORMRECOGNIZER_SERVICE = os.getenv("AZURE_FORMRECOGNIZER_SERVICE")
-        form_recognizer_client = DocumentAnalysisClient(
-            endpoint=f"https://{AZURE_FORMRECOGNIZER_SERVICE}.cognitiveservices.azure.com/",
-            credential=formrecognizer_creds,
-            headers={"x-ms-useragent": "azure-search-chat-demo/1.0.0"},
-        )
 
         poller = form_recognizer_client.begin_analyze_document("prebuilt-layout", document=file)
         form_recognizer_results = poller.result()
@@ -116,7 +115,6 @@ async def get_document_text(file, formrecognizer_creds):
         print(f"Error extracting text from file: {e}")
         raise e
     finally:
-        await form_recognizer_client.close()
         print("Done extracting text")
 
 
@@ -288,12 +286,14 @@ def update_embeddings_in_batch(sections):
         yield s
 
 
-def index_sections(
+async def index_sections(
     filename,
     sections,
     search_creds,
     acls=None,
 ):
+    search_client = await get_search_client()
+
     try:
         AZURE_SEARCH_INDEX = os.getenv("AZURE_SEARCH_INDEX")
 
@@ -301,8 +301,6 @@ def index_sections(
 
         if not search_creds:
             raise Exception("Search credentials not provided")
-
-        search_client = get_search_client()
 
         i = 0
         batch = []
@@ -312,42 +310,48 @@ def index_sections(
             batch.append(s)
             i += 1
             if i % 1000 == 0:
-                results = search_client.upload_documents(documents=batch)
+                results = await search_client.upload_documents(documents=batch)
                 succeeded = sum([1 for r in results if r.succeeded])
                 print(f"\tIndexed {len(results)} sections, {succeeded} succeeded")
                 batch = []
 
         if len(batch) > 0:
-            results = search_client.upload_documents(documents=batch)
+            results = await search_client.upload_documents(documents=batch)
             succeeded = sum([1 for r in results if r.succeeded])
             print(f"\tIndexed {len(results)} sections, {succeeded} succeeded")
     finally:
+        await search_client.close()
         print("Done indexing sections")
 
 
-def remove_from_index(filename, search_creds):
+async def remove_from_index(filename, search_creds):
     if not search_creds:
         raise Exception("Search credentials not provided")
 
-    try:
-        search_client = get_search_client()
+    search_client = await get_search_client()
 
-        logging.info(
-            f"Removing sections from '{filename or '<all>'}' from search index '{os.environ['AZURE_SEARCH_INDEX']}'"
-        )
+    try:
+        logging.info(f"Removing sections from '{filename or '<all>'}' from search index")
 
         while True:
-            filter = None if filename is None else f"sourcefile eq '{os.path.basename(filename)}'"
-            r = search_client.search("", filter=filter, top=1000, include_total_count=True)
-            if r.get_count() == 0:
+            filter = f"sourcefile eq '{filename}'"
+            search_results = await search_client.search(search_text="", filter=filter, select=["id"])
+
+            docs = []
+            async for doc in search_results:
+                docs.append(doc)
+
+            if len(docs) == 0:
                 break
-            removed_docs = search_client.delete_documents(documents=[{"id": d["id"]} for d in r])
-            print(f"\tRemoved {len(removed_docs)} sections from index")
+
+            await search_client.delete_documents(documents=docs)
+            print("Removed  sections from index")
             # It can take a few seconds for search results to reflect changes, so wait a bit
             time.sleep(2)
     except Exception as e:
         print(f"Error removing sections from index: {e}")
     finally:
+        await search_client.close()
         print("Done removing sections from index")
 
 
