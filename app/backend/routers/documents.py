@@ -231,11 +231,9 @@ async def upload_file(
         if not doc:
             raise HTTPException(status_code=404, detail="Document not found")
 
-        azure_credentials = AzureDeveloperCliCredential(tenant_id=os.environ["AZURE_TENANT_ID"], process_timeout=60)
-
         if doc["file_pages"]:
             try:
-                await remove_from_index(doc["file"], azure_credentials)
+                await remove_from_index(doc["file"])
             except Exception as ex:
                 logging.info("Failed to remove from index {}".format(ex))
 
@@ -309,8 +307,10 @@ async def upload_file(
         return doc
     except Exception as ex:
         logging.info("Failed to upload file")
-        logging.info("Exception: {}".format(ex))
-        raise HTTPException(status_code=500, detail="Failed to upload file")
+        message = "Exception: {}".format(ex)
+        logging.info(message)
+        raise HTTPException(status_code=500, detail=message)
+
     finally:
         await blob_container_client.close()
 
@@ -329,13 +329,11 @@ async def delete_document(
         if not doc:
             raise HTTPException(status_code=404, detail="Document not found")
 
-        azure_credentials = AzureDeveloperCliCredential(tenant_id=os.environ["AZURE_TENANT_ID"], process_timeout=60)
-
         logging.info("Removing document from index: {}".format(doc["file"]))
 
         if doc["file_pages"]:
             try:
-                await remove_from_index(doc["file"], azure_credentials)
+                await remove_from_index(doc["file"])
             except Exception as ex:
                 logging.info("Failed to remove from index {}".format(ex))
 

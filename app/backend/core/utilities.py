@@ -324,10 +324,7 @@ async def index_sections(
         print("Done indexing sections")
 
 
-async def remove_from_index(filename, search_creds):
-    if not search_creds:
-        raise Exception("Search credentials not provided")
-
+async def remove_from_index(filename):
     search_client = await get_search_client()
 
     try:
