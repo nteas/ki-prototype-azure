@@ -7,7 +7,7 @@ from core.authentication import AuthenticationHelper
 
 
 def get_auth_helper():
-    auth_helper = AuthenticationHelper(
+    return AuthenticationHelper(
         use_authentication=os.getenv("AZURE_USE_AUTHENTICATION", "").lower() == "true",
         server_app_id=os.getenv("AZURE_SERVER_APP_ID"),
         server_app_secret=os.getenv("AZURE_SERVER_APP_SECRET"),
@@ -15,8 +15,6 @@ def get_auth_helper():
         tenant_id=os.getenv("AZURE_TENANT_ID"),
         token_cache_path=os.getenv("TOKEN_CACHE_PATH"),
     )
-
-    return auth_helper
 
 
 def get_azure_credential():

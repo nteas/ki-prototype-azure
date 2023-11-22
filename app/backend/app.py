@@ -239,16 +239,17 @@ async def chat_stream(request: Request, search_client=Depends(get_search_client)
 
 @app.middleware("http")
 async def before_request(request: Request, call_next):
-    # Used by the OpenAI SDK
+    azure_credential = get_azure_credential()
+
     try:
-        # get userId from request headers
-        azure_credential = get_azure_credential()
         openai_token = await azure_credential.get_token("https://cognitiveservices.azure.com/.default")
+
         openai.api_key = openai_token.token
 
+        openai.api_type = "azure_ad"
+        openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
+        openai.api_version = "2023-07-01-preview"
         userId = request.headers.get("userId")
-
-        # set userId in request state
         request.state.userId = userId
 
         response = await call_next(request)
@@ -266,20 +267,12 @@ def create_app():
     app.include_router(document_router, prefix="/api/documents")
     app.include_router(root_router)
 
-    openai.api_type = "azure_ad"
-    openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
-    openai.api_version = "2023-07-01-preview"
-
     # Level should be one of https://docs.python.org/3/library/logging.html#logging-levels
-    default_level = "INFO"  # In development, log more verbosely
-    if os.getenv("WEBSITE_HOSTNAME"):  # In production, don't log as heavily
-        default_level = "WARNING"
-
     handlers = None
-    if os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"):
+    if os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", None):
         handlers = [AzureLogHandler()]
 
-    logging.basicConfig(level=os.getenv("APP_LOG_LEVEL", default_level), handlers=handlers)
+    logging.basicConfig(level=os.getenv("APP_LOG_LEVEL", "WARNING"), handlers=handlers)
 
     if allowed_origin := os.getenv("ALLOWED_ORIGIN"):
         app.add_middleware(

@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel, Field
 from pypdf import PdfReader, PdfWriter
 
+
 from core.db import get_db
 from core.context import get_blob_container_client
 from core.utilities import (
@@ -282,7 +283,7 @@ async def upload_file(
 
         logging.info("Getting document text")
 
-        page_map = get_document_text(pdf, azure_credentials)
+        page_map = get_document_text(pdf)
 
         logging.info("Got text. creating sections")
 
@@ -299,7 +300,7 @@ async def upload_file(
         sections = update_embeddings_in_batch(sections)
 
         logging.info("Updated embeddings. indexing sections")
-        await index_sections(filename, sections, azure_credentials)
+        await index_sections(filename, sections)
 
         logging.info("Indexed sections")
 

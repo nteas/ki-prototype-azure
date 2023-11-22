@@ -8,6 +8,7 @@ from typing import Any, Optional
 import openai
 import tiktoken
 from azure.ai.formrecognizer import DocumentAnalysisClient
+from azure.core.credentials import AzureKeyCredential
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -63,8 +64,9 @@ def table_to_html(table):
     return table_html
 
 
-def get_document_text(file, formrecognizer_creds):
+def get_document_text(file):
     AZURE_FORMRECOGNIZER_SERVICE = os.getenv("AZURE_FORMRECOGNIZER_SERVICE")
+    formrecognizer_creds = AzureKeyCredential(os.environ["AZURE_FORMRECOGNIZER_KEY"])
     form_recognizer_client = DocumentAnalysisClient(
         endpoint=f"https://{AZURE_FORMRECOGNIZER_SERVICE}.cognitiveservices.azure.com/",
         credential=formrecognizer_creds,
@@ -225,7 +227,6 @@ def before_retry_sleep():
 )
 def compute_embedding(text, embedding_deployment, embedding_model):
     try:
-        refresh_openai_token()
         embedding_args = {"deployment_id": embedding_deployment}
         return openai.Embedding.create(**embedding_args, model=embedding_model, input=text)["data"][0]["embedding"]
     except Exception as e:
@@ -241,7 +242,6 @@ def compute_embedding(text, embedding_deployment, embedding_model):
 )
 def compute_embedding_in_batch(texts):
     try:
-        refresh_openai_token()
         embedding_args = {"deployment_id": os.getenv("AZURE_OPENAI_EMB_DEPLOYMENT")}
         emb_response = openai.Embedding.create(
             **embedding_args, model=os.getenv("AZURE_OPENAI_EMB_MODEL_NAME"), input=texts
@@ -289,7 +289,6 @@ def update_embeddings_in_batch(sections):
 async def index_sections(
     filename,
     sections,
-    search_creds,
     acls=None,
 ):
     search_client = await get_search_client()
@@ -298,9 +297,6 @@ async def index_sections(
         AZURE_SEARCH_INDEX = os.getenv("AZURE_SEARCH_INDEX")
 
         print(f"Indexing sections from '{filename}' into search index '{AZURE_SEARCH_INDEX}'")
-
-        if not search_creds:
-            raise Exception("Search credentials not provided")
 
         i = 0
         batch = []
@@ -350,17 +346,3 @@ async def remove_from_index(filename):
     finally:
         await search_client.close()
         print("Done removing sections from index")
-
-
-def refresh_openai_token():
-    """
-    Refresh OpenAI token every 5 minutes
-    """
-    if (
-        CACHE_KEY_TOKEN_TYPE in open_ai_token_cache
-        and open_ai_token_cache[CACHE_KEY_TOKEN_TYPE] == "azure_ad"
-        and open_ai_token_cache[CACHE_KEY_CREATED_TIME] + 300 < time.time()
-    ):
-        token_cred = open_ai_token_cache[CACHE_KEY_TOKEN_CRED]
-        openai.api_key = token_cred.get_token("https://cognitiveservices.azure.com/.default").token
-        open_ai_token_cache[CACHE_KEY_CREATED_TIME] = time.time()
