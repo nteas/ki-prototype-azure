@@ -70,6 +70,7 @@
 
 .citations {
 	padding-top: 10px;
+	white-space: pre-wrap;
 }
 
 .citations .citationLearnMore {
