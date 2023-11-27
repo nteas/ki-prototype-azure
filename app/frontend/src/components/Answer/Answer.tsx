@@ -104,7 +104,7 @@ export const Answer = ({
 			<div
 				className={styles.answerText}
 				dangerouslySetInnerHTML={{
-					__html: sanitizedAnswerHtml,
+					__html: sanitizedAnswerHtml.replace(/\n/g, '<br />'),
 				}}></div>
 
 			{!!parsedAnswer.citations.length && (
