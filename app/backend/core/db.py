@@ -2,6 +2,7 @@ import os
 import logging
 from pymongo import MongoClient
 import pymongo
+from core.context import logger
 
 db_client: MongoClient = None
 
@@ -16,22 +17,22 @@ def connect_and_init_db():
     global db_client
     try:
         db_client = MongoClient(AZURE_MONGODB, serverSelectionTimeoutMS=5000)
-        logging.info("Connected to mongo.")
+        logger.info("Connected to mongo.")
 
         if "documents" not in db_client["ki-prototype"].list_collection_names():
             db_client["ki-prototype"].create_collection("documents")
 
         db_client["ki-prototype"]["documents"].create_index([("$**", pymongo.ASCENDING)])
     except Exception as e:
-        logging.exception(f"Could not connect to mongo: {e}")
+        logger.exception(f"Could not connect to mongo: {e}")
         raise
 
 
 def close_db_connect():
     global db_client
     if db_client is None:
-        logging.warning("Connection is None, nothing to close.")
+        logger.warning("Connection is None, nothing to close.")
         return
     db_client.close()
     db_client = None
-    logging.info("Mongo connection closed.")
+    logger.info("Mongo connection closed.")

@@ -240,12 +240,15 @@ function Citation({
 	isFlagged,
 	isFeedbackGiven,
 }: CitationProps) {
+	const isFlagChecked = useRef<boolean>(false);
+
 	useEffect(() => {
-		if (isFlagged) return;
+		if (isFlagged || isFlagChecked.current) return;
 
 		apiFetch(`/api/documents/flag/${citation}`)
 			.then(res => res.json())
 			.then(res => {
+				isFlagChecked.current = true;
 				if (!res.flagged) return;
 				isFeedbackGiven.current = true;
 				updateFlags(citation);

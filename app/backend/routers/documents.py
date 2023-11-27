@@ -1,5 +1,4 @@
 import datetime
-import logging
 import os
 import io
 import uuid
@@ -10,7 +9,7 @@ from pypdf import PdfReader, PdfWriter
 
 
 from core.db import get_db
-from core.context import get_blob_container_client
+from core.context import get_blob_container_client, logger
 from core.utilities import (
     blob_name_from_file_page,
     get_document_text,
@@ -66,8 +65,8 @@ def create_document(doc: Document, db=Depends(get_db)):
 
         return doc
     except Exception as ex:
-        logging.info("Failed to create document")
-        logging.info("Exception: {}".format(ex))
+        logger.info("Failed to create document")
+        logger.info("Exception: {}".format(ex))
         return {"error": "Exception: {}".format(ex)}
 
 
@@ -79,7 +78,7 @@ class GetDocumentsRequest(BaseModel):
     flagged: str = "false"
     pdf: str = "true"
     web: str = "true"
-    order_by: str = "created_at"
+    order_by: str = "updated_at"
     order: int = -1
 
 
@@ -87,6 +86,7 @@ class GetDocumentsRequest(BaseModel):
 @document_router.get("/")
 async def get_documents(params: GetDocumentsRequest = Depends(), db=Depends(get_db)):
     try:
+        logger.info("Getting documents")
         typeQuery = []
         if params.pdf == "true":
             typeQuery.append("pdf")
@@ -117,6 +117,8 @@ async def get_documents(params: GetDocumentsRequest = Depends(), db=Depends(get_
         if params.skip > 0:
             cursor = cursor.skip(params.skip)
 
+        logger.info("Order by: {}".format(params.order_by))
+
         if params.order_by and params.order:
             cursor = cursor.sort(params.order_by, params.order)
 
@@ -127,8 +129,8 @@ async def get_documents(params: GetDocumentsRequest = Depends(), db=Depends(get_
 
         return {"documents": documents, "total": total}
     except Exception as ex:
-        logging.info("Failed to get documents")
-        logging.info("Exception: {}".format(ex))
+        logger.info("Failed to get documents")
+        logger.info("Exception: {}".format(ex))
         raise HTTPException(status_code=404, detail="Document not found")
 
 
@@ -181,9 +183,15 @@ def flag_document(request: Request, data: FlagCitations, db=Depends(get_db)):
             message = data.message + ": " + citation
             log = Log(user=request.state.userId, change=change, message=message)
 
-            db.documents.update_one({"id": doc["id"]}, {"$push": {"logs": log.model_dump(), "flagged_pages": citation}})
+            db.documents.update_one(
+                {"id": doc["id"]},
+                {
+                    "$set": {"updated_at": datetime.datetime.now()},
+                    "$push": {"logs": log.model_dump(), "flagged_pages": citation},
+                },
+            )
         else:
-            logging.info("Document not found")
+            logger.info("Document not found")
 
     return {"message": "Documents flagged"}
 
@@ -235,16 +243,16 @@ async def upload_file(
             try:
                 await remove_from_index(doc["file"])
             except Exception as ex:
-                logging.info("Failed to remove from index {}".format(ex))
+                logger.info("Failed to remove from index {}".format(ex))
 
             for page in doc["file_pages"]:
                 try:
-                    logging.info(f"Removing blob {page}")
+                    logger.info(f"Removing blob {page}")
                     await blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"]).delete_blob(
                         page
                     )
                 except Exception as ex:
-                    logging.info("Failed to remove blob from storage {}".format(ex))
+                    logger.info("Failed to remove blob from storage {}".format(ex))
 
         filename = file.filename
         pdf = await file.read()
@@ -281,11 +289,11 @@ async def upload_file(
 
         # update index
 
-        logging.info("Getting document text")
+        logger.info("Getting document text")
 
         page_map = get_document_text(pdf)
 
-        logging.info("Got text. creating sections")
+        logger.info("Got text. creating sections")
 
         sections = list(
             create_sections(
@@ -295,20 +303,20 @@ async def upload_file(
                 os.getenv("AZURE_OPENAI_EMB_MODEL_NAME", "text-embedding-ada-002"),
             )
         )
-        logging.info("Got sections. updating embeddings")
+        logger.info("Got sections. updating embeddings")
 
         sections = update_embeddings_in_batch(sections)
 
-        logging.info("Updated embeddings. indexing sections")
+        logger.info("Updated embeddings. indexing sections")
         await index_sections(filename, sections)
 
-        logging.info("Indexed sections")
+        logger.info("Indexed sections")
 
         return doc
     except Exception as ex:
-        logging.info("Failed to upload file")
+        logger.info("Failed to upload file")
         message = "Exception: {}".format(ex)
-        logging.info(message)
+        logger.info(message)
         raise HTTPException(status_code=500, detail=message)
 
     finally:
@@ -329,22 +337,22 @@ async def delete_document(
         if not doc:
             raise HTTPException(status_code=404, detail="Document not found")
 
-        logging.info("Removing document from index: {}".format(doc["file"]))
+        logger.info("Removing document from index: {}".format(doc["file"]))
 
         if doc["file_pages"]:
             try:
                 await remove_from_index(doc["file"])
             except Exception as ex:
-                logging.info("Failed to remove from index {}".format(ex))
+                logger.info("Failed to remove from index {}".format(ex))
 
             for page in doc["file_pages"]:
                 try:
-                    logging.info(f"Removing blob {page}")
+                    logger.info(f"Removing blob {page}")
                     await blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"]).delete_blob(
                         page
                     )
                 except Exception as ex:
-                    logging.info("Failed to remove blob from storage {}".format(ex))
+                    logger.info("Failed to remove blob from storage {}".format(ex))
 
         log = Log(user=request.state.userId, change="deleted", message="Document deleted")
 
@@ -352,8 +360,8 @@ async def delete_document(
 
         return {"message": "Document deleted"}
     except Exception as ex:
-        logging.info("Failed to delete document")
-        logging.info("Exception: {}".format(ex))
+        logger.info("Failed to delete document")
+        logger.info("Exception: {}".format(ex))
         raise HTTPException(status_code=500, detail="Failed to delete document")
     finally:
         await blob_container_client.close()

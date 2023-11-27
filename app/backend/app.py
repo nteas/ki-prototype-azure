@@ -1,6 +1,5 @@
 import io
 import json
-import logging
 import mimetypes
 import os
 from typing import AsyncGenerator
@@ -14,8 +13,7 @@ from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
 from routers.documents import document_router, Document
 from core.db import close_db_connect, connect_and_init_db, get_db
-from core.context import get_auth_helper, get_azure_credential, get_blob_container_client, get_search_client
-from opencensus.ext.azure.log_exporter import AzureLogHandler
+from core.context import get_auth_helper, get_azure_credential, get_blob_container_client, get_search_client, logger
 
 
 # Replace these with your own values, either in environment variables or directly here
@@ -90,7 +88,7 @@ async def content_file(path, blob_container_client=Depends(get_blob_container_cl
         blob_file.seek(0)
         return StreamingResponse(blob_file, media_type=mime_type)
     except Exception as e:
-        logging.exception("Exception in /content")
+        logger.exception("Exception in /content")
         return {"error": str(e)}, 500
     finally:
         await blob_container_client.close()
@@ -127,7 +125,7 @@ async def ask(request: Request, search_client=Depends(get_search_client)):
         r = await impl.run(request_json["question"], request_json.get("overrides") or {}, auth_claims)
         return r
     except Exception as e:
-        logging.exception("Exception in /ask")
+        logger.exception("Exception in /ask")
         return {"error": str(e)}, 500
     finally:
         await search_client.close()
@@ -158,7 +156,7 @@ async def chat(request: Request, search_client=Depends(get_search_client)):
         r = await impl.run_without_streaming(request_json["history"], request_json.get("overrides", {}), auth_claims)
         return r
     except Exception as e:
-        logging.exception("Exception in /chat")
+        logger.exception("Exception in /chat")
         return {"error": str(e)}, 500
     finally:
         await search_client.close()
@@ -201,7 +199,7 @@ async def chat_stream(request: Request, search_client=Depends(get_search_client)
 
         return StreamingResponse(format_as_ndjson(response_generator), media_type="application/x-ndjson")
     except Exception as e:
-        logging.exception("Exception in /chat")
+        logger.exception("Exception in /chat")
         return {"error": str(e)}, 500
     finally:
         await search_client.close()
@@ -219,7 +217,7 @@ async def chat_stream(request: Request, search_client=Depends(get_search_client)
 
 #             doc.pop("file_pages", None)
 
-#             logging.info("upserting doc")
+#             logger.info("upserting doc")
 
 #             db.documents.update_one(
 #                 {"file": result.get("sourcefile")},
@@ -256,7 +254,7 @@ async def before_request(request: Request, call_next):
 
         return response
     except Exception as e:
-        logging.exception("Exception in before_request")
+        logger.exception("Exception in before_request")
         return JSONResponse(content={"error": str(e)}, status_code=500)
     finally:
         await azure_credential.close()
@@ -267,13 +265,6 @@ def create_app():
     app.include_router(document_router, prefix="/api/documents")
     app.include_router(root_router)
 
-    # Level should be one of https://docs.python.org/3/library/logging.html#logging-levels
-    handlers = None
-    if os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", None):
-        handlers = [AzureLogHandler()]
-
-    logging.basicConfig(level=os.getenv("APP_LOG_LEVEL", "WARNING"), handlers=handlers)
-
     if allowed_origin := os.getenv("ALLOWED_ORIGIN"):
         app.add_middleware(
             CORSMiddleware,
@@ -282,6 +273,6 @@ def create_app():
             allow_methods=["*"],
             allow_headers=["*"],
         )
-        logging.info("CORS enabled for %s", allowed_origin)
+        logger.info("CORS enabled for %s", allowed_origin)
 
     return app

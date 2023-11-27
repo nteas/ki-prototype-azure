@@ -1,6 +1,5 @@
 import base64
 import html
-import logging
 import os
 import re
 import time
@@ -16,7 +15,7 @@ from tenacity import (
     wait_random_exponential,
 )
 
-from core.context import get_search_client
+from core.context import get_search_client, logger
 
 adls_gen2_creds = None
 storage_creds = None
@@ -324,7 +323,7 @@ async def remove_from_index(filename):
     search_client = await get_search_client()
 
     try:
-        logging.info(f"Removing sections from '{filename or '<all>'}' from search index")
+        logger.info(f"Removing sections from '{filename or '<all>'}' from search index")
 
         while True:
             filter = f"sourcefile eq '{filename}'"

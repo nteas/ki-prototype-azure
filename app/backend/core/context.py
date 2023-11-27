@@ -1,9 +1,19 @@
 import logging
+import sys
+from opencensus.ext.azure.log_exporter import AzureLogHandler
 import os
 from azure.search.documents.aio import SearchClient
 from azure.storage.blob.aio import BlobServiceClient
 from azure.identity.aio import DefaultAzureCredential
 from core.authentication import AuthenticationHelper
+
+# Level should be one of https://docs.python.org/3/library/logging.html#logging-levels
+handlers = [logging.StreamHandler(sys.stdout)]
+if os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", None):
+    handlers.append(AzureLogHandler(connection_string=os.environ["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+
+logging.basicConfig(level=os.getenv("APP_LOG_LEVEL", "WARNING"), handlers=handlers)
+logger = logging.getLogger(__name__)
 
 
 def get_auth_helper():
@@ -18,7 +28,9 @@ def get_auth_helper():
 
 
 def get_azure_credential():
-    return DefaultAzureCredential(exclude_shared_token_cache_credential=True, logging_level=logging.ERROR)
+    return DefaultAzureCredential(
+        exclude_environment_credential=True, exclude_shared_token_cache_credential=True, logging_level=logging.ERROR
+    )
 
 
 async def get_search_client():
