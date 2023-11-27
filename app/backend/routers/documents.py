@@ -2,6 +2,8 @@ import datetime
 import os
 import io
 import uuid
+import requests
+from bs4 import BeautifulSoup
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel, Field
@@ -18,6 +20,23 @@ from core.utilities import (
     create_sections,
     index_sections,
 )
+
+
+def get_content_from_url(url):
+    # Send a GET request to the URL
+    response = requests.get(url)
+
+    # Check if the request was successful
+    if response.status_code != 200:
+        raise Exception(f"GET request to {url} failed with status code {response.status_code}.")
+
+    # Parse the HTML content of the response
+    soup = BeautifulSoup(response.content, "html.parser")
+
+    # Extract the text of the HTML body
+    body_text = soup.body.get_text()
+
+    return body_text
 
 
 class Log(BaseModel):
