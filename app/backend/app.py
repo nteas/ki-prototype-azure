@@ -3,15 +3,13 @@ import json
 import mimetypes
 import os
 import schedule
-import signal
-import sys
+import time
 import openai
 from typing import AsyncGenerator
 from fastapi import Depends, FastAPI, APIRouter, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse, FileResponse, JSONResponse
-from multiprocessing import Process
 
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
@@ -270,39 +268,18 @@ def job():
 
 def worker():
     job()
-    # Schedule the job to run every day at 10:30am
     schedule.every().day.do(job)
 
     while True:
         try:
-            # Run pending jobs
             schedule.run_pending()
+            time.sleep(1)
         except KeyboardInterrupt:
             logger.error("Worker process interrupted")
             break
 
 
 def create_app():
-    # If the worker process is still running, terminate it
-    if "worker_process" in globals() and worker_process.is_alive():
-        worker_process.terminate()
-        worker_process.join()
-
-    # Start a new worker process
-    worker_process = Process(target=worker)
-    worker_process.start()
-
-    # Define a function to run when the script is terminated
-    def shutdown(signum, frame):
-        logger.info("Shutting down now...")
-        worker_process.terminate()
-        worker_process.join()
-        sys.exit(0)
-
-    # Set the signal handlers
-    signal.signal(signal.SIGINT, shutdown)
-    signal.signal(signal.SIGTERM, shutdown)
-
     app.include_router(api_router, prefix="/api")
     app.include_router(document_router, prefix="/api/documents")
     app.include_router(root_router)

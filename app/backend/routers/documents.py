@@ -122,6 +122,7 @@ async def get_documents(params: GetDocumentsRequest = Depends(), db=Depends(get_
             query["$or"] = [
                 {"title": {"$regex": params.search, "$options": "i"}},
                 {"file": {"$regex": params.search, "$options": "i"}},
+                {"url": {"$regex": params.search, "$options": "i"}},
             ]
 
         if params.flagged == "true":
