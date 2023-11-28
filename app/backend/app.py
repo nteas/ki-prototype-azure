@@ -2,12 +2,16 @@ import io
 import json
 import mimetypes
 import os
-from typing import AsyncGenerator
+import schedule
+import signal
+import sys
 import openai
+from typing import AsyncGenerator
 from fastapi import Depends, FastAPI, APIRouter, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse, FileResponse, JSONResponse
+from multiprocessing import Process
 
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
@@ -260,7 +264,39 @@ async def before_request(request: Request, call_next):
         await azure_credential.close()
 
 
+def job():
+    print("Running cron to scrape websites...")
+
+
+def worker():
+    job()
+    # Schedule the job to run every day at 10:30am
+    schedule.every().day.do(job)
+
+    while True:
+        try:
+            # Run pending jobs
+            schedule.run_pending()
+        except KeyboardInterrupt:
+            print("Worker process interrupted")
+            break
+
+
 def create_app():
+    worker_process = Process(target=worker)
+    worker_process.start()
+
+    # Define a function to run when the script is terminated
+    def shutdown(signum, frame):
+        print("Shutting down now...")
+        worker_process.terminate()
+        worker_process.join()
+        sys.exit(0)
+
+    # Set the signal handlers
+    signal.signal(signal.SIGINT, shutdown)
+    signal.signal(signal.SIGTERM, shutdown)
+
     app.include_router(api_router, prefix="/api")
     app.include_router(document_router, prefix="/api/documents")
     app.include_router(root_router)
