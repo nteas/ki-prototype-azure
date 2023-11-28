@@ -100,7 +100,6 @@ export function Component(): JSX.Element {
 							label="Nettside"
 							checked={!isFile}
 							onChange={() => setIsFile(false)}
-							disabled
 						/>
 					</div>
 				</div>
@@ -142,9 +141,9 @@ export function Component(): JSX.Element {
 									name="frequency"
 									required>
 									<option>Velg</option>
-									<option value="1">Daglig</option>
-									<option value="2">Ukentlig</option>
-									<option value="3">Månedtlig</option>
+									<option value="day">Daglig</option>
+									<option value="week">Ukentlig</option>
+									<option value="month">Månedtlig</option>
 								</Form.Select>
 							</Form.Group>
 						</div>

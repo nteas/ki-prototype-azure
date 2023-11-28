@@ -113,16 +113,16 @@ def get_document_text(file):
 
         return page_map
     except Exception as e:
-        print(f"Error extracting text from file: {e}")
+        logger.error(f"Error extracting text from file: {e}")
         raise e
     finally:
-        print("Done extracting text")
+        logger.info("Done extracting text")
 
 
 def split_text(page_map, filename):
     SENTENCE_ENDINGS = [".", "!", "?"]
     WORDS_BREAKS = [",", ";", ":", " ", "(", ")", "[", "]", "{", "}", "\t", "\n"]
-    print(f"Splitting '{filename}' into sections")
+    logger.info(f"Splitting '{filename}' into sections")
 
     def find_page(offset):
         num_pages = len(page_map)
@@ -179,7 +179,7 @@ def split_text(page_map, filename):
             # If the section ends with an unclosed table, we need to start the next section with the table.
             # If table starts inside SENTENCE_SEARCH_LIMIT, we ignore it, as that will cause an infinite loop for tables longer than MAX_SECTION_LENGTH
             # If last table starts inside SECTION_OVERLAP, keep overlapping
-            print(
+            logger.info(
                 f"Section ends with unclosed table, starting next section with the table at page {find_page(start)} offset {start} table start {last_table_start}"
             )
             start = min(end - SECTION_OVERLAP, start + last_table_start)
@@ -215,7 +215,7 @@ def create_sections(
 
 
 def before_retry_sleep():
-    print("Rate limited on the OpenAI embeddings API, sleeping before retrying...")
+    logger.info("Rate limited on the OpenAI embeddings API, sleeping before retrying...")
 
 
 @retry(
@@ -229,7 +229,7 @@ def compute_embedding(text, embedding_deployment, embedding_model):
         embedding_args = {"deployment_id": embedding_deployment}
         return openai.Embedding.create(**embedding_args, model=embedding_model, input=text)["data"][0]["embedding"]
     except Exception as e:
-        print(f"Error computing embedding for text: {e}")
+        logger.error(f"Error computing embedding for text: {e}")
         raise e
 
 
@@ -247,7 +247,7 @@ def compute_embedding_in_batch(texts):
         )
         return [data.embedding for data in emb_response.data]
     except Exception as e:
-        print(f"Error computing embedding for text: {e}")
+        logger.error(f"Error computing embedding for text: {e}")
         raise e
 
 
@@ -267,7 +267,7 @@ def update_embeddings_in_batch(sections):
             copy_s.append(s)
         else:
             emb_responses = compute_embedding_in_batch([item["content"] for item in batch_queue])
-            print(f"Batch Completed. Batch size  {len(batch_queue)} Token count {token_count}")
+            logger.info(f"Batch Completed. Batch size  {len(batch_queue)} Token count {token_count}")
             for emb, item in zip(emb_responses, batch_queue):
                 batch_response[item["id"]] = emb
             batch_queue = []
@@ -276,7 +276,7 @@ def update_embeddings_in_batch(sections):
 
     if batch_queue:
         emb_responses = compute_embedding_in_batch([item["content"] for item in batch_queue])
-        print(f"Batch Completed. Batch size  {len(batch_queue)} Token count {token_count}")
+        logger.info(f"Batch Completed. Batch size  {len(batch_queue)} Token count {token_count}")
         for emb, item in zip(emb_responses, batch_queue):
             batch_response[item["id"]] = emb
 
@@ -295,7 +295,7 @@ async def index_sections(
     try:
         AZURE_SEARCH_INDEX = os.getenv("AZURE_SEARCH_INDEX")
 
-        print(f"Indexing sections from '{filename}' into search index '{AZURE_SEARCH_INDEX}'")
+        logger.info(f"Indexing sections from '{filename}' into search index '{AZURE_SEARCH_INDEX}'")
 
         i = 0
         batch = []
@@ -307,16 +307,16 @@ async def index_sections(
             if i % 1000 == 0:
                 results = await search_client.upload_documents(documents=batch)
                 succeeded = sum([1 for r in results if r.succeeded])
-                print(f"\tIndexed {len(results)} sections, {succeeded} succeeded")
+                logger.info(f"\tIndexed {len(results)} sections, {succeeded} succeeded")
                 batch = []
 
         if len(batch) > 0:
             results = await search_client.upload_documents(documents=batch)
             succeeded = sum([1 for r in results if r.succeeded])
-            print(f"\tIndexed {len(results)} sections, {succeeded} succeeded")
+            logger.info(f"\tIndexed {len(results)} sections, {succeeded} succeeded")
     finally:
         await search_client.close()
-        print("Done indexing sections")
+        logger.info("Done indexing sections")
 
 
 async def remove_from_index(filename):
@@ -337,11 +337,11 @@ async def remove_from_index(filename):
                 break
 
             await search_client.delete_documents(documents=docs)
-            print("Removed  sections from index")
+            logger.info("Removed  sections from index")
             # It can take a few seconds for search results to reflect changes, so wait a bit
             time.sleep(2)
     except Exception as e:
-        print(f"Error removing sections from index: {e}")
+        logger.error(f"Error removing sections from index: {e}")
     finally:
         await search_client.close()
-        print("Done removing sections from index")
+        logger.info("Done removing sections from index")

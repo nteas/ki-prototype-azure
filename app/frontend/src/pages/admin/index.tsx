@@ -226,7 +226,14 @@ export function Component(): JSX.Element {
 							style={{ flex: 2 }}>
 							<button
 								className={styles.open}
-								onClick={() => setViewDocument(item)}
+								onClick={() => {
+									if (item?.type?.includes('pdf')) {
+										setViewDocument(item);
+										return;
+									}
+
+									window.open(item.url, '_blank');
+								}}
 								title="Åpne">
 								<FontAwesomeIcon icon={faEye} />
 							</button>

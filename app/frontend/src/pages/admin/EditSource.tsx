@@ -38,7 +38,10 @@ export function Component(): JSX.Element {
 
 		apiFetch(`/api/documents/${id}`)
 			.then(res => res.json())
-			.then(res => setData(res))
+			.then(res => {
+				setData(res);
+				setIsFile(res.type !== 'web');
+			})
 			.catch(err => console.error(err))
 			.finally(() => setLoading(false));
 	}
@@ -149,7 +152,6 @@ export function Component(): JSX.Element {
 								label="Nettside"
 								checked={!isFile}
 								onChange={() => setIsFile(false)}
-								disabled
 							/>
 						</div>
 					</div>
@@ -213,11 +215,9 @@ export function Component(): JSX.Element {
 										defaultValue={data?.frequency}
 										required>
 										<option>Velg</option>
-										<option value="daily">Daglig</option>
-										<option value="weekly">Ukentlig</option>
-										<option value="monthly">
-											Månedtlig
-										</option>
+										<option value="day">Daglig</option>
+										<option value="week">Ukentlig</option>
+										<option value="month">Månedtlig</option>
 									</Form.Select>
 								</Form.Group>
 							</div>
@@ -279,7 +279,14 @@ export function Component(): JSX.Element {
 						<Button
 							variant="outline-primary"
 							type="button"
-							onClick={() => setViewDocument(true)}
+							onClick={() => {
+								if (data?.type?.includes('pdf')) {
+									setViewDocument(true);
+									return;
+								}
+
+								window.open(data?.url, '_blank');
+							}}
 							icon={<FontAwesomeIcon icon={faEye} />}>
 							Se kilde
 						</Button>

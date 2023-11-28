@@ -234,8 +234,8 @@ async def chat_stream(request: Request, search_client=Depends(get_search_client)
 
 #         return {"success": True}
 #     except Exception as ex:
-#         print("Failed to migrate documents")
-#         print("Exception: {}".format(ex))
+#         logger.error("Failed to migrate documents")
+#         logger.error("Exception: {}".format(ex))
 #         return {"success": False}
 
 
@@ -265,7 +265,7 @@ async def before_request(request: Request, call_next):
 
 
 def job():
-    print("Running cron to scrape websites...")
+    logger.info("Running cron to scrape websites...")
 
 
 def worker():
@@ -278,17 +278,23 @@ def worker():
             # Run pending jobs
             schedule.run_pending()
         except KeyboardInterrupt:
-            print("Worker process interrupted")
+            logger.error("Worker process interrupted")
             break
 
 
 def create_app():
+    # If the worker process is still running, terminate it
+    if "worker_process" in globals() and worker_process.is_alive():
+        worker_process.terminate()
+        worker_process.join()
+
+    # Start a new worker process
     worker_process = Process(target=worker)
     worker_process.start()
 
     # Define a function to run when the script is terminated
     def shutdown(signum, frame):
-        print("Shutting down now...")
+        logger.info("Shutting down now...")
         worker_process.terminate()
         worker_process.join()
         sys.exit(0)
