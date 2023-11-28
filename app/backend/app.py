@@ -2,8 +2,6 @@ import io
 import json
 import mimetypes
 import os
-import schedule
-import time
 import openai
 from typing import AsyncGenerator
 from fastapi import Depends, FastAPI, APIRouter, Request, HTTPException
@@ -260,23 +258,6 @@ async def before_request(request: Request, call_next):
         return JSONResponse(content={"error": str(e)}, status_code=500)
     finally:
         await azure_credential.close()
-
-
-def job():
-    logger.info("Running cron to scrape websites...")
-
-
-def worker():
-    job()
-    schedule.every().day.do(job)
-
-    while True:
-        try:
-            schedule.run_pending()
-            time.sleep(1)
-        except KeyboardInterrupt:
-            logger.error("Worker process interrupted")
-            break
 
 
 def create_app():
