@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import Layout from '../../components/Layout/Layout';
-import styles from './Logs.module.css';
+import styles from './Logs.module.scss';
 import { getChatLogs } from '../../api';
 
 export interface Log {

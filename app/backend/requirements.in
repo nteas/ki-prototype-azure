@@ -16,4 +16,4 @@ pypdf
 python-multipart
 opencensus-ext-azure
 bs4
-schedule
+apscheduler

@@ -1,6 +1,6 @@
 import { Example } from './Example';
 
-import styles from './Example.module.css';
+import styles from './Example.module.scss';
 
 export type ExampleModel = {
 	text: string;

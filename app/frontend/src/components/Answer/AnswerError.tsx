@@ -2,7 +2,7 @@ import { Stack, PrimaryButton } from '@fluentui/react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faExclamationCircle } from '@fortawesome/pro-solid-svg-icons';
 
-import styles from './Answer.module.css';
+import styles from './Answer.module.scss';
 
 interface Props {
 	error: string;

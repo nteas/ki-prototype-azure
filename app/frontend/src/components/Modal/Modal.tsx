@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faXmark } from '@fortawesome/pro-regular-svg-icons';
 
-import styles from './Modal.module.css';
+import styles from './Modal.module.scss';
 
 interface Props {
 	onClose: () => void;

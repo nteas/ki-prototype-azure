@@ -1,6 +1,6 @@
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 
-import styles from './Layout.module.css';
+import styles from './Layout.module.scss';
 
 interface Props {
 	headerActions?: React.ReactNode;

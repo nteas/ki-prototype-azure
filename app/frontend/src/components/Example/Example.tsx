@@ -1,4 +1,4 @@
-import styles from './Example.module.css';
+import styles from './Example.module.scss';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCommentLines } from '@fortawesome/pro-regular-svg-icons';
 

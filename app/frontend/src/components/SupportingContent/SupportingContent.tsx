@@ -1,6 +1,6 @@
 import { parseSupportingContentItem } from './SupportingContentParser';
 
-import styles from './SupportingContent.module.css';
+import styles from './SupportingContent.module.scss';
 
 interface Props {
 	supportingContent: string[];

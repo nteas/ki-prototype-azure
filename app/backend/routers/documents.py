@@ -237,6 +237,8 @@ async def update_document(id, request: Request, db=Depends(get_db)):
 
         update_data["logs"].append(log.model_dump())
 
+        update_data["updated_at"] = datetime.datetime.now()
+
         db.documents.update_one({"id": id}, {"$set": update_data})
 
         return

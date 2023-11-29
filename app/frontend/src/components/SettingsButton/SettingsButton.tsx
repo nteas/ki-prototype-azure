@@ -2,7 +2,7 @@ import { Button } from '@fluentui/react-components';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCog } from '@fortawesome/pro-regular-svg-icons';
 
-import styles from './SettingsButton.module.css';
+import styles from './SettingsButton.module.scss';
 
 interface Props {
 	className?: string;

@@ -10,7 +10,7 @@ import {
 	Dropdown,
 } from '@fluentui/react';
 
-import styles from './OneShot.module.css';
+import styles from './OneShot.module.scss';
 
 import {
 	askApi,

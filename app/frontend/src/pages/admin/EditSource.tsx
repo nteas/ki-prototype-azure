@@ -5,7 +5,7 @@ import Form from 'react-bootstrap/Form';
 import AdminLayout from '../../components/Layout/AdminLayout';
 import Button from '../../components/Button/Button';
 
-import styles from './CreateSource.module.css';
+import styles from './CreateSource.module.scss';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck } from '@fortawesome/pro-regular-svg-icons';
 import { faEye, faTrash, faXmark } from '@fortawesome/pro-solid-svg-icons';

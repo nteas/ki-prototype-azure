@@ -16,25 +16,25 @@ if [ $? -ne 0 ]; then
     exit $?
 fi
 
-cd app/backend
-echo 'Creating python virtual environment "backend_env"'
-python3 -m venv backend_env
+# cd app/backend
+# echo 'Creating python virtual environment "backend_env"'
+# python3 -m venv backend_env
 
-echo ""
-echo "Restoring backend python packages"
-echo ""
+# echo ""
+# echo "Restoring backend python packages"
+# echo ""
 
-./backend_env/bin/python -m pip install -r requirements.txt
-if [ $? -ne 0 ]; then
-    echo "Failed to restore backend python packages"
-    exit $?
-fi
+# ./backend_env/bin/python -m pip install -r requirements.txt
+# if [ $? -ne 0 ]; then
+#     echo "Failed to restore backend python packages"
+#     exit $?
+# fi
 
 echo ""
 echo "Restoring frontend npm packages"
 echo ""
 
-cd ../frontend
+cd app/frontend
 npm install
 if [ $? -ne 0 ]; then
     echo "Failed to restore frontend npm packages"

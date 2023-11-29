@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faXmark } from '@fortawesome/pro-regular-svg-icons';
 
-import styles from './AnalysisPanel.module.css';
+import styles from './AnalysisPanel.module.scss';
 
 import { SupportingContent } from '../SupportingContent';
 import { ChatAppResponse } from '../../api';

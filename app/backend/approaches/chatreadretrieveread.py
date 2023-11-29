@@ -9,6 +9,7 @@ from approaches.approach import Approach
 from core.messagebuilder import MessageBuilder
 from core.modelhelper import get_token_limit
 from text import nonewlines
+from core.context import logger
 
 
 class ChatReadRetrieveReadApproach(Approach):
@@ -114,6 +115,8 @@ If you cannot generate a search query, return just the number 0.
             self.query_prompt_few_shots,
             self.chatgpt_token_limit - len(user_query_request),
         )
+
+        logger.info(f"Chat GPT prompt: {messages}")
 
         chatgpt_args = {"deployment_id": self.chatgpt_deployment} if self.openai_host == "azure" else {}
         chat_completion = await openai.ChatCompletion.acreate(
@@ -282,6 +285,7 @@ If you cannot generate a search query, return just the number 0.
         response_message = chat_completion["choices"][0]["message"]
         if function_call := response_message.get("function_call"):
             if function_call["name"] == "search_sources":
+                print(f"JSON string: {function_call['arguments']}")
                 arg = json.loads(function_call["arguments"])
                 search_query = arg.get("search_query", self.NO_RESPONSE)
                 if search_query != self.NO_RESPONSE:

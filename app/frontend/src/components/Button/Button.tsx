@@ -1,4 +1,4 @@
-import styles from './Button.module.css';
+import styles from './Button.module.scss';
 import { Button } from 'react-bootstrap';
 
 interface Props {

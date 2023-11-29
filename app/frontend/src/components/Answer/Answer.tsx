@@ -14,7 +14,7 @@ import {
 	faStar,
 } from '@fortawesome/pro-regular-svg-icons';
 
-import styles from './Answer.module.css';
+import styles from './Answer.module.scss';
 
 import { ChatAppResponse, apiFetch, getCitationFilePath } from '../../api';
 import { parseAnswerToHtml } from './AnswerParser';

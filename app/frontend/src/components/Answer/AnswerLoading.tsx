@@ -3,7 +3,7 @@ import { animated, useSpring } from '@react-spring/web';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faStars } from '@fortawesome/pro-solid-svg-icons';
 
-import styles from './Answer.module.css';
+import styles from './Answer.module.scss';
 
 export const AnswerLoading = () => {
 	const animatedStyles = useSpring({

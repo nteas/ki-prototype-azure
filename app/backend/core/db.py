@@ -1,5 +1,4 @@
 import os
-import logging
 from pymongo import MongoClient
 import pymongo
 from core.context import logger
@@ -7,7 +6,7 @@ from core.context import logger
 db_client: MongoClient = None
 
 
-def get_db() -> MongoClient:
+def get_db():
     return db_client["ki-prototype"]
 
 

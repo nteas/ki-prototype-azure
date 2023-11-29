@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMagnifyingGlass } from '@fortawesome/pro-regular-svg-icons';
 import { faPaperPlane } from '@fortawesome/pro-solid-svg-icons';
 
-import styles from './QuestionInput.module.css';
+import styles from './QuestionInput.module.scss';
 
 interface Props {
 	onSend: (question: string) => void;

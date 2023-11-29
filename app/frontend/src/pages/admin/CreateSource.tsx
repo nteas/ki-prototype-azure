@@ -7,7 +7,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import AdminLayout from '../../components/Layout/AdminLayout';
 import Button from '../../components/Button/Button';
 
-import styles from './CreateSource.module.css';
+import styles from './CreateSource.module.scss';
 import { ClassificationEnum, classificationMap } from '../../api/models';
 import { apiFetch } from '../../api';
 

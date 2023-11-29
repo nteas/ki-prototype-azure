@@ -10,7 +10,7 @@ import {
 } from '@fluentui/react';
 import readNDJSONStream from 'ndjson-readablestream';
 
-import styles from './Chat.module.css';
+import styles from './Chat.module.scss';
 
 import {
 	chatApi,

@@ -13,7 +13,7 @@ import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom';
 import Chat from './pages/chat/Chat';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-import './index.css';
+import './index.scss';
 
 // const msalInstance = new PublicClientApplication(msalConfig);
 

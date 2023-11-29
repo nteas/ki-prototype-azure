@@ -1,7 +1,7 @@
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import Breadcrumb from 'react-bootstrap/Breadcrumb';
 
-import styles from './Layout.module.css';
+import styles from './Layout.module.scss';
 import Loading from '../Loading/Loading';
 
 interface Breadcrumb {

@@ -10,7 +10,7 @@ import {
 } from '@fortawesome/pro-regular-svg-icons';
 import { faStar as faStarSolid } from '@fortawesome/pro-solid-svg-icons';
 
-import styles from './FinishChatButton.module.css';
+import styles from './FinishChatButton.module.scss';
 
 interface Props {
 	className?: string;

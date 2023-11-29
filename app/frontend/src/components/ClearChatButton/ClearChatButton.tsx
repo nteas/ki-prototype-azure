@@ -2,7 +2,7 @@ import { Button } from '@fluentui/react-components';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash } from '@fortawesome/pro-regular-svg-icons';
 
-import styles from './ClearChatButton.module.css';
+import styles from './ClearChatButton.module.scss';
 
 interface Props {
 	className?: string;
