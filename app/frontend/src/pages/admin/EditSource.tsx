@@ -71,7 +71,7 @@ export function Component(): JSX.Element {
 			formData.delete('file');
 		}
 
-		const body: any = {};
+		const body: any = { type: isFile ? 'pdf' : 'web' };
 		for (const [key, value] of formData.entries()) {
 			if (!value || key === 'type') continue;
 

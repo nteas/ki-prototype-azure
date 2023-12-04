@@ -1,3 +1,4 @@
+import asyncio
 import io
 import json
 import mimetypes
@@ -39,21 +40,28 @@ app.mount("/assets", StaticFiles(directory="static/assets", html=True), name="as
 
 
 # Set up worker
-# scheduler = BackgroundScheduler()
+scheduler = BackgroundScheduler()
+
+
+def worker_sync():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(worker())
+    loop.close()
 
 
 @app.on_event("startup")
 async def startup_event():
     logger.info("Starting up the api and worker")
     connect_and_init_db()
-    # scheduler.add_job(worker, "interval", seconds=30)
-    # scheduler.start()
+    scheduler.add_job(worker_sync, "cron", hour=6, minute=30)
+    scheduler.start()
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     close_db_connect()
-    # scheduler.shutdown()
+    scheduler.shutdown()
     logger.info("Shutting down the api and worker")
 
 

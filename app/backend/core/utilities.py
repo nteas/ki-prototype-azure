@@ -411,7 +411,7 @@ def get_filename_from_url(url):
     return filename + ".txt"
 
 
-async def get_content_from_url(filename, url, blob_container_client):
+async def scrape_store_index(filename, url, blob_container_client):
     try:
         # Send a GET request to the URL
         response = requests.get(url)
