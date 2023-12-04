@@ -1,10 +1,13 @@
 import base64
 import html
+import io
 import os
 import re
 import time
-from typing import Any, Optional
+from typing import Any
+from bs4 import BeautifulSoup
 import openai
+import requests
 import tiktoken
 from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
@@ -23,6 +26,8 @@ storage_creds = None
 MAX_SECTION_LENGTH = 1000
 SENTENCE_SEARCH_LIMIT = 100
 SECTION_OVERLAP = 100
+SENTENCE_ENDINGS = [".", "!", "?"]
+WORDS_BREAKS = [",", ";", ":", " ", "(", ")", "[", "]", "{", "}", "\t", "\n"]
 
 open_ai_token_cache: dict[str, Any] = {}
 CACHE_KEY_TOKEN_CRED = "openai_token_cred"
@@ -120,8 +125,6 @@ def get_document_text(file):
 
 
 def split_text(page_map, filename):
-    SENTENCE_ENDINGS = [".", "!", "?"]
-    WORDS_BREAKS = [",", ";", ":", " ", "(", ")", "[", "]", "{", "}", "\t", "\n"]
     logger.info(f"Splitting '{filename}' into sections")
 
     def find_page(offset):
@@ -190,15 +193,64 @@ def split_text(page_map, filename):
         yield (all_text[start:end], find_page(start))
 
 
+def split_text_string(text):
+    length = len(text)
+    start = 0
+    end = length
+    while start + SECTION_OVERLAP < length:
+        last_word = -1
+        end = start + MAX_SECTION_LENGTH
+
+        if end > length:
+            end = length
+        else:
+            while (
+                end < length
+                and (end - start - MAX_SECTION_LENGTH) < SENTENCE_SEARCH_LIMIT
+                and text[end] not in SENTENCE_ENDINGS
+            ):
+                if text[end] in WORDS_BREAKS:
+                    last_word = end
+                end += 1
+            if end < length and text[end] not in SENTENCE_ENDINGS and last_word > 0:
+                end = last_word
+        if end < length:
+            end += 1
+
+        last_word = -1
+        while (
+            start > 0
+            and start > end - MAX_SECTION_LENGTH - 2 * SENTENCE_SEARCH_LIMIT
+            and text[start] not in SENTENCE_ENDINGS
+        ):
+            if text[start] in WORDS_BREAKS:
+                last_word = start
+            start -= 1
+        if text[start] not in SENTENCE_ENDINGS and last_word > 0:
+            start = last_word
+        if start > 0:
+            start += 1
+
+        section_text = text[start:end]
+        yield section_text
+
+        last_table_start = section_text.rfind("<table")
+        if last_table_start > 2 * SENTENCE_SEARCH_LIMIT and last_table_start > section_text.rfind("</table"):
+            start = min(end - SECTION_OVERLAP, start + last_table_start)
+        else:
+            start = end - SECTION_OVERLAP
+
+    if start + SECTION_OVERLAP < end:
+        yield text[start:end]
+
+
 def filename_to_id(filename):
     filename_ascii = re.sub("[^0-9a-zA-Z_-]", "_", filename)
     filename_hash = base64.b16encode(filename.encode("utf-8")).decode("ascii")
     return f"file-{filename_ascii}-{filename_hash}"
 
 
-def create_sections(
-    filename, page_map, embedding_deployment: Optional[str] = None, embedding_model: Optional[str] = None
-):
+def create_sections(filename, page_map):
     file_id = filename_to_id(filename)
     for i, (content, pagenum) in enumerate(split_text(page_map, filename)):
         section = {
@@ -209,7 +261,32 @@ def create_sections(
             "sourcefile": filename,
         }
 
-        section["embedding"] = compute_embedding(content, embedding_deployment, embedding_model)
+        section["embedding"] = compute_embedding(
+            content,
+            os.environ["AZURE_OPENAI_EMB_DEPLOYMENT"],
+            os.getenv("AZURE_OPENAI_EMB_MODEL_NAME", "text-embedding-ada-002"),
+        )
+
+        yield section
+
+
+def create_sections_string(filename, string):
+    file_id = filename_to_id(filename)
+
+    for i, content in enumerate(split_text_string(string)):
+        section = {
+            "id": f"{file_id}-page-{i}",
+            "content": content,
+            "category": "",
+            "sourcepage": os.path.splitext(filename)[0] + f"-{i}" + ".txt",
+            "sourcefile": filename,
+        }
+
+        section["embedding"] = compute_embedding(
+            content,
+            os.environ["AZURE_OPENAI_EMB_DEPLOYMENT"],
+            os.getenv("AZURE_OPENAI_EMB_MODEL_NAME", "text-embedding-ada-002"),
+        )
 
         yield section
 
@@ -307,16 +384,102 @@ async def index_sections(
             if i % 1000 == 0:
                 results = await search_client.upload_documents(documents=batch)
                 succeeded = sum([1 for r in results if r.succeeded])
-                logger.info(f"\tIndexed {len(results)} sections, {succeeded} succeeded")
+                logger.info(f"Indexed {len(results)} sections, {succeeded} succeeded")
                 batch = []
 
         if len(batch) > 0:
             results = await search_client.upload_documents(documents=batch)
             succeeded = sum([1 for r in results if r.succeeded])
-            logger.info(f"\tIndexed {len(results)} sections, {succeeded} succeeded")
+            logger.info(f"Indexed {len(results)} sections, {succeeded} succeeded")
     finally:
         await search_client.close()
         logger.info("Done indexing sections")
+
+
+# web url to filename
+def get_filename_from_url(url):
+    if "//" in url:
+        url = url.split("//")[1]
+
+    # remove trailing slash and query params
+    url = url.split("?")[0].rstrip("/")
+
+    domain = url.split("/")[0]
+    last_part = url.split("/")[-1]
+    filename = domain + "_" + last_part
+
+    return filename + ".txt"
+
+
+async def get_content_from_url(filename, url, blob_container_client):
+    try:
+        # Send a GET request to the URL
+        response = requests.get(url)
+
+        # Check if the request was successful
+        if response.status_code != 200:
+            raise Exception(f"GET request to {url} failed with status code {response.status_code}.")
+
+        # Parse the HTML content of the response
+        soup = BeautifulSoup(response.content, "html.parser")
+
+        for tag in soup(["header", "footer", "a", "button", "img"]):
+            tag.decompose()
+
+        for tag in soup.select("[class*=breadcrumbs], [class*=tags], [id*=chat], [class*=related]"):
+            tag.decompose()
+
+        # Extract the text of the HTML body
+        content = soup.main
+
+        if content is None:
+            content = soup.find(id="main")
+
+        if content is None:
+            content = soup.find(id="content")
+
+        if content is None:
+            content = soup.body
+
+        logger.info("Getting text")
+
+        pages = content.get_text()
+        logger.info("Got text. creating sections")
+
+        file_pages = []
+        for page in pages:
+            logger.info("Uploading blob to {}".format(os.environ["AZURE_STORAGE_CONTAINER"]))
+            blob_name = page["sourcepage"]
+            f = io.BytesIO()
+            f.write(page["content"].encode("utf-8"))
+            f.seek(0)
+
+            await blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"]).upload_blob(
+                blob_name, f, overwrite=True
+            )
+
+            file_pages.append(blob_name)
+
+        sections = list(
+            create_sections_string(
+                filename,
+                pages,
+            )
+        )
+
+        logger.info("Got sections. updating embeddings")
+
+        sections = update_embeddings_in_batch(sections)
+
+        logger.info("Updated embeddings. indexing sections")
+        await index_sections(filename, sections)
+
+        logger.info("Indexed sections")
+
+        return file_pages
+
+    except Exception as ex:
+        raise ex
 
 
 async def remove_from_index(filename):

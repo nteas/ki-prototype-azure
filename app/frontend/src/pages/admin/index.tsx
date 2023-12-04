@@ -17,7 +17,7 @@ import {
 import AdminLayout from '../../components/Layout/AdminLayout';
 import Button from '../../components/Button/Button';
 
-import styles from './Admin.module.css';
+import styles from './Admin.module.scss';
 import { Document, apiFetch, classificationMap } from '../../api';
 import DocModal from '../../components/Modal/DocModal';
 import { formatDate } from '../../libs/utils';

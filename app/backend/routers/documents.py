@@ -2,8 +2,6 @@ import datetime
 import os
 import io
 import uuid
-import requests
-from bs4 import BeautifulSoup
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel, Field
@@ -14,29 +12,14 @@ from core.db import get_db
 from core.context import get_blob_container_client, logger
 from core.utilities import (
     blob_name_from_file_page,
+    get_content_from_url,
     get_document_text,
+    get_filename_from_url,
     remove_from_index,
     update_embeddings_in_batch,
     create_sections,
     index_sections,
 )
-
-
-def get_content_from_url(url):
-    # Send a GET request to the URL
-    response = requests.get(url)
-
-    # Check if the request was successful
-    if response.status_code != 200:
-        raise Exception(f"GET request to {url} failed with status code {response.status_code}.")
-
-    # Parse the HTML content of the response
-    soup = BeautifulSoup(response.content, "html.parser")
-
-    # Extract the text of the HTML body
-    body_text = soup.body.get_text()
-
-    return body_text
 
 
 class Log(BaseModel):
@@ -74,6 +57,31 @@ class Document(BaseModel):
 
 
 document_router = APIRouter()
+
+
+@document_router.get("/test")
+async def test(blob_container_client=Depends(get_blob_container_client)):
+    try:
+        logger.info("Getting content from url")
+
+        url = "https://nte.no/blogg/velg-de-tv-kanalene-du-vil-ha/"
+
+        filename = get_filename_from_url(filename, url)
+
+        file_pages = await get_content_from_url(filename, url, blob_container_client)
+
+        logger.info(file_pages)
+
+        logger.info("Got content from url")
+
+        return {"success": True}
+    except Exception as ex:
+        logger.error("Failed to test")
+        message = "Exception: {}".format(ex)
+        logger.error(message)
+        raise HTTPException(status_code=500, detail=message)
+    finally:
+        await blob_container_client.close()
 
 
 # Create a new document
@@ -149,8 +157,8 @@ async def get_documents(params: GetDocumentsRequest = Depends(), db=Depends(get_
 
         return {"documents": documents, "total": total}
     except Exception as ex:
-        logger.info("Failed to get documents")
-        logger.info("Exception: {}".format(ex))
+        logger.error("Failed to get documents")
+        logger.error("Exception: {}".format(ex))
         raise HTTPException(status_code=404, detail="Document not found")
 
 
@@ -321,8 +329,6 @@ async def upload_file(
             create_sections(
                 filename,
                 page_map,
-                os.environ["AZURE_OPENAI_EMB_DEPLOYMENT"],
-                os.getenv("AZURE_OPENAI_EMB_MODEL_NAME", "text-embedding-ada-002"),
             )
         )
         logger.info("Got sections. updating embeddings")
@@ -336,9 +342,9 @@ async def upload_file(
 
         return doc
     except Exception as ex:
-        logger.info("Failed to upload file")
+        logger.error("Failed to upload file")
         message = "Exception: {}".format(ex)
-        logger.info(message)
+        logger.error(message)
         raise HTTPException(status_code=500, detail=message)
 
     finally:
