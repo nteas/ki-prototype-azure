@@ -134,7 +134,7 @@ export function Component(): JSX.Element {
 					className={styles.check}
 					type="switch"
 					label="Vis web-kilder"
-					defaultChecked={false}
+					defaultChecked={true}
 					onChange={e => updateFilters('web', e.target.checked)}
 				/>
 			</div>
