@@ -261,12 +261,11 @@ async def before_request(request: Request, call_next):
 
     try:
         openai_token = await azure_credential.get_token("https://cognitiveservices.azure.com/.default")
-
         openai.api_key = openai_token.token
-
         openai.api_type = "azure_ad"
         openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
         openai.api_version = "2023-07-01-preview"
+
         userId = request.headers.get("userId")
         request.state.userId = userId
 

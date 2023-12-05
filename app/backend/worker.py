@@ -1,15 +1,25 @@
 import datetime
-from core.types import Log
+import openai
+import os
 
+from core.types import Log
 from core.db import get_db
 from core.utilities import scrape_store_index
-from core.context import logger, get_blob_container_client
+from core.context import get_azure_credential, logger, get_blob_container_client
 
 
 async def worker():
+    azure_credential = get_azure_credential()
     blob_container_client = await get_blob_container_client()
 
     try:
+        AZURE_OPENAI_SERVICE = os.environ["AZURE_OPENAI_SERVICE"]
+        openai_token = await azure_credential.get_token("https://cognitiveservices.azure.com/.default")
+        openai.api_key = openai_token.token
+        openai.api_type = "azure_ad"
+        openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
+        openai.api_version = "2023-07-01-preview"
+
         db = get_db()
 
         documents = []
@@ -20,11 +30,12 @@ async def worker():
                 "frequency": "daily",
                 "deleted": {"$ne": True},
             }
-        ).to_list(length=1000)
+        )
 
         if daily_docs is None:
             print("No daily documents found")
         else:
+            daily_docs = list(daily_docs)
             documents.extend(daily_docs)
 
         # check if today is monday
@@ -35,11 +46,12 @@ async def worker():
                     "frequency": "weekly",
                     "deleted": {"$ne": True},
                 }
-            ).to_list(length=1000)
+            )
 
             if weekly_docs is None:
                 print("No weekly documents found")
             else:
+                weekly_docs = list(weekly_docs)
                 documents.extend(weekly_docs)
 
         # check if today is the first of the month
@@ -50,11 +62,12 @@ async def worker():
                     "frequency": "monthly",
                     "deleted": {"$ne": True},
                 }
-            ).to_list(length=1000)
+            )
 
             if monthly_docs is None:
                 print("No monthly documents found")
             else:
+                monthly_docs = list(monthly_docs)
                 documents.extend(monthly_docs)
 
         if len(documents) == 0:
@@ -100,3 +113,4 @@ async def worker():
         print(e)
     finally:
         await blob_container_client.close()
+        await azure_credential.close()
