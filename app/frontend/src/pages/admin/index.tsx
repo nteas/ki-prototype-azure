@@ -136,7 +136,6 @@ export function Component(): JSX.Element {
 					label="Vis web-kilder"
 					defaultChecked={false}
 					onChange={e => updateFilters('web', e.target.checked)}
-					disabled
 				/>
 			</div>
 
