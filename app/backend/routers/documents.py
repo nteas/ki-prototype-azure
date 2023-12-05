@@ -68,7 +68,7 @@ class GetDocumentsRequest(BaseModel):
     pdf: str = "true"
     web: str = "true"
     order_by: str = "updated_at"
-    order: int = -1
+    order: str = "desc"
 
 
 # Get all documents
@@ -108,7 +108,8 @@ async def get_documents(params: GetDocumentsRequest = Depends(), db=Depends(get_
             cursor = cursor.skip(params.skip)
 
         if params.order_by and params.order:
-            cursor = cursor.sort(params.order_by, params.order)
+            order = 1 if params.order == "asc" else -1
+            cursor = cursor.sort(params.order_by, order)
 
         if not cursor:
             raise Exception("No documents found")

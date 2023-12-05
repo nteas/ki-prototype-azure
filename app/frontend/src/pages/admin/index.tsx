@@ -6,6 +6,8 @@ import InputGroup from 'react-bootstrap/InputGroup';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMagnifyingGlass } from '@fortawesome/pro-regular-svg-icons';
 import {
+	faCaretUp,
+	faCaretDown,
 	faCloudArrowUp,
 	faCog,
 	faEye,
@@ -28,6 +30,8 @@ interface Filters {
 	pdf: boolean;
 	web: boolean;
 	limit: number;
+	order_by: string;
+	order: string;
 }
 interface PaginateDocuments {
 	documents: Document[];
@@ -50,10 +54,32 @@ export function Component(): JSX.Element {
 		pdf: true,
 		web: true,
 		limit: DEFAULT_LIMIT,
+		order_by: 'updated_at',
+		order: 'desc',
 	});
 
-	const updateFilters = (key: string, value: boolean | string | number) => {
+	const filterKeys = [
+		'type',
+		'title',
+		'owner',
+		'classification',
+		'updated_at',
+	];
+
+	const updateFilters = (key: string, value?: boolean | string | number) => {
 		console.log('update filters');
+
+		if (filterKeys.includes(key)) {
+			const order =
+				filters.order_by !== key
+					? 'asc'
+					: filters.order === 'asc'
+					? 'desc'
+					: 'asc';
+			setFilters(prev => ({ ...prev, order_by: key, order }));
+			return;
+		}
+
 		setFilters(prev => ({ ...prev, [key]: value }));
 	};
 
@@ -61,7 +87,14 @@ export function Component(): JSX.Element {
 
 	useEffect(() => {
 		getDocuments();
-	}, [filters.flagged, filters.pdf, filters.web, filters.limit]);
+	}, [
+		filters.flagged,
+		filters.pdf,
+		filters.web,
+		filters.limit,
+		filters.order_by,
+		filters.order,
+	]);
 
 	// get all documents from /documents
 	async function getDocuments(): Promise<void> {
@@ -141,34 +174,89 @@ export function Component(): JSX.Element {
 
 			<div className={styles.head}>
 				<div
-					onClick={() => console.log('ordering')}
-					className={styles.col}
+					onClick={() => updateFilters('type')}
+					className={`${styles.col} ${styles.orderHead}`}
 					style={{ flex: 1 }}>
 					Type
+					{filters.order_by === 'type' && (
+						<span className={styles.orderButton}>
+							<FontAwesomeIcon
+								icon={
+									filters.order === 'desc'
+										? faCaretDown
+										: faCaretUp
+								}
+							/>
+						</span>
+					)}
 				</div>
 				<div
-					onClick={() => console.log('ordering')}
-					className={styles.col}
+					onClick={() => updateFilters('title')}
+					className={`${styles.col} ${styles.orderHead}`}
 					style={{ flex: 5 }}>
 					Tittel
+					{filters.order_by === 'title' && (
+						<span className={styles.orderButton}>
+							<FontAwesomeIcon
+								icon={
+									filters.order === 'desc'
+										? faCaretDown
+										: faCaretUp
+								}
+							/>
+						</span>
+					)}
 				</div>
 				<div
-					onClick={() => console.log('ordering')}
-					className={styles.col}
+					onClick={() => updateFilters('owner')}
+					className={`${styles.col} ${styles.orderHead}`}
 					style={{ flex: 3 }}>
 					Eier
+					{filters.order_by === 'owner' && (
+						<span className={styles.orderButton}>
+							<FontAwesomeIcon
+								icon={
+									filters.order === 'desc'
+										? faCaretDown
+										: faCaretUp
+								}
+							/>
+						</span>
+					)}
 				</div>
 				<div
-					onClick={() => console.log('ordering')}
-					className={styles.col}
+					onClick={() => updateFilters('classification')}
+					className={`${styles.col} ${styles.orderHead}`}
 					style={{ flex: 2 }}>
 					Klassifisering
+					{filters.order_by === 'classification' && (
+						<span className={styles.orderButton}>
+							<FontAwesomeIcon
+								icon={
+									filters.order === 'desc'
+										? faCaretDown
+										: faCaretUp
+								}
+							/>
+						</span>
+					)}
 				</div>
 				<div
-					onClick={() => console.log('ordering')}
-					className={styles.col}
-					style={{ flex: 2 }}>
+					className={`${styles.col} ${styles.orderHead}`}
+					style={{ flex: 2 }}
+					onClick={() => updateFilters('updated_at')}>
 					Oppdatert
+					{filters.order_by === 'updated_at' && (
+						<span className={styles.orderButton}>
+							<FontAwesomeIcon
+								icon={
+									filters.order === 'desc'
+										? faCaretDown
+										: faCaretUp
+								}
+							/>
+						</span>
+					)}
 				</div>
 				<div
 					onClick={() => console.log('ordering')}

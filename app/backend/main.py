@@ -54,14 +54,17 @@ def worker_sync():
 async def startup_event():
     logger.info("Starting up the api and worker")
     connect_and_init_db()
-    scheduler.add_job(worker_sync, "cron", hour=6, minute=30)
-    scheduler.start()
+    if os.getenv("AZURE_ENVIRONMENT", "production") != "development":
+        scheduler.add_job(worker_sync, "cron", hour=6, minute=30)
+        scheduler.start()
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     close_db_connect()
-    scheduler.shutdown()
+
+    if os.getenv("AZURE_ENVIRONMENT", "production") != "development":
+        scheduler.shutdown()
     logger.info("Shutting down the api and worker")
 
 
