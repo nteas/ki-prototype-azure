@@ -215,9 +215,11 @@ export function Component(): JSX.Element {
 										defaultValue={data?.frequency}
 										required>
 										<option>Velg</option>
-										<option value="day">Daglig</option>
-										<option value="week">Ukentlig</option>
-										<option value="month">Månedtlig</option>
+										<option value="daily">Daglig</option>
+										<option value="weekly">Ukentlig</option>
+										<option value="monthly">
+											Månedtlig
+										</option>
 									</Form.Select>
 								</Form.Group>
 							</div>

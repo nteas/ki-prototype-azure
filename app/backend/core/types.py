@@ -19,7 +19,7 @@ class Document(BaseModel):
     owner: str = Field(default="admin")
     classification: str = Field(default="public")
     logs: List[Log] = Field(default=[])
-    frequency: Optional[str] = Field(default="none")
+    frequency: Optional[str] = Field(default="monthly")
     flagged_pages: List[str] = Field(default=[])
     type: str = Field(default="pdf")
     file: Optional[str] = Field(default=None)

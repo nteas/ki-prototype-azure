@@ -107,8 +107,6 @@ async def get_documents(params: GetDocumentsRequest = Depends(), db=Depends(get_
         if params.skip > 0:
             cursor = cursor.skip(params.skip)
 
-        logger.info("Order by: {}".format(params.order_by))
-
         if params.order_by and params.order:
             cursor = cursor.sort(params.order_by, params.order)
 
@@ -221,6 +219,7 @@ async def update_document(
                         except Exception as ex:
                             logger.info("Failed to remove blob from storage {}".format(ex))
 
+                logger.info("Getting content from url")
                 update_data["file"] = get_filename_from_url(update_data["url"])
                 update_data["file_pages"] = await scrape_store_index(
                     update_data["file"], update_data["url"], blob_container_client

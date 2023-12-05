@@ -443,33 +443,36 @@ async def scrape_store_index(filename, url, blob_container_client):
 
         logger.info("Getting text")
 
-        pages = content.get_text()
-        logger.info("Got text. creating sections")
+        content = content.get_text()
 
-        file_pages = []
-        for page in pages:
-            logger.info("Uploading blob to {}".format(os.environ["AZURE_STORAGE_CONTAINER"]))
-            blob_name = page["sourcepage"]
-            f = io.BytesIO()
-            f.write(page["content"].encode("utf-8"))
-            f.seek(0)
-
-            await blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"]).upload_blob(
-                blob_name, f, overwrite=True
-            )
-
-            file_pages.append(blob_name)
-
-        sections = list(
+        pages = list(
             create_sections_string(
                 filename,
-                pages,
+                content,
             )
         )
 
+        file_pages = []
+        for page in pages:
+            try:
+                logger.info("Uploading blob to {}".format(os.environ["AZURE_STORAGE_CONTAINER"]))
+                blob_name = page["sourcepage"]
+                f = io.BytesIO()
+                f.write(page["content"].encode("utf-8"))
+                f.seek(0)
+
+                await blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"]).upload_blob(
+                    blob_name, f, overwrite=True
+                )
+
+                file_pages.append(blob_name)
+            except Exception as e:
+                logger.error(f"Error uploading blob: {e}")
+                raise e
+
         logger.info("Got sections. updating embeddings")
 
-        sections = update_embeddings_in_batch(sections)
+        sections = update_embeddings_in_batch(pages)
 
         logger.info("Updated embeddings. indexing sections")
         await index_sections(filename, sections)
