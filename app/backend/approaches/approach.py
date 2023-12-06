@@ -14,3 +14,7 @@ class Approach(ABC):
         if security_filter:
             filters.append(security_filter)
         return None if len(filters) == 0 else " and ".join(filters)
+
+
+def nonewlines(s: str) -> str:
+    return s.replace("\n", " ").replace("\r", " ")

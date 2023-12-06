@@ -4,9 +4,8 @@ import openai
 from azure.search.documents.aio import SearchClient
 from azure.search.documents.models import QueryType
 
-from approaches.approach import Approach
+from approaches.approach import Approach, nonewlines
 from core.messagebuilder import MessageBuilder
-from text import nonewlines
 
 
 class RetrieveThenReadApproach(Approach):
