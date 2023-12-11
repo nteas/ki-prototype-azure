@@ -4,13 +4,12 @@ import os
 
 from core.types import Log
 from core.db import get_db
-from core.utilities import scrape_store_index
-from core.context import get_azure_credential, logger, get_blob_container_client
+from core.utilities import scrape_url
+from core.context import get_azure_credential, logger
 
 
 async def worker():
     azure_credential = get_azure_credential()
-    blob_container_client = await get_blob_container_client()
 
     try:
         AZURE_OPENAI_SERVICE = os.environ["AZURE_OPENAI_SERVICE"]
@@ -87,9 +86,7 @@ async def worker():
             if url is None:
                 continue
 
-            filename = document["file"]
-
-            file_pages = await scrape_store_index(filename, url, blob_container_client)
+            await scrape_url(document["file"], url)
 
             user = "worker"
             change = "scraped"
@@ -99,18 +96,13 @@ async def worker():
             db.documents.update_one(
                 {"id": document["id"]},
                 {
-                    "$set": {
-                        "file_pages": file_pages,
-                    },
                     "$push": {"logs": log.model_dump()},
                 },
             )
 
             logger.info("Got content from url")
 
-        print("Tick! The time is: %s" % datetime.datetime.now())
     except Exception as e:
         print(e)
     finally:
-        await blob_container_client.close()
         await azure_credential.close()

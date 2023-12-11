@@ -5,54 +5,41 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel, Field
 from pypdf import PdfReader, PdfWriter
-from worker import worker
-
+from fastapi.concurrency import run_in_threadpool
 
 from core.db import get_db
+from core.types import Document, Log
 from core.context import get_blob_container_client, logger
 from core.utilities import (
     blob_name_from_file_page,
     get_document_text,
     get_filename_from_url,
-    scrape_store_index,
+    scrape_url,
     remove_from_index,
     update_embeddings_in_batch,
     create_sections,
     index_sections,
 )
-from core.types import Document, Log
 
 
 document_router = APIRouter()
 
 
-@document_router.get("/test")
-async def test(blob_container_client=Depends(get_blob_container_client)):
-    try:
-        await worker()
-
-        return {"success": True}
-    except Exception as ex:
-        logger.error("Failed to test")
-        message = "Exception: {}".format(ex)
-        logger.error(message)
-        raise HTTPException(status_code=500, detail=message)
-    finally:
-        await blob_container_client.close()
-
-
 # Create a new document
 @document_router.post("/")
-def create_document(doc: Document, db=Depends(get_db)):
+async def create_document(request: Request, db=Depends(get_db)):
     try:
+        data = await request.json()
+        doc = Document(**data)
         doc = doc.model_dump()
 
         if doc["type"] == "web":
             doc["file"] = get_filename_from_url(doc["url"])
+            await scrape_store_index(doc["file"], doc["url"])
 
         db.documents.insert_one(doc)
 
-        return doc
+        return
     except Exception as ex:
         logger.info("Failed to create document")
         logger.info("Exception: {}".format(ex))
@@ -165,84 +152,69 @@ def flag_document(request: Request, data: FlagCitations, db=Depends(get_db)):
         raise HTTPException(status_code=404, detail="Document not found")
 
     for citation in data.citations:
-        doc = db.documents.find_one({"file_pages": citation})
+        doc = db.documents.find_one({"$or": [{"file": citation}, {"file_pages": citation}]})
 
-        if doc:
-            change = "flagged"
-            message = data.message + ": " + citation
-            log = Log(user=request.state.userId, change=change, message=message)
-
-            db.documents.update_one(
-                {"id": doc["id"]},
-                {
-                    "$set": {"updated_at": datetime.datetime.now()},
-                    "$push": {"logs": log.model_dump(), "flagged_pages": citation},
-                },
-            )
-        else:
+        if doc is None:
             logger.info("Document not found")
+            continue
+
+        change = "flagged"
+        message = data.message + ": " + citation
+        log = Log(user=request.state.userId, change=change, message=message)
+
+        db.documents.update_one(
+            {"id": doc["id"]},
+            {
+                "$set": {"updated_at": datetime.datetime.now()},
+                "$push": {"logs": log.model_dump(), "flagged_pages": citation},
+            },
+        )
 
     return {"message": "Documents flagged"}
 
 
 # Update a specific document by ID
 @document_router.put("/{id}")
-async def update_document(
-    id, request: Request, db=Depends(get_db), blob_container_client=Depends(get_blob_container_client)
-):
+async def update_document(id, request: Request, db=Depends(get_db)):
     try:
-        data = await request.json()
-
         doc = db.documents.find_one({"id": id})
 
-        if doc:
-            doc = Document(**doc)
-            update_data = doc.model_dump()
-
-            for key, value in data.items():
-                update_data[key] = value
-
-            update_data["flagged_pages"] = []
-
-            if update_data["type"] == "web":
-                if update_data["file_pages"]:
-                    try:
-                        await remove_from_index(update_data["file"])
-                    except Exception as ex:
-                        logger.info("Failed to remove from index {}".format(ex))
-
-                    for page in update_data["file_pages"]:
-                        try:
-                            logger.info(f"Removing blob {page}")
-                            await blob_container_client.get_container_client(
-                                os.environ["AZURE_STORAGE_CONTAINER"]
-                            ).delete_blob(page)
-                        except Exception as ex:
-                            logger.info("Failed to remove blob from storage {}".format(ex))
-
-                logger.info("Getting content from url")
-                update_data["file"] = get_filename_from_url(update_data["url"])
-                update_data["file_pages"] = await scrape_store_index(
-                    update_data["file"], update_data["url"], blob_container_client
-                )
-
-            log = Log(change="updated", message="Document updated")
-
-            update_data["logs"].append(log.model_dump())
-
-            update_data["updated_at"] = datetime.datetime.now()
-
-            db.documents.update_one({"id": id}, {"$set": update_data})
-
-            return
-        else:
+        if doc is None:
             raise HTTPException(status_code=404, detail="Document not found")
+
+        doc = Document(**doc)
+        update_data = doc.model_dump()
+
+        data = await request.json()
+        for key, value in data.items():
+            update_data[key] = value
+
+        update_data["flagged_pages"] = []
+
+        if update_data["type"] == "web":
+            try:
+                await remove_from_index(update_data["file"])
+            except Exception as ex:
+                logger.info("Failed to remove from index {}".format(ex))
+
+            logger.info("Getting content from url")
+            update_data["file"] = get_filename_from_url(update_data["url"])
+            update_data["file_pages"] = []
+            await scrape_store_index(update_data["file"], update_data["url"])
+
+        log = Log(change="updated", message="Document updated")
+
+        update_data["logs"].append(log.model_dump())
+
+        update_data["updated_at"] = datetime.datetime.now()
+
+        db.documents.update_one({"id": id}, {"$set": update_data})
+
+        return
     except Exception as ex:
         logger.error("Failed to update document")
         logger.error("Exception: {}".format(ex))
         raise HTTPException(status_code=500, detail="Failed to update document")
-    finally:
-        await blob_container_client.close()
 
 
 # Upload a file to blob storage and update document

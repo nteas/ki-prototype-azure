@@ -1,13 +1,15 @@
 import base64
 import html
-import io
 import os
 import re
 import time
 from typing import Any
 from bs4 import BeautifulSoup
 import openai
-import requests
+from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 import tiktoken
 from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
@@ -17,6 +19,7 @@ from tenacity import (
     stop_after_attempt,
     wait_random_exponential,
 )
+
 
 from core.context import get_search_client, logger
 
@@ -271,14 +274,16 @@ def create_sections(filename, page_map):
 
 
 def create_sections_string(filename, string):
-    file_id = filename_to_id(filename)
+    filename_ascii = re.sub("[^0-9a-zA-Z_-]", "_", filename)
+    filename_hash = base64.b16encode(filename.encode("utf-8")).decode("ascii")
+    file_id = f"web-{filename_ascii}-{filename_hash}"
 
     for i, content in enumerate(split_text_string(string)):
         section = {
-            "id": f"{file_id}-page-{i}",
+            "id": f"{file_id}-section-{i}",
             "content": content,
             "category": "",
-            "sourcepage": os.path.splitext(filename)[0] + f"-{i}" + ".txt",
+            "sourcepage": filename,
             "sourcefile": filename,
         }
 
@@ -404,71 +409,57 @@ def get_filename_from_url(url):
     # remove trailing slash and query params
     url = url.split("?")[0].rstrip("/")
 
-    domain = url.split("/")[0]
-    last_part = url.split("/")[-1]
-    filename = domain + "_" + last_part
-
-    return filename + ".txt"
+    return url
 
 
-async def scrape_store_index(filename, url, blob_container_client):
+async def scrape_url(filename, url):
     try:
-        # Send a GET request to the URL
-        response = requests.get(url)
+        options = webdriver.ChromeOptions()
+        options.add_argument("--headless")
+        driver = webdriver.Chrome(options=options)
+        driver.get(url)
 
-        # Check if the request was successful
-        if response.status_code != 200:
-            raise Exception(f"GET request to {url} failed with status code {response.status_code}.")
+        # Wait for the page to be fully loaded
+        time.sleep(6)
+
+        page_source = driver.page_source
+        driver.quit()
 
         # Parse the HTML content of the response
-        soup = BeautifulSoup(response.content, "html.parser")
+        soup = BeautifulSoup(page_source, "html.parser")
 
-        for tag in soup(["header", "footer", "a", "button", "img"]):
+        for tag in soup(
+            ["header", "footer", "a", "button", "img", "script", "style", "noscript", "form", "input", "svg"]
+        ):
             tag.decompose()
 
         for tag in soup.select("[class*=breadcrumbs], [class*=tags], [id*=chat], [class*=related]"):
             tag.decompose()
 
         # Extract the text of the HTML body
-        content = soup.main
+        selector_markup = soup.main
 
-        if content is None:
-            content = soup.find(id="main")
+        if selector_markup is None:
+            selector_markup = soup.find(id="main")
 
-        if content is None:
-            content = soup.find(id="content")
+        if selector_markup is None:
+            selector_markup = soup.find(id="content")
 
-        if content is None:
-            content = soup.body
+        if selector_markup is None:
+            selector_markup = soup.body
 
         logger.info("Getting text")
 
-        content = content.get_text()
+        text = selector_markup.get_text()
+
+        logger.info(text)
 
         pages = list(
             create_sections_string(
                 filename,
-                content,
+                text,
             )
         )
-
-        file_pages = []
-        for page in pages:
-            try:
-                logger.info("Uploading blob to {}".format(os.environ["AZURE_STORAGE_CONTAINER"]))
-                blob_name = page["sourcepage"]
-                f = io.BytesIO()
-                f.write(page["content"].encode("utf-8"))
-                f.seek(0)
-
-                await blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"]).upload_blob(
-                    blob_name, f, overwrite=True
-                )
-
-                file_pages.append(blob_name)
-            except Exception as e:
-                logger.error(f"Error uploading blob: {e}")
-                raise e
 
         logger.info("Got sections. updating embeddings")
 
@@ -479,9 +470,10 @@ async def scrape_store_index(filename, url, blob_container_client):
 
         logger.info("Indexed sections")
 
-        return file_pages
+        return text
 
     except Exception as ex:
+        print("Error in scrape_url: {}".format(ex))
         raise ex
 
 
