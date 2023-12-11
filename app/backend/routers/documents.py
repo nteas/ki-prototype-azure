@@ -35,7 +35,7 @@ async def create_document(request: Request, db=Depends(get_db)):
 
         if doc["type"] == "web":
             doc["file"] = get_filename_from_url(doc["url"])
-            await scrape_store_index(doc["file"], doc["url"])
+            await scrape_url(doc["url"])
 
         db.documents.insert_one(doc)
 
@@ -152,7 +152,7 @@ def flag_document(request: Request, data: FlagCitations, db=Depends(get_db)):
         raise HTTPException(status_code=404, detail="Document not found")
 
     for citation in data.citations:
-        doc = db.documents.find_one({"$or": [{"file": citation}, {"file_pages": citation}]})
+        doc = db.documents.find_one({"$or": [{"file": citation}, {"file_pages": citation}, {"url": citation}]})
 
         if doc is None:
             logger.info("Document not found")
@@ -200,7 +200,7 @@ async def update_document(id, request: Request, db=Depends(get_db)):
             logger.info("Getting content from url")
             update_data["file"] = get_filename_from_url(update_data["url"])
             update_data["file_pages"] = []
-            await scrape_store_index(update_data["file"], update_data["url"])
+            await scrape_url(update_data["url"])
 
         log = Log(change="updated", message="Document updated")
 
@@ -232,12 +232,13 @@ async def upload_file(
         if not doc:
             raise HTTPException(status_code=404, detail="Document not found")
 
-        if doc["file_pages"]:
+        if doc["file"]:
             try:
                 await remove_from_index(doc["file"])
             except Exception as ex:
                 logger.info("Failed to remove from index {}".format(ex))
 
+        if doc["file_pages"]:
             for page in doc["file_pages"]:
                 try:
                     logger.info(f"Removing blob {page}")
@@ -330,12 +331,12 @@ async def delete_document(
 
         logger.info("Removing document from index: {}".format(doc["file"]))
 
-        if doc["file_pages"]:
-            try:
-                await remove_from_index(doc["file"])
-            except Exception as ex:
-                logger.info("Failed to remove from index {}".format(ex))
+        try:
+            await remove_from_index(doc["file"])
+        except Exception as ex:
+            logger.info("Failed to remove from index {}".format(ex))
 
+        if doc["file_pages"]:
             for page in doc["file_pages"]:
                 try:
                     logger.info(f"Removing blob {page}")

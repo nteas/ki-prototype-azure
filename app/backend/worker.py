@@ -86,7 +86,7 @@ async def worker():
             if url is None:
                 continue
 
-            await scrape_url(document["file"], url)
+            await scrape_url(url)
 
             user = "worker"
             change = "scraped"

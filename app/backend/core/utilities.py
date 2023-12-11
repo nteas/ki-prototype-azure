@@ -7,9 +7,6 @@ from typing import Any
 from bs4 import BeautifulSoup
 import openai
 from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
 import tiktoken
 from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
@@ -273,18 +270,19 @@ def create_sections(filename, page_map):
         yield section
 
 
-def create_sections_string(filename, string):
-    filename_ascii = re.sub("[^0-9a-zA-Z_-]", "_", filename)
-    filename_hash = base64.b16encode(filename.encode("utf-8")).decode("ascii")
-    file_id = f"web-{filename_ascii}-{filename_hash}"
+def create_sections_string(url, string):
+    pretty_url = get_filename_from_url(url)
+    pretty_url_ascii = re.sub("[^0-9a-zA-Z_-]", "_", pretty_url)
+    pretty_url_hash = base64.b16encode(pretty_url.encode("utf-8")).decode("ascii")
+    pretty_url_id = f"web-{pretty_url_ascii}-{pretty_url_hash}"
 
     for i, content in enumerate(split_text_string(string)):
         section = {
-            "id": f"{file_id}-section-{i}",
+            "id": f"{pretty_url_id}-section-{i}",
             "content": content,
             "category": "",
-            "sourcepage": filename,
-            "sourcefile": filename,
+            "sourcepage": url,
+            "sourcefile": pretty_url,
         }
 
         section["embedding"] = compute_embedding(
@@ -412,7 +410,7 @@ def get_filename_from_url(url):
     return url
 
 
-async def scrape_url(filename, url):
+async def scrape_url(url):
     try:
         options = webdriver.ChromeOptions()
         options.add_argument("--headless")
@@ -456,7 +454,7 @@ async def scrape_url(filename, url):
 
         pages = list(
             create_sections_string(
-                filename,
+                url,
                 text,
             )
         )
@@ -466,6 +464,7 @@ async def scrape_url(filename, url):
         sections = update_embeddings_in_batch(pages)
 
         logger.info("Updated embeddings. indexing sections")
+        filename = get_filename_from_url(url)
         await index_sections(filename, sections)
 
         logger.info("Indexed sections")

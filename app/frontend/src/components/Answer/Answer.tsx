@@ -114,13 +114,18 @@ export const Answer = ({
 					<span className={styles.citationLearnMore}>Kilder:</span>
 
 					{parsedAnswer.citations.map((x, i) => {
-						const path = getCitationFilePath(x);
+						const isWeb = x.startsWith('http');
+						const path = isWeb ? x : getCitationFilePath(x);
 						return (
 							<Citation
 								key={i}
 								index={i}
-								citation={x}
-								onCitationClick={() => onCitationClicked(path)}
+								citation={isWeb ? x.split('//').pop() : x}
+								onCitationClick={() =>
+									isWeb
+										? window.open(x, '_blank')
+										: onCitationClicked(path)
+								}
 								updateFlags={() => updateFlaggedCitations(x)}
 								isFlagged={flaggedCitations.includes(x)}
 								isFeedbackGiven={isFeedbackGiven}
@@ -225,9 +230,9 @@ export const Answer = ({
 
 interface CitationProps {
 	index: number;
-	citation: string;
+	citation: any;
 	onCitationClick: () => void;
-	updateFlags: (citation: string) => void;
+	updateFlags: (citation: any) => void;
 	isFlagged: boolean;
 	isFeedbackGiven: React.MutableRefObject<boolean>;
 }
