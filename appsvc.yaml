@@ -1,5 +1,0 @@
-version: 1
-
-# Define the run command to start the Python app and serve the React app
-pre-build: docker build -t ai-prototype .
-run: docker run ai-prototype

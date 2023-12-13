@@ -3,6 +3,7 @@ data/
 backend/.env
 poetry.lock
 # temporary db
+.idea
 
 # Azure az webapp deployment details
 .azure
