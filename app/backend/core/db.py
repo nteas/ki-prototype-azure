@@ -1,6 +1,5 @@
 import os
-from pymongo import MongoClient
-import pymongo
+from pymongo import MongoClient, ASCENDING
 from core.context import logger
 
 db_client: MongoClient = None
@@ -21,7 +20,7 @@ def connect_and_init_db():
         if "documents" not in db_client["ki-prototype"].list_collection_names():
             db_client["ki-prototype"].create_collection("documents")
 
-        db_client["ki-prototype"]["documents"].create_index([("$**", pymongo.ASCENDING)])
+        db_client["ki-prototype"]["documents"].create_index([("$**", ASCENDING)])
     except Exception as e:
         logger.exception(f"Could not connect to mongo: {e}")
         raise
