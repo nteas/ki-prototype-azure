@@ -28,9 +28,7 @@ def get_auth_helper():
 
 
 def get_azure_credential():
-    return DefaultAzureCredential(
-        exclude_environment_credential=True, exclude_shared_token_cache_credential=True, logging_level=logging.ERROR
-    )
+    return DefaultAzureCredential(logging_level=logging.ERROR)
 
 
 async def get_search_client():
