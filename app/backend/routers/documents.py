@@ -39,7 +39,9 @@ async def create_document(request: Request, db=Depends(get_db)):
 
         db.documents.insert_one(doc)
 
-        return
+        del doc["_id"]
+
+        return doc
     except Exception as ex:
         logger.info("Failed to create document")
         logger.info("Exception: {}".format(ex))
