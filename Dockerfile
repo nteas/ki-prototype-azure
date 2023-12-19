@@ -1,5 +1,11 @@
 # build frontend
 FROM node:18-alpine as frontend
+# Define an ARG variable
+ARG segment=segment
+
+# Use the ARG variable to set an ENV variable
+ENV VITE_SEGMENT_WRITE_KEY=$segment
+
 COPY app/frontend app/frontend
 WORKDIR /app/frontend
 RUN npm install
