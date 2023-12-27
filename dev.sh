@@ -59,7 +59,7 @@ cd ../backend
 
 port=50505
 host=localhost
-./backend_env/bin/python -m uvicorn main:app --port "$port" --host "$host" --reload
+./backend_env/bin/python3 -m uvicorn main:app --port "$port" --host "$host" --workers 4 --reload
 if [ $? -ne 0 ]; then
 	kill -9 $(lsof -i:3000 | grep node | awk '{print $2}')
     echo "Failed to start backend"

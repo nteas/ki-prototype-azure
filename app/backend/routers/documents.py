@@ -3,7 +3,7 @@ import datetime
 import os
 import io
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel, Field
 from pypdf import PdfReader, PdfWriter
 from sse_starlette.sse import EventSourceResponse
@@ -28,7 +28,7 @@ document_router = APIRouter()
 
 # Create a new document
 @document_router.post("/")
-async def create_document(request: Request, db=Depends(get_db)):
+async def create_document(request: Request, background_tasks: BackgroundTasks, db=Depends(get_db)):
     try:
         data = await request.json()
         doc = Document(**data)
@@ -36,10 +36,11 @@ async def create_document(request: Request, db=Depends(get_db)):
 
         if doc["type"] == "web":
             doc["file"] = get_filename_from_url(doc["url"])
-            await scrape_url(doc["url"])
-        else:
-            doc["status"] = Status.processing.value
 
+            loop = asyncio.get_event_loop()
+            loop.create_task(async_scrape_url(doc["id"], doc["url"], db))
+
+        doc["status"] = Status.processing.value
         db.documents.insert_one(doc)
 
         del doc["_id"]
@@ -49,6 +50,14 @@ async def create_document(request: Request, db=Depends(get_db)):
         logger.info("Failed to create document")
         logger.info("Exception: {}".format(ex))
         return {"error": "Exception: {}".format(ex)}
+
+
+async def async_scrape_url(id, url, db):
+    logger.info(url)
+    await scrape_url(url)
+
+    db.documents.update_one({"id": id}, {"$set": {"status": Status.done.value}})
+    return
 
 
 # typing for get all documents request
@@ -265,12 +274,11 @@ def upload_sync(
 
     db.documents.update_one({"id": id}, {"$set": {"status": Status.processing.value}})
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(
+    loop = asyncio.get_event_loop()
+    loop.create_task(
         upload_file(id=id, doc=doc, request=request, file=file, db=db, blob_container_client=blob_container_client)
     )
-    loop.close()
+
     return {"success", True}
 
 

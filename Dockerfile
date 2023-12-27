@@ -25,4 +25,4 @@ RUN pip install -r requirements.txt
 COPY app/backend .
 COPY --from=frontend app/backend/static /app/static
 
-CMD ["python3", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["python3", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80", "--workers", "4"]

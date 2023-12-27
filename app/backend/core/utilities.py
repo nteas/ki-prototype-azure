@@ -410,7 +410,7 @@ async def scrape_url(url):
         driver.get(url)
 
         # Wait for the page to be fully loaded
-        time.sleep(6)
+        time.sleep(10)
 
         page_source = driver.page_source
         driver.quit()
