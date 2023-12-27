@@ -2,7 +2,7 @@ import datetime
 import openai
 import os
 
-from core.types import Log
+from core.types import Frequency, Log
 from core.db import get_db
 from core.utilities import scrape_url
 from core.context import get_azure_credential, logger
@@ -26,7 +26,7 @@ async def worker():
         daily_docs = db.documents.find(
             {
                 "type": "web",
-                "frequency": "daily",
+                "frequency": Frequency.daily.value,
                 "deleted": {"$ne": True},
             }
         )
@@ -42,7 +42,7 @@ async def worker():
             weekly_docs = db.documents.find(
                 {
                     "type": "web",
-                    "frequency": "weekly",
+                    "frequency": Frequency.weekly.value,
                     "deleted": {"$ne": True},
                 }
             )
@@ -58,7 +58,7 @@ async def worker():
             monthly_docs = db.documents.find(
                 {
                     "type": "web",
-                    "frequency": "monthly",
+                    "frequency": Frequency.monthly.value,
                     "deleted": {"$ne": True},
                 }
             )

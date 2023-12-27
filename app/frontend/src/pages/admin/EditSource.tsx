@@ -58,12 +58,12 @@ export function Component(): JSX.Element {
 
 		// handle file upload
 		const file = formData.get('file') as File;
-		if (file) {
+		if (file && file.name !== data?.file) {
 			// send pdf to server
 			const fileData = new FormData();
 			fileData.append('file', file);
 
-			await apiFetch(`/api/documents/${id}/file`, {
+			apiFetch(`/api/documents/${id}/file`, {
 				method: 'POST',
 				body: fileData,
 			}).catch(err => console.error(err));

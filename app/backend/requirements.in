@@ -18,3 +18,4 @@ opencensus-ext-azure
 bs4
 apscheduler
 selenium
+sse-starlette

@@ -27,8 +27,6 @@ export function Component(): JSX.Element {
 
 		const body: any = { type: isFile ? 'pdf' : 'web' };
 		for (const [key, value] of formData.entries()) {
-			console.log(key, value);
-
 			if (key === 'type' || !value) continue;
 
 			if (key === 'file' && value instanceof File) {
@@ -62,7 +60,7 @@ export function Component(): JSX.Element {
 			const fileData = new FormData();
 			fileData.append('file', file);
 
-			await apiFetch(`/api/documents/${newDoc.id}/file`, {
+			apiFetch(`/api/documents/${newDoc.id}/file`, {
 				method: 'POST',
 				body: fileData,
 			}).catch(err => console.error(err));

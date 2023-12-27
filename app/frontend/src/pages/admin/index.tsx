@@ -14,6 +14,7 @@ import {
 	faFilePdf,
 	faGlobe,
 	faTrash,
+	faSpinnerThird,
 } from '@fortawesome/pro-solid-svg-icons';
 
 import AdminLayout from '../../components/Layout/AdminLayout';
@@ -268,78 +269,13 @@ export function Component(): JSX.Element {
 
 			<div className={styles.rows}>
 				{data?.documents?.map(item => (
-					<div
-						className={`${styles.row} ${
-							item?.flagged_pages?.length > 0 && styles.flagged
-						}`}
-						key={item.id}>
-						<div className={styles.col} style={{ flex: 1 }}>
-							<FontAwesomeIcon
-								icon={
-									item?.type?.includes('pdf')
-										? faFilePdf
-										: faGlobe
-								}
-							/>
-						</div>
-
-						<div
-							className={styles.col}
-							style={{ flex: 5, cursor: 'pointer' }}
-							onClick={() => handleEditItem(item.id)}>
-							{item.title}
-						</div>
-
-						<div className={styles.col} style={{ flex: 3 }}>
-							{item.owner}
-						</div>
-
-						<div className={styles.col} style={{ flex: 2 }}>
-							<Badge
-								pill
-								bg="primary"
-								className={styles[item?.classification || '']}>
-								{item.classification &&
-									classificationMap[item.classification]}
-							</Badge>
-						</div>
-
-						<div className={styles.col} style={{ flex: 2 }}>
-							{formatDate(item.updated_at)}
-						</div>
-
-						<div
-							className={`${styles.col} ${styles.actions}`}
-							style={{ flex: 2 }}>
-							<button
-								className={styles.open}
-								onClick={() => {
-									if (item?.type?.includes('pdf')) {
-										setViewDocument(item);
-										return;
-									}
-
-									window.open(item.url, '_blank');
-								}}
-								title="Åpne">
-								<FontAwesomeIcon icon={faEye} />
-							</button>
-
-							<button
-								className={styles.edit}
-								onClick={() => handleEditItem(item.id)}
-								title="Rediger">
-								<FontAwesomeIcon icon={faCog} />
-							</button>
-
-							<button
-								className={styles.delete}
-								onClick={() => handleDeleteItem(item.id)}
-								title="Slett">
-								<FontAwesomeIcon icon={faTrash} />
-							</button>
-						</div>
-					</div>
+					<ItemRow
+						key={item.id}
+						item={item}
+						setViewDocument={() => setViewDocument(item)}
+						handleEditItem={() => handleEditItem(item.id)}
+						handleDeleteItem={() => handleDeleteItem(item.id)}
+					/>
 				))}
 			</div>
 
@@ -379,5 +315,121 @@ export function Component(): JSX.Element {
 				/>
 			)}
 		</AdminLayout>
+	);
+}
+
+interface ItemRowProps {
+	item: Document;
+	setViewDocument: () => void;
+	handleEditItem: () => void;
+	handleDeleteItem: () => void;
+}
+
+function ItemRow({
+	item,
+	setViewDocument,
+	handleEditItem,
+	handleDeleteItem,
+}: ItemRowProps) {
+	const [status, setStatus] = useState<string>(item?.status || 'done');
+
+	useEffect(() => {
+		if (item.status !== 'processing') return;
+		const sse = new EventSource(`/api/documents/status/${item.id}`);
+
+		sse.onmessage = e => {
+			if (e.data !== 'processing') {
+				console.log('item processing');
+				setStatus(e.data);
+				return;
+			}
+		};
+		sse.onerror = () => {
+			console.log('event disconnect');
+			sse.close();
+		};
+		return () => {
+			console.log('event disconnect');
+			sse.close();
+		};
+	}, []);
+
+	return (
+		<div
+			className={`${styles.row} ${
+				item?.flagged_pages?.length > 0 && styles.flagged
+			}`}
+			key={item.id}>
+			<div className={styles.col} style={{ flex: 1 }}>
+				<FontAwesomeIcon
+					icon={item?.type?.includes('pdf') ? faFilePdf : faGlobe}
+				/>
+			</div>
+
+			<div
+				className={styles.col}
+				style={{ flex: 5, cursor: 'pointer' }}
+				onClick={handleEditItem}>
+				{item.title}
+			</div>
+
+			<div className={styles.col} style={{ flex: 3 }}>
+				{item.owner}
+			</div>
+
+			<div className={styles.col} style={{ flex: 2 }}>
+				<Badge
+					pill
+					bg="primary"
+					className={styles[item?.classification || '']}>
+					{item.classification &&
+						classificationMap[item.classification]}
+				</Badge>
+			</div>
+
+			<div className={styles.col} style={{ flex: 2 }}>
+				{formatDate(item.updated_at)}
+			</div>
+
+			<div
+				className={`${styles.col} ${styles.actions}`}
+				style={{ flex: 2 }}>
+				{status === 'processing' ? (
+					<div className={styles.spinner}>
+						<FontAwesomeIcon icon={faSpinnerThird} />
+					</div>
+				) : (
+					<>
+						<button
+							className={styles.open}
+							onClick={() => {
+								if (item?.type?.includes('pdf')) {
+									setViewDocument();
+									return;
+								}
+
+								window.open(item.url, '_blank');
+							}}
+							title="Åpne">
+							<FontAwesomeIcon icon={faEye} />
+						</button>
+
+						<button
+							className={styles.edit}
+							onClick={handleEditItem}
+							title="Rediger">
+							<FontAwesomeIcon icon={faCog} />
+						</button>
+
+						<button
+							className={styles.delete}
+							onClick={handleDeleteItem}
+							title="Slett">
+							<FontAwesomeIcon icon={faTrash} />
+						</button>
+					</>
+				)}
+			</div>
+		</div>
 	);
 }

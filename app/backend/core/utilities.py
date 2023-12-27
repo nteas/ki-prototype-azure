@@ -17,7 +17,6 @@ from tenacity import (
     wait_random_exponential,
 )
 
-
 from core.context import get_search_client, logger
 
 adls_gen2_creds = None
@@ -261,11 +260,7 @@ def create_sections(filename, page_map):
             "sourcefile": filename,
         }
 
-        section["embedding"] = compute_embedding(
-            content,
-            os.environ["AZURE_OPENAI_EMB_DEPLOYMENT"],
-            os.getenv("AZURE_OPENAI_EMB_MODEL_NAME", "text-embedding-ada-002"),
-        )
+        section["embedding"] = compute_embedding(content)
 
         yield section
 
@@ -285,16 +280,12 @@ def create_sections_string(url, string):
             "sourcefile": pretty_url,
         }
 
-        section["embedding"] = compute_embedding(
-            content,
-            os.environ["AZURE_OPENAI_EMB_DEPLOYMENT"],
-            os.getenv("AZURE_OPENAI_EMB_MODEL_NAME", "text-embedding-ada-002"),
-        )
+        section["embedding"] = compute_embedding(content)
 
         yield section
 
 
-def before_retry_sleep():
+def before_retry_sleep(retry_state):
     logger.info("Rate limited on the OpenAI embeddings API, sleeping before retrying...")
 
 
@@ -304,10 +295,12 @@ def before_retry_sleep():
     stop=stop_after_attempt(15),
     before_sleep=before_retry_sleep,
 )
-def compute_embedding(text, embedding_deployment, embedding_model):
+def compute_embedding(text):
     try:
-        embedding_args = {"deployment_id": embedding_deployment}
-        return openai.Embedding.create(**embedding_args, model=embedding_model, input=text)["data"][0]["embedding"]
+        embedding_args = {"deployment_id": os.environ["AZURE_OPENAI_EMB_DEPLOYMENT"]}
+        return openai.Embedding.create(
+            **embedding_args, model=os.getenv("AZURE_OPENAI_EMB_MODEL_NAME", "text-embedding-ada-002"), input=text
+        )["data"][0]["embedding"]
     except Exception as e:
         logger.error(f"Error computing embedding for text: {e}")
         raise e
@@ -368,7 +361,6 @@ def update_embeddings_in_batch(sections):
 async def index_sections(
     filename,
     sections,
-    acls=None,
 ):
     search_client = await get_search_client()
 
@@ -380,8 +372,6 @@ async def index_sections(
         i = 0
         batch = []
         for s in sections:
-            if acls:
-                s.update(acls)
             batch.append(s)
             i += 1
             if i % 1000 == 0:

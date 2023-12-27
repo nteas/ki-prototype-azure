@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import os
 import io
@@ -5,10 +6,10 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel, Field
 from pypdf import PdfReader, PdfWriter
-from fastapi.concurrency import run_in_threadpool
+from sse_starlette.sse import EventSourceResponse
 
 from core.db import get_db
-from core.types import Document, Log
+from core.types import Document, Log, Status
 from core.context import get_blob_container_client, logger
 from core.utilities import (
     blob_name_from_file_page,
@@ -36,6 +37,8 @@ async def create_document(request: Request, db=Depends(get_db)):
         if doc["type"] == "web":
             doc["file"] = get_filename_from_url(doc["url"])
             await scrape_url(doc["url"])
+        else:
+            doc["status"] = Status.processing.value
 
         db.documents.insert_one(doc)
 
@@ -114,7 +117,7 @@ async def get_documents(params: GetDocumentsRequest = Depends(), db=Depends(get_
 
 # Get a specific document by ID
 @document_router.get("/{id}")
-def get_document(id, db=Depends(get_db)):
+def get_document(id: str, db=Depends(get_db)):
     if not id:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -126,6 +129,31 @@ def get_document(id, db=Depends(get_db)):
         return Document(**doc)
     else:
         raise HTTPException(status_code=404, detail="Document not found")
+
+
+@document_router.get("/status/{id}")
+async def get_document_status_events(id: str, db=Depends(get_db)):
+    if not id:
+        raise HTTPException(status_code=404, detail="No id provided")
+
+    async def event_generator():
+        while True:
+            # Check for updates on the document status
+            doc = db.documents.find_one({"id": id})
+            doc = Document(**doc)
+
+            if not doc:
+                break
+
+            yield {"data": doc.status}
+
+            if doc.status != Status.processing.value:
+                break
+
+            # Wait for a short time before checking again
+            await asyncio.sleep(10)
+
+    return EventSourceResponse(event_generator())
 
 
 # Check if document is flagged based on citation / file_page
@@ -177,7 +205,7 @@ def flag_document(request: Request, data: FlagCitations, db=Depends(get_db)):
 
 # Update a specific document by ID
 @document_router.put("/{id}")
-async def update_document(id, request: Request, db=Depends(get_db)):
+async def update_document(id: str, request: Request, db=Depends(get_db)):
     try:
         doc = db.documents.find_one({"id": id})
 
@@ -210,6 +238,8 @@ async def update_document(id, request: Request, db=Depends(get_db)):
 
         update_data["updated_at"] = datetime.datetime.now()
 
+        del update_data["status"]
+
         db.documents.update_one({"id": id}, {"$set": update_data})
 
         return
@@ -221,19 +251,38 @@ async def update_document(id, request: Request, db=Depends(get_db)):
 
 # Upload a file to blob storage and update document
 @document_router.post("/{id}/file")
-async def upload_file(
+def upload_sync(
     id,
     request: Request,
     file: UploadFile = File(...),
     db=Depends(get_db),
     blob_container_client=Depends(get_blob_container_client),
 ):
+    doc = db.documents.find_one({"id": id})
+
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    db.documents.update_one({"id": id}, {"$set": {"status": Status.processing.value}})
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(
+        upload_file(id=id, doc=doc, request=request, file=file, db=db, blob_container_client=blob_container_client)
+    )
+    loop.close()
+    return {"success", True}
+
+
+async def upload_file(
+    id,
+    doc,
+    request,
+    file,
+    db,
+    blob_container_client,
+):
     try:
-        doc = db.documents.find_one({"id": id})
-
-        if not doc:
-            raise HTTPException(status_code=404, detail="Document not found")
-
         if doc["file"]:
             try:
                 await remove_from_index(doc["file"])
@@ -280,6 +329,7 @@ async def upload_file(
         doc["file_pages"] = file_pages
         doc["logs"].append(Log(user=request.state.userId, change="update_file", message="File updated"))
         doc = Document(**doc)
+        del doc.status
 
         db.documents.update_one({"id": id}, {"$set": doc.model_dump()})
 
@@ -305,12 +355,14 @@ async def upload_file(
         await index_sections(filename, sections)
 
         logger.info("Indexed sections")
+        db.documents.update_one({"id": id}, {"$set": {"status": Status.done.value}})
 
         return doc
     except Exception as ex:
         logger.error("Failed to upload file")
         message = "Exception: {}".format(ex)
         logger.error(message)
+        db.documents.update_one({"id": id}, {"$set": {"status": Status.error.value}})
         raise HTTPException(status_code=500, detail=message)
 
     finally:
@@ -363,7 +415,7 @@ async def delete_document(
 
 # Add a log to a specific document by ID
 @document_router.post("/{id}/logs")
-async def add_log(id, request: Request, db=Depends(get_db)):
+async def add_log(id: str, request: Request, db=Depends(get_db)):
     data = await request.get_json()
     data["user"] = request.state.userId
     doc = db.documents.find_one({"id": id})
@@ -377,7 +429,7 @@ async def add_log(id, request: Request, db=Depends(get_db)):
 
 # Change the status of a specific log in a specific document by ID and log ID
 @document_router.post("/{id}/logs/{log_id}")
-async def change_log_status(id, log_id, request: Request, db=Depends(get_db)):
+async def change_log_status(id: str, log_id, request: Request, db=Depends(get_db)):
     data = await request.get_json()
     data["user"] = request.state.userId
     doc = db.documents.find_one({"id": id})
