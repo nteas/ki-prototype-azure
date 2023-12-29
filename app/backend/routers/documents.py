@@ -37,8 +37,7 @@ async def create_document(request: Request, background_tasks: BackgroundTasks, d
         if doc["type"] == "web":
             doc["file"] = get_filename_from_url(doc["url"])
 
-            loop = asyncio.get_event_loop()
-            loop.create_task(async_scrape_url(doc["id"], doc["url"], db))
+            asyncio.create_task(async_scrape_url(doc["id"], doc["url"], db))
 
         doc["status"] = Status.processing.value
         db.documents.insert_one(doc)
@@ -274,8 +273,7 @@ def upload_sync(
 
     db.documents.update_one({"id": id}, {"$set": {"status": Status.processing.value}})
 
-    loop = asyncio.get_event_loop()
-    loop.create_task(
+    asyncio.create_task(
         upload_file(id=id, doc=doc, request=request, file=file, db=db, blob_container_client=blob_container_client)
     )
 
@@ -394,7 +392,7 @@ async def delete_document(
         logger.info("Removing document from index: {}".format(doc["file"]))
 
         try:
-            await remove_from_index(doc["file"])
+            asyncio.create_task(remove_from_index(doc["file"]))
         except Exception as ex:
             logger.info("Failed to remove from index {}".format(ex))
 
