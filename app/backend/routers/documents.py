@@ -3,7 +3,7 @@ import datetime
 import os
 import io
 from typing import List
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel, Field
 from pypdf import PdfReader, PdfWriter
 from sse_starlette.sse import EventSourceResponse
@@ -28,7 +28,7 @@ document_router = APIRouter()
 
 # Create a new document
 @document_router.post("/")
-async def create_document(request: Request, background_tasks: BackgroundTasks, db=Depends(get_db)):
+async def create_document(request: Request, db=Depends(get_db)):
     try:
         data = await request.json()
         doc = Document(**data)
