@@ -1,9 +1,12 @@
 import base64
 import html
+import io
 import os
 import re
 import time
+from fastapi import HTTPException
 import openai
+from pypdf import PdfReader, PdfWriter
 import tiktoken
 import hashlib
 from typing import Any
@@ -19,6 +22,8 @@ from tenacity import (
 )
 
 from core.logger import logger
+from core.db import get_db
+from core.types import Document, Log, Status
 
 adls_gen2_creds = None
 storage_creds = None
@@ -82,6 +87,8 @@ def table_to_html(table):
 
 
 def get_document_text(file):
+    logger.info("Begin extracting document text")
+
     AZURE_FORMRECOGNIZER_SERVICE = os.getenv("AZURE_FORMRECOGNIZER_SERVICE")
     formrecognizer_creds = AzureKeyCredential(os.environ["AZURE_FORMRECOGNIZER_KEY"])
     form_recognizer_client = DocumentAnalysisClient(
@@ -134,7 +141,7 @@ def get_document_text(file):
         logger.error(f"Error extracting text from file: {e}")
         raise e
     finally:
-        logger.info("Done extracting text")
+        logger.info("Done extracting document text")
 
 
 def split_text(page_map, filename):
@@ -264,6 +271,8 @@ def filename_to_id(filename):
 
 
 def create_sections(filename, page_map):
+    logger.info("Begin creating sections")
+
     file_id = filename_to_id(filename)
     for i, (content, pagenum) in enumerate(split_text(page_map, filename)):
         section = {
@@ -278,8 +287,12 @@ def create_sections(filename, page_map):
 
         yield section
 
+    logger.info("Done creating sections")
+
 
 def create_sections_string(url, string):
+    logger.info("Begin creating sections")
+
     pretty_url = get_filename_from_url(url)
     pretty_url_ascii = re.sub("[^0-9a-zA-Z_-]", "_", pretty_url)
     pretty_url_hash = base64.b16encode(pretty_url.encode("utf-8")).decode("ascii")
@@ -298,7 +311,7 @@ def create_sections_string(url, string):
 
         yield section
 
-    logger.info("Got sections. updating embeddings")
+    logger.info("Done creating sections")
 
 
 def before_retry_sleep(retry_state):
@@ -341,6 +354,8 @@ def compute_embedding_in_batch(texts):
 
 
 def update_embeddings_in_batch(sections):
+    logger.info("Begin updating batch embeddings")
+
     batch_queue: list = []
     copy_s = []
     batch_response = {}
@@ -373,14 +388,12 @@ def update_embeddings_in_batch(sections):
         s["embedding"] = batch_response[s["id"]]
         yield s
 
-    logger.info("Updated embeddings. indexing sections")
+    logger.info("Done updating batch embeddings")
 
 
-async def index_sections(filename, sections, search_client):
+async def index_sections(sections, search_client):
     try:
-        AZURE_SEARCH_INDEX = os.getenv("AZURE_SEARCH_INDEX")
-
-        logger.info(f"Indexing sections from '{filename}' into search index '{AZURE_SEARCH_INDEX}'")
+        logger.info("Begin indexing sections")
 
         i = 0
         batch = []
@@ -414,6 +427,8 @@ def get_filename_from_url(url):
 
 async def scrape_url(url):
     try:
+        logger.info("Begin scraping content from url")
+
         options = webdriver.ChromeOptions()
         options.add_argument("--no-sandbox")
         options.add_argument("--headless")
@@ -450,22 +465,20 @@ async def scrape_url(url):
         if selector_markup is None:
             selector_markup = soup.body
 
-        logger.info("Getting text")
-
         text = selector_markup.get_text()
-
-        logger.info("Got text")
 
         return text
 
     except Exception as ex:
         print("Error in scrape_url: {}".format(ex))
         raise ex
+    finally:
+        logger.info("Done scraping content from url")
 
 
 async def remove_from_index(filename, search_client):
     try:
-        logger.info(f"Removing sections from '{filename or '<all>'}' from search index")
+        logger.info("Begin removing sections from from index")
 
         while True:
             filter = f"sourcefile eq '{filename}'"
@@ -479,10 +492,106 @@ async def remove_from_index(filename, search_client):
                 break
 
             await search_client.delete_documents(documents=docs)
-            logger.info("Removed  sections from index")
             # It can take a few seconds for search results to reflect changes, so wait a bit
             time.sleep(2)
     except Exception as e:
         logger.error(f"Error removing sections from index: {e}")
     finally:
         logger.info("Done removing sections from index")
+
+
+async def process_web(id, search_client):
+    try:
+        db = get_db()
+
+        doc = db.documents.find_one({"id": id})
+
+        if doc is None:
+            logger.info("Document not found")
+            return
+
+        doc = Document(**doc)
+
+        text = await scrape_url(doc.url)
+
+        hashed_text = hash_text_md5(text)
+
+        # check if content has changed
+        if doc.hash == hashed_text:
+            db.documents.update_one({"id": id}, {"$set": {"hash": hashed_text, "status": Status.done.value}})
+            return
+
+        await remove_from_index(doc.file, search_client)
+
+        sections = list(
+            create_sections_string(
+                doc.url,
+                text,
+            )
+        )
+
+        sections = update_embeddings_in_batch(sections)
+
+        await index_sections(sections, search_client)
+
+        db.documents.update_one({"id": id}, {"$set": {"hash": hashed_text, "status": Status.done.value}})
+    except:
+        logger.error("Failed to process document")
+
+
+async def process_file(id, file, search_client, blob_container_client):
+    db = get_db()
+
+    doc = db.documents.find_one({"id": id})
+    doc = Document(**doc)
+
+    if doc.file:
+        await remove_from_index(doc.file, search_client)
+
+    if doc["file_pages"]:
+        blobs = doc["file_pages"].join(",")
+        await blob_container_client.delete_blobs(blobs)
+
+        filename = file.filename
+        pdf = file.read()
+        file.close()
+        file_pages = []
+
+        # upload file to blob storage
+        if os.path.splitext(filename)[1].lower() != ".pdf":
+            raise HTTPException(status_code=500, detail="File is not a PDF")
+
+        reader = PdfReader(io.BytesIO(pdf))
+        pages = reader.pages
+        for i in range(len(pages)):
+            blob_name = blob_name_from_file_page(filename, i)
+            f = io.BytesIO()
+            writer = PdfWriter()
+            writer.add_page(pages[i])
+            writer.write(f)
+            f.seek(0)
+
+            blob_container_client.upload_blob(blob_name, f, overwrite=True)
+
+            file_pages.append(blob_name)
+
+        # update document
+        doc.file = filename
+        doc.file_pages = file_pages
+        doc.logs.append(Log(user=doc.owner, change="update_file", message="File updated"))
+
+        # update index
+
+        page_map = get_document_text(pdf)
+
+        sections = list(
+            create_sections(
+                filename,
+                page_map,
+            )
+        )
+        sections = update_embeddings_in_batch(sections)
+
+        await index_sections(sections, search_client=search_client)
+
+        db.documents.update_one({"id": id}, {"$set": doc.model_dump()})

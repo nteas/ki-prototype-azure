@@ -15,10 +15,10 @@ from azure.search.documents.aio import SearchClient
 from azure.storage.blob.aio import BlobServiceClient
 from azure.identity.aio import DefaultAzureCredential
 
-from core.authentication import AuthenticationHelper
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
 from routers.documents import document_router
+from core.authentication import AuthenticationHelper
 from core.db import close_db_connect, connect_and_init_db
 from core.logger import logger
 from worker import worker
@@ -38,16 +38,14 @@ env = os.getenv("AZURE_ENV_NAME", "dev")
 app = FastAPI(debug=env == "dev")
 app.mount("/assets", StaticFiles(directory="static/assets", html=True), name="assets")
 
-
 # Set up worker
 scheduler = BackgroundScheduler()
 
 
-def worker_sync():
+def add_job(async_func, *args, **kwargs):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(worker())
-    loop.close()
+    return scheduler.add_job(lambda: loop.run_until_complete(async_func(*args, **kwargs)))
 
 
 @app.on_event("startup")
@@ -75,9 +73,13 @@ async def startup_event():
         tenant_id=os.getenv("AZURE_TENANT_ID"),
         token_cache_path=os.getenv("TOKEN_CACHE_PATH"),
     )
+
+    app.add_job = add_job
+
     if os.getenv("AZURE_ENVIRONMENT", "production") != "development":
-        scheduler.add_job(worker_sync, "cron", hour=6, minute=30)
-        scheduler.start()
+        scheduler.add_job(lambda: app.loop.run_until_complete(worker), "cron", hour=6)
+
+    scheduler.start()
 
 
 @app.on_event("shutdown")
@@ -88,8 +90,8 @@ async def shutdown_event():
     await app.blob_container_client.close()
     await app.azure_credential.close()
 
-    if os.getenv("AZURE_ENVIRONMENT", "production") != "development":
-        scheduler.shutdown()
+    scheduler.shutdown()
+
     logger.info("Shutting down the api and worker")
 
 

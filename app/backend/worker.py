@@ -95,8 +95,6 @@ async def worker():
         print(f"Found {len(documents)} documents")
 
         for document in documents:
-            logger.info("Getting content from url")
-
             url = document["url"]
 
             if url is None:
@@ -111,17 +109,16 @@ async def worker():
 
             await remove_from_index(document["file"], search_client)
 
-            pages = list(
+            sections = list(
                 create_sections_string(
                     url,
                     text,
                 )
             )
 
-            sections = update_embeddings_in_batch(pages)
+            sections = update_embeddings_in_batch(sections)
 
-            filename = get_filename_from_url(url)
-            await index_sections(filename, sections, search_client)
+            await index_sections(sections, search_client)
 
             user = "worker"
             change = "scraped"
@@ -135,8 +132,6 @@ async def worker():
                     "$push": {"logs": log.model_dump()},
                 },
             )
-
-            logger.info("Got content from url")
 
     except Exception as e:
         print(e)

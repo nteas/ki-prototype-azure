@@ -1,11 +1,10 @@
-import asyncio
+import time
 import datetime
 import os
 import io
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel, Field
-from pypdf import PdfReader, PdfWriter
 from sse_starlette.sse import EventSourceResponse
 from concurrent.futures import ThreadPoolExecutor
 
@@ -14,21 +13,19 @@ from core.db import get_db
 from core.types import Document, Log, Status
 from core.logger import logger
 from core.utilities import (
-    blob_name_from_file_page,
-    get_document_text,
     get_filename_from_url,
-    hash_text_md5,
     remove_from_index,
-    scrape_url,
-    update_embeddings_in_batch,
-    create_sections,
-    index_sections,
-    create_sections_string,
+    process_file,
+    process_web,
 )
 
 
 document_router = APIRouter()
 executor = ThreadPoolExecutor(max_workers=5)
+
+
+def set_status_done(id, db):
+    db.documents.update_one({"id": id}, {"$set": {"status": Status.done.value}})
 
 
 # Create a new document
@@ -42,7 +39,7 @@ async def create_document(request: Request, db=Depends(get_db)):
         if doc["type"] == "web":
             doc["file"] = get_filename_from_url(doc["url"])
 
-            asyncio.create_task(index_and_save_async(doc, db, request.app.search_client))
+            request.app.add_job(process_web, doc["id"], search_client=request.app.search_client)
 
         doc["status"] = Status.processing.value
         db.documents.insert_one(doc)
@@ -54,34 +51,6 @@ async def create_document(request: Request, db=Depends(get_db)):
         logger.info("Failed to create document")
         logger.info("Exception: {}".format(ex))
         return {"error": "Exception: {}".format(ex)}
-
-
-async def index_and_save_async(doc, db, search_client):
-    url = doc["url"]
-
-    if url is None:
-        return
-
-    text = await scrape_url(url)
-
-    hashed_text = hash_text_md5(text)
-
-    pages = list(
-        create_sections_string(
-            url,
-            text,
-        )
-    )
-
-    logger.info("Got sections. updating embeddings")
-
-    sections = update_embeddings_in_batch(pages)
-
-    logger.info("Updated embeddings. indexing sections")
-    filename = get_filename_from_url(url)
-    await index_sections(filename, sections, search_client)
-
-    db.documents.update_one({"id": doc["id"]}, {"$set": {"status": Status.done.value, "hash": hashed_text}})
 
 
 # typing for get all documents request
@@ -164,6 +133,7 @@ def get_document(id: str, db=Depends(get_db)):
         raise HTTPException(status_code=404, detail="Document not found")
 
 
+# Stream document status events
 @document_router.get("/status/{id}")
 async def get_document_status_events(id: str, db=Depends(get_db)):
     if not id:
@@ -184,7 +154,7 @@ async def get_document_status_events(id: str, db=Depends(get_db)):
                 break
 
             # Wait for a short time before checking again
-            await asyncio.sleep(10)
+            time.sleep(10)
 
     return EventSourceResponse(event_generator())
 
@@ -255,11 +225,10 @@ async def update_document(id: str, request: Request, db=Depends(get_db)):
         update_data["flagged_pages"] = []
 
         if update_data["type"] == "web":
-            asyncio.create_task(remove_from_index(update_data["file"], search_client=request.app.search_client))
-            logger.info("Getting content from url")
             update_data["file"] = get_filename_from_url(update_data["url"])
             update_data["file_pages"] = []
-            asyncio.create_task(index_and_save_async(update_data, db, request.app.search_client))
+
+            request.app.add_job(process_web, id, search_client=request.app.search_client)
 
         log = Log(change="updated", message="Document updated")
 
@@ -267,14 +236,16 @@ async def update_document(id: str, request: Request, db=Depends(get_db)):
 
         update_data["updated_at"] = datetime.datetime.now()
 
-        del update_data["status"]
+        if doc.file != update_data["file"]:
+            update_data["status"] = Status.processing.value
 
         db.documents.update_one({"id": id}, {"$set": update_data})
 
-        return
+        return {"message": "Document updated"}
     except Exception as ex:
         logger.error("Failed to update document")
         logger.error("Exception: {}".format(ex))
+        db.documents.update_one({"id": id}, {"$set": {"status": Status.error.value}})
         raise HTTPException(status_code=500, detail="Failed to update document")
 
 
@@ -286,105 +257,23 @@ async def upload_file(
     file: UploadFile = File(...),
     db=Depends(get_db),
 ):
-    doc = db.documents.find_one({"id": id})
-
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    db.documents.update_one({"id": id}, {"$set": {"status": Status.processing.value}})
-
-    if doc["file"]:
-        asyncio.create_task(remove_from_index(doc["file"], search_client=request.app.search_client))
-
-    asyncio.create_task(
-        upload_file(
-            id=id,
-            doc=doc,
-            request=request,
-            file=file,
-            db=db,
-            blob_container_client=request.app.blob_container_client,
-        ),
-    )
-
-    return {"success", True}
-
-
-async def upload_file(
-    id,
-    doc,
-    request,
-    file,
-    db,
-    blob_container_client,
-):
     try:
-        if doc["file_pages"]:
-            for page in doc["file_pages"]:
-                try:
-                    logger.info(f"Removing blob {page}")
-                    blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"]).delete_blob(page)
-                except Exception as ex:
-                    logger.info("Failed to remove blob from storage {}".format(ex))
+        doc = db.documents.find_one({"id": id})
 
-        filename = file.filename
-        pdf = file.read()
-        file.close()
-        file_pages = []
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found")
 
-        # upload file to blob storage
-        if os.path.splitext(filename)[1].lower() != ".pdf":
-            raise HTTPException(status_code=500, detail="File is not a PDF")
+        db.documents.update_one({"id": id}, {"$set": {"status": Status.processing.value}})
 
-        reader = PdfReader(io.BytesIO(pdf))
-        pages = reader.pages
-        for i in range(len(pages)):
-            blob_name = blob_name_from_file_page(filename, i)
-            f = io.BytesIO()
-            writer = PdfWriter()
-            writer.add_page(pages[i])
-            writer.write(f)
-            f.seek(0)
-
-            blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"]).upload_blob(
-                blob_name, f, overwrite=True
-            )
-
-            file_pages.append(blob_name)
-
-        # update document
-        doc["file"] = filename
-        doc["file_pages"] = file_pages
-        doc["logs"].append(Log(user=request.app.userId, change="update_file", message="File updated"))
-        doc = Document(**doc)
-        del doc.status
-
-        db.documents.update_one({"id": id}, {"$set": doc.model_dump()})
-
-        # update index
-
-        logger.info("Getting document text")
-
-        page_map = get_document_text(pdf)
-
-        logger.info("Got text. creating sections")
-
-        sections = list(
-            create_sections(
-                filename,
-                page_map,
-            )
+        request.app.add_job(
+            process_file,
+            id,
+            file,
+            search_client=request.app.search_client,
+            blob_container_client=request.app.blob_container_client,
         )
-        logger.info("Got sections. updating embeddings")
 
-        sections = update_embeddings_in_batch(sections)
-
-        logger.info("Updated embeddings. indexing sections")
-        await index_sections(filename, sections, search_client=request.app.search_client)
-
-        db.documents.update_one({"id": id}, {"$set": {"status": Status.done.value}})
-
-        return doc
+        return {"success", True}
     except Exception as ex:
         logger.error("Failed to upload file")
         message = "Exception: {}".format(ex)
@@ -405,8 +294,7 @@ async def delete_document(id, request: Request, db=Depends(get_db)):
         if not doc:
             raise HTTPException(status_code=404, detail="Document not found")
 
-        logger.info("Removing document from index: {}".format(doc["file"]))
-        asyncio.create_task(remove_from_index(doc["file"], search_client=request.app.search_client))
+        request.app.add_job(remove_from_index, doc["file"], search_client=request.app.search_client)
 
         if doc["file_pages"]:
             for page in doc["file_pages"]:

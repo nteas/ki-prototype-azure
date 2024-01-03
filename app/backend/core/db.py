@@ -15,7 +15,7 @@ def connect_and_init_db():
     global db_client
     try:
         db_client = MongoClient(AZURE_MONGODB, serverSelectionTimeoutMS=5000)
-        logger.info("Connected to mongo.")
+        logger.info("Connected to mongo")
 
         if "documents" not in db_client["ki-prototype"].list_collection_names():
             db_client["ki-prototype"].create_collection("documents")
@@ -33,4 +33,4 @@ def close_db_connect():
         return
     db_client.close()
     db_client = None
-    logger.info("Mongo connection closed.")
+    logger.info("Mongo connection closed")
