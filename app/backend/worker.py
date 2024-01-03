@@ -5,7 +5,13 @@ import logging
 
 from core.types import Frequency, Log
 from core.db import get_db
-from core.utilities import scrape_url_and_index
+from core.utilities import (
+    scrape_url,
+    get_filename_from_url,
+    create_sections_string,
+    update_embeddings_in_batch,
+    index_sections,
+)
 from core.logger import logger
 from azure.search.documents.aio import SearchClient
 from azure.identity.aio import DefaultAzureCredential
@@ -94,7 +100,19 @@ async def worker():
             if url is None:
                 continue
 
-            await scrape_url_and_index(url, search_client)
+            text = await scrape_url(url, search_client)
+
+            pages = list(
+                create_sections_string(
+                    url,
+                    text,
+                )
+            )
+
+            sections = update_embeddings_in_batch(pages)
+
+            filename = get_filename_from_url(url)
+            await index_sections(filename, sections, search_client)
 
             user = "worker"
             change = "scraped"

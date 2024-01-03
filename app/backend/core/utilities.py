@@ -284,6 +284,8 @@ def create_sections_string(url, string):
 
         yield section
 
+    logger.info("Got sections. updating embeddings")
+
 
 def before_retry_sleep(retry_state):
     logger.info("Rate limited on the OpenAI embeddings API, sleeping before retrying...")
@@ -357,6 +359,8 @@ def update_embeddings_in_batch(sections):
         s["embedding"] = batch_response[s["id"]]
         yield s
 
+    logger.info("Updated embeddings. indexing sections")
+
 
 async def index_sections(filename, sections, search_client):
     try:
@@ -394,7 +398,7 @@ def get_filename_from_url(url):
     return url
 
 
-async def scrape_url_and_index(url, search_client):
+async def scrape_url(url):
     try:
         options = webdriver.ChromeOptions()
         options.add_argument("--no-sandbox")
@@ -436,27 +440,12 @@ async def scrape_url_and_index(url, search_client):
 
         text = selector_markup.get_text()
 
-        logger.info(text)
-
-        pages = list(
-            create_sections_string(
-                url,
-                text,
-            )
-        )
-
-        logger.info("Got sections. updating embeddings")
-
-        sections = update_embeddings_in_batch(pages)
-
-        logger.info("Updated embeddings. indexing sections")
-        filename = get_filename_from_url(url)
-        await index_sections(filename, sections, search_client)
+        logger.info("Got text")
 
         return text
 
     except Exception as ex:
-        print("Error in scrape_url_and_get_sections: {}".format(ex))
+        print("Error in scrape_url: {}".format(ex))
         raise ex
 
 
