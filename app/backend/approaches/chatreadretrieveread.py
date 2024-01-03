@@ -60,8 +60,6 @@ If you cannot generate a search query, return just the number 0.
         chatgpt_model: str,
         embedding_deployment: Optional[str],  # Not needed for non-Azure OpenAI or for retrieval_mode="text"
         embedding_model: str,
-        sourcepage_field: str,
-        content_field: str,
     ):
         self.search_client = search_client
         self.openai_host = openai_host
@@ -69,8 +67,8 @@ If you cannot generate a search query, return just the number 0.
         self.chatgpt_model = chatgpt_model
         self.embedding_deployment = embedding_deployment
         self.embedding_model = embedding_model
-        self.sourcepage_field = sourcepage_field
-        self.content_field = content_field
+        self.sourcepage_field = "sourcepage"
+        self.content_field = "content"
         self.chatgpt_token_limit = get_token_limit(chatgpt_model)
 
     async def run_until_final_call(

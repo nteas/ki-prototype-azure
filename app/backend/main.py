@@ -32,9 +32,6 @@ OPENAI_EMB_MODEL = os.getenv("AZURE_OPENAI_EMB_MODEL_NAME", "text-embedding-ada-
 AZURE_OPENAI_SERVICE = os.environ["AZURE_OPENAI_SERVICE"]
 AZURE_OPENAI_CHATGPT_DEPLOYMENT = os.environ["AZURE_OPENAI_CHATGPT_DEPLOYMENT"]
 AZURE_OPENAI_EMB_DEPLOYMENT = os.environ["AZURE_OPENAI_EMB_DEPLOYMENT"]
-# Used only with non-Azure OpenAI deployments
-KB_FIELDS_CONTENT = os.getenv("KB_FIELDS_CONTENT", "content")
-KB_FIELDS_SOURCEPAGE = os.getenv("KB_FIELDS_SOURCEPAGE", "sourcepage")
 
 
 env = os.getenv("AZURE_ENV_NAME", "dev")
@@ -163,8 +160,6 @@ async def ask(request: Request):
             OPENAI_CHATGPT_MODEL,
             AZURE_OPENAI_EMB_DEPLOYMENT,
             OPENAI_EMB_MODEL,
-            KB_FIELDS_SOURCEPAGE,
-            KB_FIELDS_CONTENT,
         )
         # Workaround for: https://github.com/openai/openai-python/issues/371
 
@@ -192,8 +187,6 @@ async def chat(request: Request):
             OPENAI_CHATGPT_MODEL,
             AZURE_OPENAI_EMB_DEPLOYMENT,
             OPENAI_EMB_MODEL,
-            KB_FIELDS_SOURCEPAGE,
-            KB_FIELDS_CONTENT,
         )
 
         r = await impl.run_without_streaming(request_json["history"], request_json.get("overrides", {}), auth_claims)
@@ -230,8 +223,6 @@ async def chat_stream(request: Request):
             OPENAI_CHATGPT_MODEL,
             AZURE_OPENAI_EMB_DEPLOYMENT,
             OPENAI_EMB_MODEL,
-            KB_FIELDS_SOURCEPAGE,
-            KB_FIELDS_CONTENT,
         )
         response_generator = impl.run_with_streaming(
             request_json["history"], request_json.get("overrides", {}), auth_claims

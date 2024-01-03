@@ -44,8 +44,6 @@ info4.pdf: In-network institutions include Overlake, Swedish and others in the r
         chatgpt_model: str,
         embedding_deployment: Optional[str],  # Not needed for non-Azure OpenAI or for retrieval_mode="text"
         embedding_model: str,
-        sourcepage_field: str,
-        content_field: str,
     ):
         self.search_client = search_client
         self.openai_host = openai_host
@@ -53,8 +51,8 @@ info4.pdf: In-network institutions include Overlake, Swedish and others in the r
         self.chatgpt_model = chatgpt_model
         self.embedding_model = embedding_model
         self.embedding_deployment = embedding_deployment
-        self.sourcepage_field = sourcepage_field
-        self.content_field = content_field
+        self.sourcepage_field = "sourcepage"
+        self.content_field = "content"
 
     async def run(self, q: str, overrides: dict[str, Any], auth_claims: dict[str, Any]) -> dict[str, Any]:
         has_text = overrides.get("retrieval_mode") in ["text", "hybrid", None]
