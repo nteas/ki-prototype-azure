@@ -1,21 +1,26 @@
 import asyncio
 import io
 import json
+import logging
 import mimetypes
 import os
 import openai
 from typing import AsyncGenerator
-from fastapi import Depends, FastAPI, APIRouter, Request, HTTPException
+from fastapi import FastAPI, APIRouter, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse, FileResponse, JSONResponse
 from apscheduler.schedulers.background import BackgroundScheduler
+from azure.search.documents.aio import SearchClient
+from azure.storage.blob.aio import BlobServiceClient
+from azure.identity.aio import DefaultAzureCredential
 
+from core.authentication import AuthenticationHelper
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
-from routers.documents import document_router, Document
-from core.db import close_db_connect, connect_and_init_db, get_db
-from core.context import get_auth_helper, get_azure_credential, get_blob_container_client, get_search_client, logger
+from routers.documents import document_router
+from core.db import close_db_connect, connect_and_init_db
+from core.logger import logger
 from worker import worker
 
 
@@ -52,6 +57,27 @@ def worker_sync():
 async def startup_event():
     logger.info("Starting up the api and worker")
     connect_and_init_db()
+    app.azure_credential = DefaultAzureCredential(logging_level=logging.ERROR)
+    app.search_client = SearchClient(
+        endpoint=f"https://{os.environ['AZURE_SEARCH_SERVICE']}.search.windows.net",
+        index_name=os.environ["AZURE_SEARCH_INDEX"],
+        credential=app.azure_credential,
+    )
+
+    blob_client = BlobServiceClient(
+        account_url=f"https://{os.environ['AZURE_STORAGE_ACCOUNT']}.blob.core.windows.net",
+        credential=app.azure_credential,
+    )
+    app.blob_container_client = blob_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"])
+
+    app.auth_helper = AuthenticationHelper(
+        use_authentication=os.getenv("AZURE_USE_AUTHENTICATION", "").lower() == "true",
+        server_app_id=os.getenv("AZURE_SERVER_APP_ID"),
+        server_app_secret=os.getenv("AZURE_SERVER_APP_SECRET"),
+        client_app_id=os.getenv("AZURE_CLIENT_APP_ID"),
+        tenant_id=os.getenv("AZURE_TENANT_ID"),
+        token_cache_path=os.getenv("TOKEN_CACHE_PATH"),
+    )
     if os.getenv("AZURE_ENVIRONMENT", "production") != "development":
         scheduler.add_job(worker_sync, "cron", hour=6, minute=30)
         scheduler.start()
@@ -60,6 +86,10 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     close_db_connect()
+
+    await app.search_client.close()
+    await app.blob_container_client.close()
+    await app.azure_credential.close()
 
     if os.getenv("AZURE_ENVIRONMENT", "production") != "development":
         scheduler.shutdown()
@@ -92,13 +122,9 @@ api_router = APIRouter()
 # # *** NOTE *** this assumes that the content files are public, or at least that all users of the app
 # # can access all the files. This is also slow and memory hungry.
 @api_router.get("/content/{path}")
-async def content_file(path, blob_container_client=Depends(get_blob_container_client)):
+async def content_file(path, request: Request):
     try:
-        blob = (
-            await blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"])
-            .get_blob_client(path)
-            .download_blob()
-        )
+        blob = await request.app.blob_container_client.get_blob_client(path).download_blob()
         if not blob.properties or not blob.properties.has_key("content_settings"):
             return {"error": "Blob not found"}, 404
         mime_type = blob.properties["content_settings"]["content_type"]
@@ -111,28 +137,27 @@ async def content_file(path, blob_container_client=Depends(get_blob_container_cl
     except Exception as e:
         logger.exception("Exception in /content")
         return {"error": str(e)}, 500
-    finally:
-        await blob_container_client.close()
 
 
 # Send MSAL.js settings to the client UI
 @api_router.get("/auth_setup")
-def auth_setup(auth_helper=Depends(get_auth_helper)):
-    return auth_helper.get_auth_setup_for_client()
+def auth_setup(request: Request):
+    return request.app.auth_helper.get_auth_setup_for_client()
 
 
 @api_router.post("/ask")
-async def ask(request: Request, search_client=Depends(get_search_client)):
+async def ask(request: Request):
     try:
         if request.headers.get("Content-Type") != "application/json":
             raise HTTPException(status_code=415, detail="Request must be JSON")
 
         request_json = await request.json()
-        auth_helper = get_auth_helper()
-        auth_claims = await auth_helper.get_auth_claims_if_enabled({"Authorization": f"Bearer {openai.api_key}"})
+        auth_claims = await request.app.auth_helper.get_auth_claims_if_enabled(
+            {"Authorization": f"Bearer {openai.api_key}"}
+        )
 
         impl = RetrieveThenReadApproach(
-            search_client,
+            request.app.search_client,
             OPENAI_HOST,
             AZURE_OPENAI_CHATGPT_DEPLOYMENT,
             OPENAI_CHATGPT_MODEL,
@@ -148,23 +173,20 @@ async def ask(request: Request, search_client=Depends(get_search_client)):
     except Exception as e:
         logger.exception("Exception in /ask")
         return {"error": str(e)}, 500
-    finally:
-        await search_client.close()
 
 
 @api_router.post("/chat")
-async def chat(request: Request, search_client=Depends(get_search_client)):
+async def chat(request: Request):
     try:
         if request.headers.get("Content-Type") != "application/json":
             raise HTTPException(status_code=415, detail="Request must be JSON")
 
-        auth_helper = get_auth_helper()
-        auth_claims = await auth_helper.get_auth_claims_if_enabled(request.headers)
+        auth_claims = await request.app.auth_helper.get_auth_claims_if_enabled(request.headers)
 
         request_json = await request.json()
 
         impl = ChatReadRetrieveReadApproach(
-            search_client,
+            request.app.search_client,
             OPENAI_HOST,
             AZURE_OPENAI_CHATGPT_DEPLOYMENT,
             OPENAI_CHATGPT_MODEL,
@@ -179,8 +201,6 @@ async def chat(request: Request, search_client=Depends(get_search_client)):
     except Exception as e:
         logger.exception("Exception in /chat")
         return {"error": str(e)}, 500
-    finally:
-        await search_client.close()
 
 
 async def format_as_ndjson(r: AsyncGenerator[dict, None]) -> AsyncGenerator[str, None]:
@@ -192,7 +212,7 @@ async def format_as_ndjson(r: AsyncGenerator[dict, None]) -> AsyncGenerator[str,
 
 
 @api_router.post("/chat_stream")
-async def chat_stream(request: Request, search_client=Depends(get_search_client)):
+async def chat_stream(request: Request):
     try:
         if request is None:
             raise HTTPException(status_code=400, detail="Request must not be None")
@@ -201,11 +221,10 @@ async def chat_stream(request: Request, search_client=Depends(get_search_client)
             raise HTTPException(status_code=415, detail="Request must be JSON")
 
         request_json = await request.json()
-        auth_helper = get_auth_helper()
-        auth_claims = await auth_helper.get_auth_claims_if_enabled(request.headers)
+        auth_claims = await request.app.auth_helper.get_auth_claims_if_enabled(request.headers)
 
         impl = ChatReadRetrieveReadApproach(
-            search_client,
+            request.app.search_client,
             OPENAI_HOST,
             AZURE_OPENAI_CHATGPT_DEPLOYMENT,
             OPENAI_CHATGPT_MODEL,
@@ -222,8 +241,6 @@ async def chat_stream(request: Request, search_client=Depends(get_search_client)
     except Exception as e:
         logger.exception("Exception in /chat")
         return {"error": str(e)}, 500
-    finally:
-        await search_client.close()
 
 
 # migrate files in cognitive search to own database
@@ -258,7 +275,7 @@ async def chat_stream(request: Request, search_client=Depends(get_search_client)
 
 @app.middleware("http")
 async def before_request(request: Request, call_next):
-    azure_credential = get_azure_credential()
+    azure_credential = DefaultAzureCredential(logging_level=logging.ERROR)
 
     try:
         openai_token = await azure_credential.get_token("https://cognitiveservices.azure.com/.default")
@@ -267,8 +284,7 @@ async def before_request(request: Request, call_next):
         openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
         openai.api_version = "2023-07-01-preview"
 
-        userId = request.headers.get("userId")
-        request.state.userId = userId
+        app.userId = request.headers.get("userId")
 
         response = await call_next(request)
 

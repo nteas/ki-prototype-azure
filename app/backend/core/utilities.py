@@ -17,7 +17,7 @@ from tenacity import (
     wait_random_exponential,
 )
 
-from core.context import get_search_client, logger
+from core.logger import logger
 
 adls_gen2_creds = None
 storage_creds = None
@@ -358,12 +358,7 @@ def update_embeddings_in_batch(sections):
         yield s
 
 
-async def index_sections(
-    filename,
-    sections,
-):
-    search_client = await get_search_client()
-
+async def index_sections(filename, sections, search_client):
     try:
         AZURE_SEARCH_INDEX = os.getenv("AZURE_SEARCH_INDEX")
 
@@ -385,7 +380,6 @@ async def index_sections(
             succeeded = sum([1 for r in results if r.succeeded])
             logger.info(f"Indexed {len(results)} sections, {succeeded} succeeded")
     finally:
-        await search_client.close()
         logger.info("Done indexing sections")
 
 
@@ -400,7 +394,7 @@ def get_filename_from_url(url):
     return url
 
 
-async def scrape_url(url):
+async def scrape_url_and_index(url, search_client):
     try:
         options = webdriver.ChromeOptions()
         options.add_argument("--no-sandbox")
@@ -457,20 +451,16 @@ async def scrape_url(url):
 
         logger.info("Updated embeddings. indexing sections")
         filename = get_filename_from_url(url)
-        await index_sections(filename, sections)
-
-        logger.info("Indexed sections")
+        await index_sections(filename, sections, search_client)
 
         return text
 
     except Exception as ex:
-        print("Error in scrape_url: {}".format(ex))
+        print("Error in scrape_url_and_get_sections: {}".format(ex))
         raise ex
 
 
-async def remove_from_index(filename):
-    search_client = await get_search_client()
-
+async def remove_from_index(filename, search_client):
     try:
         logger.info(f"Removing sections from '{filename or '<all>'}' from search index")
 
@@ -492,5 +482,4 @@ async def remove_from_index(filename):
     except Exception as e:
         logger.error(f"Error removing sections from index: {e}")
     finally:
-        await search_client.close()
         logger.info("Done removing sections from index")

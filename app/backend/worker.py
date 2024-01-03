@@ -1,15 +1,23 @@
 import datetime
 import openai
 import os
+import logging
 
 from core.types import Frequency, Log
 from core.db import get_db
-from core.utilities import scrape_url
-from core.context import get_azure_credential, logger
+from core.utilities import scrape_url_and_index
+from core.logger import logger
+from azure.search.documents.aio import SearchClient
+from azure.identity.aio import DefaultAzureCredential
 
 
 async def worker():
-    azure_credential = get_azure_credential()
+    azure_credential = DefaultAzureCredential(logging_level=logging.ERROR)
+    search_client = SearchClient(
+        endpoint=f"https://{os.environ['AZURE_SEARCH_SERVICE']}.search.windows.net",
+        index_name=os.environ["AZURE_SEARCH_INDEX"],
+        credential=azure_credential,
+    )
 
     try:
         AZURE_OPENAI_SERVICE = os.environ["AZURE_OPENAI_SERVICE"]
@@ -86,7 +94,7 @@ async def worker():
             if url is None:
                 continue
 
-            await scrape_url(url)
+            await scrape_url_and_index(url, search_client)
 
             user = "worker"
             change = "scraped"

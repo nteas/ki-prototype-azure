@@ -8,7 +8,7 @@ from azure.search.documents.models import QueryType
 from approaches.approach import Approach, nonewlines
 from core.messagebuilder import MessageBuilder
 from core.modelhelper import get_token_limit
-from core.context import logger
+from core.logger import logger
 
 
 class ChatReadRetrieveReadApproach(Approach):

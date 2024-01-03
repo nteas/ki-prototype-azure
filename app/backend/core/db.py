@@ -1,6 +1,6 @@
 import os
 from pymongo import MongoClient, ASCENDING
-from core.context import logger
+from core.logger import logger
 
 db_client: MongoClient = None
 

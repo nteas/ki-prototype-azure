@@ -7,16 +7,18 @@ from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel, Field
 from pypdf import PdfReader, PdfWriter
 from sse_starlette.sse import EventSourceResponse
+from concurrent.futures import ThreadPoolExecutor
+
 
 from core.db import get_db
 from core.types import Document, Log, Status
-from core.context import get_blob_container_client, logger
+from core.logger import logger
 from core.utilities import (
     blob_name_from_file_page,
     get_document_text,
     get_filename_from_url,
-    scrape_url,
     remove_from_index,
+    scrape_url_and_index,
     update_embeddings_in_batch,
     create_sections,
     index_sections,
@@ -24,6 +26,7 @@ from core.utilities import (
 
 
 document_router = APIRouter()
+executor = ThreadPoolExecutor(max_workers=5)
 
 
 # Create a new document
@@ -37,7 +40,7 @@ async def create_document(request: Request, db=Depends(get_db)):
         if doc["type"] == "web":
             doc["file"] = get_filename_from_url(doc["url"])
 
-            asyncio.create_task(async_scrape_url(doc["id"], doc["url"], db))
+            asyncio.create_task(index_and_save_async(doc, db, request.app.search_client))
 
         doc["status"] = Status.processing.value
         db.documents.insert_one(doc)
@@ -51,12 +54,10 @@ async def create_document(request: Request, db=Depends(get_db)):
         return {"error": "Exception: {}".format(ex)}
 
 
-async def async_scrape_url(id, url, db):
-    logger.info(url)
-    await scrape_url(url)
+async def index_and_save_async(doc, db, search_client):
+    await scrape_url_and_index(doc["url"], search_client)
 
-    db.documents.update_one({"id": id}, {"$set": {"status": Status.done.value}})
-    return
+    db.documents.update_one({"id": doc["id"]}, {"$set": {"status": Status.done.value}})
 
 
 # typing for get all documents request
@@ -198,7 +199,7 @@ def flag_document(request: Request, data: FlagCitations, db=Depends(get_db)):
 
         change = "flagged"
         message = data.message + ": " + citation
-        log = Log(user=request.state.userId, change=change, message=message)
+        log = Log(user=request.app.userId, change=change, message=message)
 
         db.documents.update_one(
             {"id": doc["id"]},
@@ -230,15 +231,11 @@ async def update_document(id: str, request: Request, db=Depends(get_db)):
         update_data["flagged_pages"] = []
 
         if update_data["type"] == "web":
-            try:
-                await remove_from_index(update_data["file"])
-            except Exception as ex:
-                logger.info("Failed to remove from index {}".format(ex))
-
+            asyncio.create_task(remove_from_index(update_data["file"], search_client=request.app.search_client))
             logger.info("Getting content from url")
             update_data["file"] = get_filename_from_url(update_data["url"])
             update_data["file_pages"] = []
-            await scrape_url(update_data["url"])
+            asyncio.create_task(index_and_save_async(update_data, db, request.app.search_client))
 
         log = Log(change="updated", message="Document updated")
 
@@ -259,12 +256,11 @@ async def update_document(id: str, request: Request, db=Depends(get_db)):
 
 # Upload a file to blob storage and update document
 @document_router.post("/{id}/file")
-def upload_sync(
+async def upload_file(
     id,
     request: Request,
     file: UploadFile = File(...),
     db=Depends(get_db),
-    blob_container_client=Depends(get_blob_container_client),
 ):
     doc = db.documents.find_one({"id": id})
 
@@ -273,8 +269,18 @@ def upload_sync(
 
     db.documents.update_one({"id": id}, {"$set": {"status": Status.processing.value}})
 
+    if doc["file"]:
+        asyncio.create_task(remove_from_index(doc["file"], search_client=request.app.search_client))
+
     asyncio.create_task(
-        upload_file(id=id, doc=doc, request=request, file=file, db=db, blob_container_client=blob_container_client)
+        upload_file(
+            id=id,
+            doc=doc,
+            request=request,
+            file=file,
+            db=db,
+            blob_container_client=request.app.blob_container_client,
+        ),
     )
 
     return {"success", True}
@@ -289,25 +295,17 @@ async def upload_file(
     blob_container_client,
 ):
     try:
-        if doc["file"]:
-            try:
-                await remove_from_index(doc["file"])
-            except Exception as ex:
-                logger.info("Failed to remove from index {}".format(ex))
-
         if doc["file_pages"]:
             for page in doc["file_pages"]:
                 try:
                     logger.info(f"Removing blob {page}")
-                    await blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"]).delete_blob(
-                        page
-                    )
+                    blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"]).delete_blob(page)
                 except Exception as ex:
                     logger.info("Failed to remove blob from storage {}".format(ex))
 
         filename = file.filename
-        pdf = await file.read()
-        await file.close()
+        pdf = file.read()
+        file.close()
         file_pages = []
 
         # upload file to blob storage
@@ -324,7 +322,7 @@ async def upload_file(
             writer.write(f)
             f.seek(0)
 
-            await blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"]).upload_blob(
+            blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"]).upload_blob(
                 blob_name, f, overwrite=True
             )
 
@@ -333,7 +331,7 @@ async def upload_file(
         # update document
         doc["file"] = filename
         doc["file_pages"] = file_pages
-        doc["logs"].append(Log(user=request.state.userId, change="update_file", message="File updated"))
+        doc["logs"].append(Log(user=request.app.userId, change="update_file", message="File updated"))
         doc = Document(**doc)
         del doc.status
 
@@ -358,9 +356,8 @@ async def upload_file(
         sections = update_embeddings_in_batch(sections)
 
         logger.info("Updated embeddings. indexing sections")
-        await index_sections(filename, sections)
+        await index_sections(filename, sections, search_client=request.app.search_client)
 
-        logger.info("Indexed sections")
         db.documents.update_one({"id": id}, {"$set": {"status": Status.done.value}})
 
         return doc
@@ -371,15 +368,10 @@ async def upload_file(
         db.documents.update_one({"id": id}, {"$set": {"status": Status.error.value}})
         raise HTTPException(status_code=500, detail=message)
 
-    finally:
-        await blob_container_client.close()
-
 
 # Delete a specific document by ID
 @document_router.delete("/{id}")
-async def delete_document(
-    id, request: Request, db=Depends(get_db), blob_container_client=Depends(get_blob_container_client)
-):
+async def delete_document(id, request: Request, db=Depends(get_db)):
     try:
         if not id:
             raise HTTPException(status_code=404, detail="Document not found")
@@ -390,23 +382,16 @@ async def delete_document(
             raise HTTPException(status_code=404, detail="Document not found")
 
         logger.info("Removing document from index: {}".format(doc["file"]))
-
-        try:
-            asyncio.create_task(remove_from_index(doc["file"]))
-        except Exception as ex:
-            logger.info("Failed to remove from index {}".format(ex))
+        asyncio.create_task(remove_from_index(doc["file"], search_client=request.app.search_client))
 
         if doc["file_pages"]:
             for page in doc["file_pages"]:
-                try:
-                    logger.info(f"Removing blob {page}")
-                    await blob_container_client.get_container_client(os.environ["AZURE_STORAGE_CONTAINER"]).delete_blob(
-                        page
-                    )
-                except Exception as ex:
-                    logger.info("Failed to remove blob from storage {}".format(ex))
+                logger.info(f"Removing blob {page}")
+                await request.app.blob_container_client.get_container_client(
+                    os.environ["AZURE_STORAGE_CONTAINER"]
+                ).delete_blob(page)
 
-        log = Log(user=request.state.userId, change="deleted", message="Document deleted")
+        log = Log(user=request.app.userId, change="deleted", message="Document deleted")
 
         db.documents.update_one({"id": id}, {"$set": {"deleted": True}, "$push": {"logs": log.model_dump()}})
 
@@ -415,15 +400,13 @@ async def delete_document(
         logger.info("Failed to delete document")
         logger.info("Exception: {}".format(ex))
         raise HTTPException(status_code=500, detail="Failed to delete document")
-    finally:
-        await blob_container_client.close()
 
 
 # Add a log to a specific document by ID
 @document_router.post("/{id}/logs")
 async def add_log(id: str, request: Request, db=Depends(get_db)):
     data = await request.get_json()
-    data["user"] = request.state.userId
+    data["user"] = request.app.userId
     doc = db.documents.find_one({"id": id})
     if doc:
         log = Log(**data)
@@ -437,7 +420,7 @@ async def add_log(id: str, request: Request, db=Depends(get_db)):
 @document_router.post("/{id}/logs/{log_id}")
 async def change_log_status(id: str, log_id, request: Request, db=Depends(get_db)):
     data = await request.get_json()
-    data["user"] = request.state.userId
+    data["user"] = request.app.userId
     doc = db.documents.find_one({"id": id})
     if doc:
         log = next((log for log in doc.logs if log.id == log_id), None)
