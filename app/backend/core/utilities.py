@@ -3,11 +3,12 @@ import html
 import os
 import re
 import time
+import openai
+import tiktoken
+import hashlib
 from typing import Any
 from bs4 import BeautifulSoup
-import openai
 from selenium import webdriver
-import tiktoken
 from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
 from tenacity import (
@@ -35,6 +36,19 @@ CACHE_KEY_TOKEN_TYPE = "token_type"
 
 # Embedding batch support section
 SUPPORTED_BATCH_AOAI_MODEL = {"text-embedding-ada-002": {"token_limit": 8100, "max_batch_size": 16}}
+
+
+def hash_text_md5(text):
+    # Create a new md5 hash object
+    hash_object = hashlib.md5()
+
+    # Update the hash object with the bytes of the text
+    hash_object.update(text.encode("utf-8"))
+
+    # Get the hexadecimal representation of the hash
+    hash_hex = hash_object.hexdigest()
+
+    return hash_hex
 
 
 def calculate_tokens_emb_aoai(input: str):

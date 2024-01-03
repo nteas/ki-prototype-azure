@@ -6,11 +6,13 @@ import logging
 from core.types import Frequency, Log
 from core.db import get_db
 from core.utilities import (
+    hash_text_md5,
     scrape_url,
     get_filename_from_url,
     create_sections_string,
     update_embeddings_in_batch,
     index_sections,
+    remove_from_index,
 )
 from core.logger import logger
 from azure.search.documents.aio import SearchClient
@@ -102,6 +104,13 @@ async def worker():
 
             text = await scrape_url(url, search_client)
 
+            hashed_text = hash_text_md5(text)
+
+            if document["hash"] == hashed_text:
+                continue
+
+            await remove_from_index(document["file"], search_client)
+
             pages = list(
                 create_sections_string(
                     url,
@@ -122,6 +131,7 @@ async def worker():
             db.documents.update_one(
                 {"id": document["id"]},
                 {
+                    "$set": {"hash": hashed_text},
                     "$push": {"logs": log.model_dump()},
                 },
             )

@@ -17,6 +17,7 @@ from core.utilities import (
     blob_name_from_file_page,
     get_document_text,
     get_filename_from_url,
+    hash_text_md5,
     remove_from_index,
     scrape_url,
     update_embeddings_in_batch,
@@ -56,12 +57,14 @@ async def create_document(request: Request, db=Depends(get_db)):
 
 
 async def index_and_save_async(doc, db, search_client):
-    text = await scrape_url(doc["url"])
-
     url = doc["url"]
 
     if url is None:
         return
+
+    text = await scrape_url(url)
+
+    hashed_text = hash_text_md5(text)
 
     pages = list(
         create_sections_string(
@@ -78,7 +81,7 @@ async def index_and_save_async(doc, db, search_client):
     filename = get_filename_from_url(url)
     await index_sections(filename, sections, search_client)
 
-    db.documents.update_one({"id": doc["id"]}, {"$set": {"status": Status.done.value}})
+    db.documents.update_one({"id": doc["id"]}, {"$set": {"status": Status.done.value, "hash": hashed_text}})
 
 
 # typing for get all documents request
