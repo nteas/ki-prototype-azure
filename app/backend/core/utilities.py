@@ -135,12 +135,12 @@ def get_document_text(file):
             page_map.append((page_num, offset, page_text))
             offset += len(page_text)
 
+        logger.info("Done extracting document text")
+
         return page_map
     except Exception as e:
         logger.exception(f"Error extracting text from file: {e}")
         raise e
-    finally:
-        logger.info("Done extracting document text")
 
 
 def split_text(page_map, filename):
@@ -400,16 +400,13 @@ def index_sections(sections, search_client):
             batch.append(s)
             i += 1
             if i % 1000 == 0:
-                logger.info(f"Indexing {len(batch)} sections")
                 results = search_client.upload_documents(documents=batch)
                 succeeded = sum([1 for r in results if r.succeeded])
                 logger.info(f"Indexed {len(results)} sections, {succeeded} succeeded")
                 batch = []
 
         if len(batch) > 0:
-            logger.info("Before upload_documents call")
             results = search_client.upload_documents(documents=batch)
-            logger.info("After upload_documents call")
             succeeded = sum([1 for r in results if r.succeeded])
             logger.info(f"Indexed {len(results)} sections, {succeeded} succeeded")
 
@@ -473,11 +470,10 @@ def scrape_url(url):
 
         return text
 
+        logger.info("Done scraping content from url")
     except Exception as ex:
         logger.exception("Error in scrape_url: {}".format(ex))
         raise ex
-    finally:
-        logger.info("Done scraping content from url")
 
 
 def remove_from_index(filename, search_client):
@@ -498,10 +494,10 @@ def remove_from_index(filename, search_client):
             search_client.delete_documents(documents=docs)
             # It can take a few seconds for search results to reflect changes, so wait a bit
             time.sleep(2)
+
+        logger.info("Done removing sections from index")
     except Exception as e:
         logger.exception(f"Error removing sections from index: {e}")
-    finally:
-        logger.info("Done removing sections from index")
 
 
 def process_web(id, search_client, reindex=False):
@@ -537,7 +533,7 @@ def process_web(id, search_client, reindex=False):
             )
         )
 
-        sections = list(update_embeddings_in_batch(sections))
+        sections = update_embeddings_in_batch(sections)
 
         index_sections(sections, search_client)
 
@@ -581,7 +577,7 @@ def process_file(id, file_data, search_client, blob_container_client):
             )
         )
 
-        sections = list(update_embeddings_in_batch(sections))
+        sections = update_embeddings_in_batch(sections)
 
         index_sections(sections, search_client)
 

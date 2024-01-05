@@ -40,14 +40,7 @@ app.mount("/assets", StaticFiles(directory="static/assets", html=True), name="as
 
 
 # Set up worker
-def run_worker_scheduler():
-    worker_cron = BackgroundScheduler()
-    worker_cron.add_job(worker, "cron", hour=6)
-    worker_cron.start()
-    return worker_cron
-
-
-worker_scheduler = None
+worker_cron = BackgroundScheduler()
 
 
 @app.on_event("startup")
@@ -77,8 +70,8 @@ def startup_event():
     )
 
     if os.getenv("AZURE_ENVIRONMENT", "production") != "development":
-        global worker_scheduler
-        worker_scheduler = run_worker_scheduler()
+        worker_cron.add_job(worker, "cron", hour=4)
+        worker_cron.start()
 
 
 @app.on_event("shutdown")
@@ -89,8 +82,8 @@ def shutdown_event():
     app.blob_container_client.close()
     app.azure_credential.close()
 
-    if worker_scheduler:
-        worker_scheduler.shutdown()
+    if worker_cron.running:
+        worker_cron.shutdown()
 
     logger.info("Shutting down the api and worker")
 

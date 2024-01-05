@@ -99,11 +99,12 @@ def worker():
             if url is None:
                 continue
 
-            text = scrape_url(url, search_client)
+            text = scrape_url(url)
 
             hashed_text = hash_text_md5(text)
 
             if document["hash"] == hashed_text:
+                logger.info(f"Document {document['title']} has not changed")
                 continue
 
             remove_from_index(document["file"], search_client)
@@ -115,7 +116,7 @@ def worker():
                 )
             )
 
-            sections = list(update_embeddings_in_batch(sections))
+            sections = update_embeddings_in_batch(sections)
 
             index_sections(sections, search_client)
 
