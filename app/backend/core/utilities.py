@@ -1,12 +1,11 @@
 import base64
 import html
-import io
+import json
 import os
 import re
 import time
-from fastapi import HTTPException
+
 import openai
-from pypdf import PdfReader, PdfWriter
 import tiktoken
 import hashlib
 from typing import Any
@@ -138,7 +137,7 @@ def get_document_text(file):
 
         return page_map
     except Exception as e:
-        logger.error(f"Error extracting text from file: {e}")
+        logger.exception(f"Error extracting text from file: {e}")
         raise e
     finally:
         logger.info("Done extracting document text")
@@ -331,7 +330,7 @@ def compute_embedding(text):
             **embedding_args, model=os.getenv("AZURE_OPENAI_EMB_MODEL_NAME", "text-embedding-ada-002"), input=text
         )["data"][0]["embedding"]
     except Exception as e:
-        logger.error(f"Error computing embedding for text: {e}")
+        logger.exception(f"Error computing embedding for text: {e}")
         raise e
 
 
@@ -349,7 +348,7 @@ def compute_embedding_in_batch(texts):
         )
         return [data.embedding for data in emb_response.data]
     except Exception as e:
-        logger.error(f"Error computing embedding for text: {e}")
+        logger.exception(f"Error computing embedding for text: {e}")
         raise e
 
 
@@ -391,7 +390,7 @@ def update_embeddings_in_batch(sections):
     logger.info("Done updating batch embeddings")
 
 
-async def index_sections(sections, search_client):
+def index_sections(sections, search_client):
     try:
         logger.info("Begin indexing sections")
 
@@ -401,17 +400,22 @@ async def index_sections(sections, search_client):
             batch.append(s)
             i += 1
             if i % 1000 == 0:
-                results = await search_client.upload_documents(documents=batch)
+                logger.info(f"Indexing {len(batch)} sections")
+                results = search_client.upload_documents(documents=batch)
                 succeeded = sum([1 for r in results if r.succeeded])
                 logger.info(f"Indexed {len(results)} sections, {succeeded} succeeded")
                 batch = []
 
         if len(batch) > 0:
-            results = await search_client.upload_documents(documents=batch)
+            logger.info("Before upload_documents call")
+            results = search_client.upload_documents(documents=batch)
+            logger.info("After upload_documents call")
             succeeded = sum([1 for r in results if r.succeeded])
             logger.info(f"Indexed {len(results)} sections, {succeeded} succeeded")
-    finally:
+
         logger.info("Done indexing sections")
+    except Exception as e:
+        logger.exception(f"Error indexing sections: {e}")
 
 
 # web url to filename
@@ -425,7 +429,7 @@ def get_filename_from_url(url):
     return url
 
 
-async def scrape_url(url):
+def scrape_url(url):
     try:
         logger.info("Begin scraping content from url")
 
@@ -470,38 +474,40 @@ async def scrape_url(url):
         return text
 
     except Exception as ex:
-        print("Error in scrape_url: {}".format(ex))
+        logger.exception("Error in scrape_url: {}".format(ex))
         raise ex
     finally:
         logger.info("Done scraping content from url")
 
 
-async def remove_from_index(filename, search_client):
+def remove_from_index(filename, search_client):
     try:
         logger.info("Begin removing sections from from index")
 
         while True:
             filter = f"sourcefile eq '{filename}'"
-            search_results = await search_client.search(search_text="", filter=filter, select=["id"])
+            search_results = search_client.search(search_text="", filter=filter, select=["id"])
 
             docs = []
-            async for doc in search_results:
+            for doc in search_results:
                 docs.append(doc)
 
             if len(docs) == 0:
                 break
 
-            await search_client.delete_documents(documents=docs)
+            search_client.delete_documents(documents=docs)
             # It can take a few seconds for search results to reflect changes, so wait a bit
             time.sleep(2)
     except Exception as e:
-        logger.error(f"Error removing sections from index: {e}")
+        logger.exception(f"Error removing sections from index: {e}")
     finally:
         logger.info("Done removing sections from index")
 
 
-async def process_web(id, search_client):
+def process_web(id, search_client, reindex=False):
     try:
+        logger.info("Begin processing document")
+
         db = get_db()
 
         doc = db.documents.find_one({"id": id})
@@ -512,7 +518,7 @@ async def process_web(id, search_client):
 
         doc = Document(**doc)
 
-        text = await scrape_url(doc.url)
+        text = scrape_url(doc.url)
 
         hashed_text = hash_text_md5(text)
 
@@ -521,7 +527,8 @@ async def process_web(id, search_client):
             db.documents.update_one({"id": id}, {"$set": {"hash": hashed_text, "status": Status.done.value}})
             return
 
-        await remove_from_index(doc.file, search_client)
+        if reindex:
+            remove_from_index(doc.file, search_client)
 
         sections = list(
             create_sections_string(
@@ -530,59 +537,42 @@ async def process_web(id, search_client):
             )
         )
 
-        sections = update_embeddings_in_batch(sections)
+        sections = list(update_embeddings_in_batch(sections))
 
-        await index_sections(sections, search_client)
+        index_sections(sections, search_client)
 
-        db.documents.update_one({"id": id}, {"$set": {"hash": hashed_text, "status": Status.done.value}})
-    except:
-        logger.error("Failed to process document")
+        doc.hash = hashed_text
+        doc.status = Status.done.value
+        db.documents.update_one({"id": id}, {"$set": doc.model_dump()})
+
+        logger.info("Done processing document")
+
+    except Exception as e:
+        logger.exception("Failed to process document: {}".format(e))
 
 
-async def process_file(id, file, search_client, blob_container_client):
-    db = get_db()
+def process_file(id, file_data, search_client, blob_container_client):
+    try:
+        logger.info("Begin processing document")
+        db = get_db()
 
-    doc = db.documents.find_one({"id": id})
-    doc = Document(**doc)
+        doc = db.documents.find_one({"id": id})
+        doc = Document(**doc)
 
-    if doc.file:
-        await remove_from_index(doc.file, search_client)
+        if doc.file:
+            remove_from_index(doc.file, search_client)
 
-    if doc["file_pages"]:
-        blobs = doc["file_pages"].join(",")
-        await blob_container_client.delete_blobs(blobs)
+        if doc.file_pages:
+            blob_container_client.delete_blobs(*doc.file_pages)
 
-        filename = file.filename
-        pdf = file.read()
-        file.close()
-        file_pages = []
-
-        # upload file to blob storage
-        if os.path.splitext(filename)[1].lower() != ".pdf":
-            raise HTTPException(status_code=500, detail="File is not a PDF")
-
-        reader = PdfReader(io.BytesIO(pdf))
-        pages = reader.pages
-        for i in range(len(pages)):
-            blob_name = blob_name_from_file_page(filename, i)
-            f = io.BytesIO()
-            writer = PdfWriter()
-            writer.add_page(pages[i])
-            writer.write(f)
-            f.seek(0)
-
-            blob_container_client.upload_blob(blob_name, f, overwrite=True)
-
-            file_pages.append(blob_name)
+        filename = file_data["filename"]
 
         # update document
         doc.file = filename
-        doc.file_pages = file_pages
+        doc.file_pages = file_data["file_pages"]
         doc.logs.append(Log(user=doc.owner, change="update_file", message="File updated"))
 
-        # update index
-
-        page_map = get_document_text(pdf)
+        page_map = get_document_text(file_data["pdf"])
 
         sections = list(
             create_sections(
@@ -590,8 +580,14 @@ async def process_file(id, file, search_client, blob_container_client):
                 page_map,
             )
         )
-        sections = update_embeddings_in_batch(sections)
 
-        await index_sections(sections, search_client=search_client)
+        sections = list(update_embeddings_in_batch(sections))
+
+        index_sections(sections, search_client)
 
         db.documents.update_one({"id": id}, {"$set": doc.model_dump()})
+
+        logger.info("Done processing document")
+
+    except Exception as e:
+        logger.exception("Failed to process document: {}".format(e))

@@ -10,6 +10,7 @@ import Button from '../../components/Button/Button';
 import styles from './CreateSource.module.scss';
 import { ClassificationEnum, classificationMap } from '../../api/models';
 import { apiFetch } from '../../api';
+import { owners } from '../../libs/utils';
 
 export function Component(): JSX.Element {
 	const [loading, setLoading] = useState<boolean>(false);
@@ -168,8 +169,11 @@ export function Component(): JSX.Element {
 							required>
 							<option>Velg</option>
 							<option value="admin">Admin</option>
-							<option value="Telekom">Telekom</option>
-							<option value="Kundeservice">Kundeservice</option>
+							{Object.keys(owners).map(key => (
+								<option key={key} value={key}>
+									{owners[key]}
+								</option>
+							))}
 						</Form.Select>
 					</Form.Group>
 

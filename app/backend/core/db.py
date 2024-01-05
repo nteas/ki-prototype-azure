@@ -21,6 +21,8 @@ def connect_and_init_db():
             db_client["ki-prototype"].create_collection("documents")
 
         db_client["ki-prototype"]["documents"].create_index([("$**", ASCENDING)])
+
+        return db_client["ki-prototype"]
     except Exception as e:
         logger.exception(f"Could not connect to mongo: {e}")
         raise

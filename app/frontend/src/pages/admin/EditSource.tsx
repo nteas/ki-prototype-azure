@@ -16,7 +16,7 @@ import {
 	Document,
 } from '../../api';
 import DocModal from '../../components/Modal/DocModal';
-import { formatDate } from '../../libs/utils';
+import { formatDate, owners } from '../../libs/utils';
 
 export function Component(): JSX.Element {
 	const [loading, setLoading] = useState<boolean>(true);
@@ -249,10 +249,11 @@ export function Component(): JSX.Element {
 								<option>Velg</option>
 
 								<option value="admin">Admin</option>
-								<option value="Telekom">Telekom</option>
-								<option value="Kundeservice">
-									Kundeservice
-								</option>
+								{Object.keys(owners).map(key => (
+									<option key={key} value={key}>
+										{owners[key]}
+									</option>
+								))}
 							</Form.Select>
 						</Form.Group>
 

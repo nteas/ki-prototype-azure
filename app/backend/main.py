@@ -11,9 +11,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse, FileResponse, JSONResponse
 from apscheduler.schedulers.background import BackgroundScheduler
-from azure.search.documents.aio import SearchClient
-from azure.storage.blob.aio import BlobServiceClient
-from azure.identity.aio import DefaultAzureCredential
+from azure.search.documents import SearchClient
+from azure.storage.blob import BlobServiceClient
+from azure.identity import DefaultAzureCredential
 
 from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
@@ -38,20 +38,22 @@ env = os.getenv("AZURE_ENV_NAME", "dev")
 app = FastAPI(debug=env == "dev")
 app.mount("/assets", StaticFiles(directory="static/assets", html=True), name="assets")
 
+
 # Set up worker
-scheduler = BackgroundScheduler()
+def run_worker_scheduler():
+    worker_cron = BackgroundScheduler()
+    worker_cron.add_job(worker, "cron", hour=6)
+    worker_cron.start()
+    return worker_cron
 
 
-def add_job(async_func, *args, **kwargs):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    return scheduler.add_job(lambda: loop.run_until_complete(async_func(*args, **kwargs)))
+worker_scheduler = None
 
 
 @app.on_event("startup")
-async def startup_event():
+def startup_event():
     logger.info("Starting up the api and worker")
-    connect_and_init_db()
+    app.db = connect_and_init_db()
     app.azure_credential = DefaultAzureCredential(logging_level=logging.ERROR)
     app.search_client = SearchClient(
         endpoint=f"https://{os.environ['AZURE_SEARCH_SERVICE']}.search.windows.net",
@@ -74,23 +76,21 @@ async def startup_event():
         token_cache_path=os.getenv("TOKEN_CACHE_PATH"),
     )
 
-    app.add_job = add_job
-
     if os.getenv("AZURE_ENVIRONMENT", "production") != "development":
-        scheduler.add_job(lambda: app.loop.run_until_complete(worker), "cron", hour=6)
-
-    scheduler.start()
+        global worker_scheduler
+        worker_scheduler = run_worker_scheduler()
 
 
 @app.on_event("shutdown")
-async def shutdown_event():
+def shutdown_event():
     close_db_connect()
 
-    await app.search_client.close()
-    await app.blob_container_client.close()
-    await app.azure_credential.close()
+    app.search_client.close()
+    app.blob_container_client.close()
+    app.azure_credential.close()
 
-    scheduler.shutdown()
+    if worker_scheduler:
+        worker_scheduler.shutdown()
 
     logger.info("Shutting down the api and worker")
 
@@ -123,7 +123,7 @@ api_router = APIRouter()
 @api_router.get("/content/{path}")
 async def content_file(path, request: Request):
     try:
-        blob = await request.app.blob_container_client.get_blob_client(path).download_blob()
+        blob = request.app.blob_container_client.get_blob_client(path).download_blob()
         if not blob.properties or not blob.properties.has_key("content_settings"):
             return {"error": "Blob not found"}, 404
         mime_type = blob.properties["content_settings"]["content_type"]
@@ -271,7 +271,7 @@ async def before_request(request: Request, call_next):
     azure_credential = DefaultAzureCredential(logging_level=logging.ERROR)
 
     try:
-        openai_token = await azure_credential.get_token("https://cognitiveservices.azure.com/.default")
+        openai_token = azure_credential.get_token("https://cognitiveservices.azure.com/.default")
         openai.api_key = openai_token.token
         openai.api_type = "azure_ad"
         openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
@@ -286,7 +286,7 @@ async def before_request(request: Request, call_next):
         logger.exception("Exception in before_request")
         return JSONResponse(content={"error": str(e)}, status_code=500)
     finally:
-        await azure_credential.close()
+        azure_credential.close()
 
 
 app.include_router(api_router, prefix="/api")

@@ -8,18 +8,17 @@ from core.db import get_db
 from core.utilities import (
     hash_text_md5,
     scrape_url,
-    get_filename_from_url,
     create_sections_string,
     update_embeddings_in_batch,
     index_sections,
     remove_from_index,
 )
 from core.logger import logger
-from azure.search.documents.aio import SearchClient
-from azure.identity.aio import DefaultAzureCredential
+from azure.search.documents import SearchClient
+from azure.identity import DefaultAzureCredential
 
 
-async def worker():
+def worker():
     azure_credential = DefaultAzureCredential(logging_level=logging.ERROR)
     search_client = SearchClient(
         endpoint=f"https://{os.environ['AZURE_SEARCH_SERVICE']}.search.windows.net",
@@ -29,7 +28,7 @@ async def worker():
 
     try:
         AZURE_OPENAI_SERVICE = os.environ["AZURE_OPENAI_SERVICE"]
-        openai_token = await azure_credential.get_token("https://cognitiveservices.azure.com/.default")
+        openai_token = azure_credential.get_token("https://cognitiveservices.azure.com/.default")
         openai.api_key = openai_token.token
         openai.api_type = "azure_ad"
         openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
@@ -100,14 +99,14 @@ async def worker():
             if url is None:
                 continue
 
-            text = await scrape_url(url, search_client)
+            text = scrape_url(url, search_client)
 
             hashed_text = hash_text_md5(text)
 
             if document["hash"] == hashed_text:
                 continue
 
-            await remove_from_index(document["file"], search_client)
+            remove_from_index(document["file"], search_client)
 
             sections = list(
                 create_sections_string(
@@ -116,9 +115,9 @@ async def worker():
                 )
             )
 
-            sections = update_embeddings_in_batch(sections)
+            sections = list(update_embeddings_in_batch(sections))
 
-            await index_sections(sections, search_client)
+            index_sections(sections, search_client)
 
             user = "worker"
             change = "scraped"
@@ -134,6 +133,6 @@ async def worker():
             )
 
     except Exception as e:
-        print(e)
+        logger.exception(e)
     finally:
-        await azure_credential.close()
+        azure_credential.close()

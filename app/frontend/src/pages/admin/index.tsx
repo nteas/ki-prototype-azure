@@ -23,7 +23,7 @@ import Button from '../../components/Button/Button';
 import styles from './Admin.module.scss';
 import { Document, apiFetch, classificationMap } from '../../api';
 import DocModal from '../../components/Modal/DocModal';
-import { formatDate } from '../../libs/utils';
+import { formatDate, getOwner } from '../../libs/utils';
 
 interface Filters {
 	search: string;
@@ -374,7 +374,7 @@ function ItemRow({
 			</div>
 
 			<div className={styles.col} style={{ flex: 3 }}>
-				{item.owner}
+				{getOwner(item.owner ?? '').split(':')[0]}
 			</div>
 
 			<div className={styles.col} style={{ flex: 2 }}>
