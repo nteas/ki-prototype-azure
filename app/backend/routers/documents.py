@@ -1,9 +1,10 @@
+import copy
 import time
 import datetime
 import os
 import io
 from typing import List
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, UploadFile, File
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 from fastapi import HTTPException
@@ -13,7 +14,6 @@ from pypdf import PdfReader, PdfWriter
 from core.types import Document, Log, Status
 from core.logger import logger
 from core.utilities import (
-    get_filename_from_url,
     remove_from_index,
     process_file,
     process_web,
@@ -32,16 +32,14 @@ async def create_document(request: Request, background_tasks: BackgroundTasks):
         data = await request.json()
         doc = Document(**data)
 
-        if doc.type == "web":
-            doc.file = get_filename_from_url(doc.url)
-
-            logger.info("add job - process web")
-            background_tasks.add_task(process_web, doc.id, search_client=request.app.search_client, reindex=False)
-
         doc.status = Status.processing.value
         db.documents.insert_one(doc.model_dump())
 
-        return doc
+        if doc.type == "web":
+            logger.info("-------------add job - process web-------------")
+            background_tasks.add_task(process_web, doc.id, search_client=request.app.search_client)
+
+        return doc.client_data()
     except Exception as ex:
         logger.info("Failed to create document")
         logger.exception("Exception: {}".format(ex))
@@ -104,7 +102,7 @@ async def get_documents(request: Request, params: GetDocumentsRequest = Depends(
         if not cursor:
             raise Exception("No documents found")
 
-        documents = [Document(**doc) for doc in cursor]
+        documents = [Document(**doc).client_data() for doc in cursor]
 
         return {"documents": documents, "total": total}
     except Exception as ex:
@@ -125,7 +123,7 @@ def get_document(id: str, request: Request):
     if doc:
         doc["logs"] = sorted(doc["logs"], key=lambda x: x["created_at"], reverse=True)
 
-        return Document(**doc)
+        return Document(**doc).client_data()
     else:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -159,8 +157,10 @@ async def get_document_status_events(id: str, request: Request):
 
 
 # Check if document is flagged based on citation / file_page
-@document_router.get("/flag/{citation}")
-def get_document(citation, request: Request):
+@document_router.get("/flag/")
+def get_document(
+    request: Request, citation: str = Query(None, description="Citation to check if flagged", example="123")
+):
     if not citation:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -182,11 +182,13 @@ class FlagCitations(BaseModel):
 @document_router.post("/flag")
 def flag_document(request: Request, data: FlagCitations):
     if not data.citations:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise HTTPException(status_code=404, detail="No citations supplied")
 
     db = request.app.db
     for citation in data.citations:
-        doc = db.documents.find_one({"$or": [{"file": citation}, {"file_pages": citation}, {"url": citation}]})
+        doc = db.documents.find_one(
+            {"deleted": {"$ne": True}, "$or": [{"file": citation}, {"file_pages": citation}, {"urls.url": citation}]}
+        )
 
         if doc is None:
             logger.info("Document not found")
@@ -220,6 +222,11 @@ async def update_document(id: str, request: Request, background_tasks: Backgroun
         doc = Document(**doc)
         update_data = doc.model_dump()
 
+        stored_urls = copy.copy(update_data["urls"])
+        logger.info("Stored urls: {}".format(stored_urls))
+
+        stored_urls = [url["url"] for url in stored_urls]
+
         data = await request.json()
         for key, value in data.items():
             update_data[key] = value
@@ -227,12 +234,18 @@ async def update_document(id: str, request: Request, background_tasks: Backgroun
         update_data["flagged_pages"] = []
 
         if update_data["type"] == "web":
-            update_data["file"] = get_filename_from_url(update_data["url"])
+            update_data["file"] = ""
             update_data["file_pages"] = []
-            should_reindex = doc.url != update_data["url"]
 
-            logger.info("add job - process file")
-            background_tasks.add_task(process_web, id, search_client=request.app.search_client, reindex=should_reindex)
+            should_reindex = False
+            for index, url in enumerate(data["urls"]):
+                if url != stored_urls[index]:
+                    should_reindex = True
+                    break
+
+            if should_reindex:
+                logger.info("-------------add job - process web-------------")
+                background_tasks.add_task(process_web, id, search_client=request.app.search_client)
 
         log = Log(change="updated", message="Document updated")
 
@@ -240,10 +253,10 @@ async def update_document(id: str, request: Request, background_tasks: Backgroun
 
         update_data["updated_at"] = datetime.datetime.now()
 
-        if doc.file != update_data["file"]:
+        if doc.file != update_data["file"] or should_reindex:
             update_data["status"] = Status.processing.value
 
-        db.documents.update_one({"id": id}, {"$set": update_data})
+        db.documents.update_one({"id": id}, {"$set": Document(**update_data).model_dump()})
 
         return {"message": "Document updated"}
     except Exception as ex:
@@ -296,10 +309,10 @@ async def upload_file(
             blobs.append({"blob_name": blob_name, "blob": f})
             file_pages.append(blob_name)
 
-        logger.info("add job - upload blobs")
+        logger.info("-------------add job - upload blobs-------------")
         background_tasks.add_task(upload_blobs, blobs, blob_container_client=request.app.blob_container_client)
 
-        logger.info("add job - process file")
+        logger.info("-------------add job - process file-------------")
         file_data = {"filename": filename, "file_pages": file_pages, "pdf": pdf}
         background_tasks.add_task(
             process_file,
@@ -337,8 +350,8 @@ async def delete_document(id, request: Request, background_tasks: BackgroundTask
         if not doc:
             raise HTTPException(status_code=404, detail="Document not found")
 
-        logger.info("add job - remove from index")
-        background_tasks.add_task(remove_from_index, doc.file, search_client=request.app.search_client)
+        logger.info("-------------add job - remove from index-------------")
+        background_tasks.add_task(remove_all_from_index, doc.file, search_client=request.app.search_client)
 
         if doc.file_pages:
             request.app.blob_container_client.delete_blobs(*doc.file_pages)
@@ -352,6 +365,11 @@ async def delete_document(id, request: Request, background_tasks: BackgroundTask
         logger.info("Failed to delete document")
         logger.exception("Exception: {}".format(ex))
         raise HTTPException(status_code=500, detail="Failed to delete document")
+
+
+def remove_all_from_index(pages, search_client):
+    for page in pages:
+        remove_from_index(page, search_client)
 
 
 # Add a log to a specific document by ID

@@ -1,6 +1,5 @@
 import base64
 import html
-import json
 import os
 import re
 import time
@@ -22,7 +21,7 @@ from tenacity import (
 
 from core.logger import logger
 from core.db import get_db
-from core.types import Document, Log, Status
+from core.types import Document, Log, Status, UrlDocument, get_title_from_url
 
 adls_gen2_creds = None
 storage_creds = None
@@ -62,6 +61,31 @@ def calculate_tokens_emb_aoai(input: str):
 
 def blob_name_from_file_page(filename, page=0):
     return os.path.splitext(filename)[0] + f"-{page}" + ".pdf"
+
+
+def migrate_data():
+    db = get_db()
+
+    docs = db.documents.find({"type": "web", "deleted": {"$ne": True}})
+
+    if docs is None:
+        print("No daily documents found")
+        return
+
+    docs = list(docs)
+
+    for doc in docs:
+        url = doc.get("url")
+        hash = doc.get("hash") or None
+
+        doc["urls"] = [UrlDocument(url=url, hash=hash)]
+
+        del doc["url"]
+
+        db.documents.update_one({"_id": doc["_id"]}, {"$set": doc, "$unset": {"url": ""}})
+
+    logger.info(f"Migrated {len(docs)} documents")
+    logger.info("Done migrating data")
 
 
 def table_to_html(table):
@@ -292,7 +316,7 @@ def create_sections(filename, page_map):
 def create_sections_string(url, string):
     logger.info("Begin creating sections")
 
-    pretty_url = get_filename_from_url(url)
+    pretty_url = get_title_from_url(url)
     pretty_url_ascii = re.sub("[^0-9a-zA-Z_-]", "_", pretty_url)
     pretty_url_hash = base64.b16encode(pretty_url.encode("utf-8")).decode("ascii")
     pretty_url_id = f"web-{pretty_url_ascii}-{pretty_url_hash}"
@@ -415,17 +439,6 @@ def index_sections(sections, search_client):
         logger.exception(f"Error indexing sections: {e}")
 
 
-# web url to filename
-def get_filename_from_url(url):
-    if "//" in url:
-        url = url.split("//")[1]
-
-    # remove trailing slash and query params
-    url = url.split("?")[0].rstrip("/")
-
-    return url
-
-
 def scrape_url(url):
     try:
         logger.info("Begin scraping content from url")
@@ -438,7 +451,8 @@ def scrape_url(url):
         driver.get(url)
 
         # Wait for the page to be fully loaded
-        time.sleep(10)
+        time.sleep(5)
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
 
         page_source = driver.page_source
         driver.quit()
@@ -481,7 +495,7 @@ def remove_from_index(filename, search_client):
         logger.info("Begin removing sections from from index")
 
         while True:
-            filter = f"sourcefile eq '{filename}'"
+            filter = f"sourcepage eq '{filename}'"
             search_results = search_client.search(search_text="", filter=filter, select=["id"])
 
             docs = []
@@ -500,7 +514,7 @@ def remove_from_index(filename, search_client):
         logger.exception(f"Error removing sections from index: {e}")
 
 
-def process_web(id, search_client, reindex=False):
+def process_web(id, search_client):
     try:
         logger.info("Begin processing document")
 
@@ -514,30 +528,39 @@ def process_web(id, search_client, reindex=False):
 
         doc = Document(**doc)
 
-        text = scrape_url(doc.url)
+        sections = []
+        hasChanges = False
 
-        hashed_text = hash_text_md5(text)
+        for index, url in enumerate(doc.urls):
+            text = scrape_url(url.url)
 
-        # check if content has changed
-        if doc.hash == hashed_text:
-            db.documents.update_one({"id": id}, {"$set": {"hash": hashed_text, "status": Status.done.value}})
-            return
+            hashed_text = hash_text_md5(text)
 
-        if reindex:
-            remove_from_index(doc.file, search_client)
+            # check if content has changed
+            if url.hash == hashed_text:
+                db.documents.update_one({"id": id}, {"$set": {"urls.{}.hash".format(index): hashed_text}})
+                continue
 
-        sections = list(
-            create_sections_string(
-                doc.url,
+            hasChanges = True
+
+            remove_from_index(url.url, search_client)
+
+            new_sections = create_sections_string(
+                url.url,
                 text,
             )
-        )
 
-        sections = update_embeddings_in_batch(sections)
+            sections.extend(new_sections)
 
-        index_sections(sections, search_client)
+        if hasChanges:
+            sections = update_embeddings_in_batch(sections)
 
-        doc.hash = hashed_text
+            index_sections(sections, search_client)
+
+        else:
+            logger.info("Document has not changed")
+            return
+
         doc.status = Status.done.value
         db.documents.update_one({"id": id}, {"$set": doc.model_dump()})
 
@@ -555,8 +578,9 @@ def process_file(id, file_data, search_client, blob_container_client):
         doc = db.documents.find_one({"id": id})
         doc = Document(**doc)
 
-        if doc.file:
-            remove_from_index(doc.file, search_client)
+        if doc.file is not None and doc.file_pages is not None:
+            for page in doc.file_pages:
+                remove_from_index(page, search_client)
 
         if doc.file_pages:
             blob_container_client.delete_blobs(*doc.file_pages)

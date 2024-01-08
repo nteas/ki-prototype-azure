@@ -1,7 +1,10 @@
 import json
+import logging
+import os
 from typing import Any, AsyncGenerator, Optional
 
 import openai
+from azure.identity import DefaultAzureCredential
 from azure.search.documents.aio import SearchClient
 from azure.search.documents.models import QueryType
 
@@ -27,7 +30,7 @@ class ChatReadRetrieveReadApproach(Approach):
     system_message_chat_conversation = """Assistant helps customer support agents employeed at NTE (a telecom company) with customer support questions, and internal guidelines for customer support. Be brief in your answers.
 Answer ONLY with the facts listed in the list of sources below. If there isn't enough information below, say you don't know. Do not generate answers that don't use the sources below. If asking a clarifying question to the user would help, ask the question.
 Return data as html, except source data. Do not return a wall of text, and do not return markdown format. Always answer all questions in norwegian.
-Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response. Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
+Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response. Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf]. If it is a web url use the complete url as the source name, e.g. [https://www.example.com].
 {follow_up_questions_prompt}
 {injected_prompt}
 """
@@ -54,13 +57,18 @@ If you cannot generate a search query, return just the number 0.
 
     def __init__(
         self,
-        search_client: SearchClient,
         openai_host: str,
         chatgpt_deployment: Optional[str],  # Not needed for non-Azure OpenAI
         chatgpt_model: str,
         embedding_deployment: Optional[str],  # Not needed for non-Azure OpenAI or for retrieval_mode="text"
         embedding_model: str,
     ):
+        azure_credential = DefaultAzureCredential(logging_level=logging.ERROR)
+        search_client = SearchClient(
+            endpoint=f"https://{os.environ['AZURE_SEARCH_SERVICE']}.search.windows.net",
+            index_name=os.environ["AZURE_SEARCH_INDEX"],
+            credential=azure_credential,
+        )
         self.search_client = search_client
         self.openai_host = openai_host
         self.chatgpt_deployment = chatgpt_deployment

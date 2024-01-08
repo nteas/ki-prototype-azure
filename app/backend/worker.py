@@ -5,14 +5,8 @@ import logging
 
 from core.types import Frequency, Log
 from core.db import get_db
-from core.utilities import (
-    hash_text_md5,
-    scrape_url,
-    create_sections_string,
-    update_embeddings_in_batch,
-    index_sections,
-    remove_from_index,
-)
+from core.utilities import process_web
+
 from core.logger import logger
 from azure.search.documents import SearchClient
 from azure.identity import DefaultAzureCredential
@@ -94,31 +88,7 @@ def worker():
         print(f"Found {len(documents)} documents")
 
         for document in documents:
-            url = document["url"]
-
-            if url is None:
-                continue
-
-            text = scrape_url(url)
-
-            hashed_text = hash_text_md5(text)
-
-            if document["hash"] == hashed_text:
-                logger.info(f"Document {document['title']} has not changed")
-                continue
-
-            remove_from_index(document["file"], search_client)
-
-            sections = list(
-                create_sections_string(
-                    url,
-                    text,
-                )
-            )
-
-            sections = update_embeddings_in_batch(sections)
-
-            index_sections(sections, search_client)
+            process_web(document["id"], search_client=search_client)
 
             user = "worker"
             change = "scraped"
@@ -128,7 +98,6 @@ def worker():
             db.documents.update_one(
                 {"id": document["id"]},
                 {
-                    "$set": {"hash": hashed_text},
                     "$push": {"logs": log.model_dump()},
                 },
             )

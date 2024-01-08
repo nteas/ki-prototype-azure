@@ -44,6 +44,7 @@ export const Answer = ({
 	const [feedback, setFeedback] = useState(0);
 	const [flaggedCitations, setFlaggedCitations] = useState<string[]>([]);
 	const isFeedbackGiven = useRef<boolean>(false);
+	const commentRef = useRef<HTMLInputElement>(null);
 	const messageContent = answer.choices[0].message.content;
 	const parsedAnswer = useMemo(
 		() => parseAnswerToHtml(messageContent, isStreaming, onCitationClicked),
@@ -120,7 +121,7 @@ export const Answer = ({
 							<Citation
 								key={i}
 								index={i}
-								citation={isWeb ? x.split('//').pop() : x}
+								citation={x}
 								onCitationClick={() =>
 									isWeb
 										? window.open(x, '_blank')
@@ -202,14 +203,17 @@ export const Answer = ({
 										e?.currentTarget?.comment?.value
 									);
 								}
+								if (commentRef.current) {
+									commentRef.current.value = '';
+								}
 
 								isFeedbackGiven.current = true;
 
 								setFeedback(0);
-								e.currentTarget.comment.value = '';
 							}}>
 							<div className={styles.inputWrapper}>
 								<Input
+									ref={commentRef}
 									name="comment"
 									placeholder="Skriv en kommentar"
 								/>
@@ -250,7 +254,7 @@ function Citation({
 	useEffect(() => {
 		if (isFlagged || isFlagChecked.current) return;
 
-		apiFetch(`/api/documents/flag/${citation}`)
+		apiFetch(`/api/documents/flag/?citation=${citation}`)
 			.then(res => res.json())
 			.then(res => {
 				isFlagChecked.current = true;
@@ -261,13 +265,17 @@ function Citation({
 			.catch(err => console.error(err));
 	}, []);
 
+	const label = citation.startsWith('http')
+		? citation.split('//').pop()
+		: citation;
+
 	return (
 		<div className={styles.citationWrapper}>
 			<button
 				className={styles.citation}
-				title={citation}
+				title={label}
 				onClick={onCitationClick}>
-				{`${++index}. ${citation}`}
+				{`${++index}. ${label}`}
 			</button>
 
 			<button

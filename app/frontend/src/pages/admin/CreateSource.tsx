@@ -11,6 +11,7 @@ import styles from './CreateSource.module.scss';
 import { ClassificationEnum, classificationMap } from '../../api/models';
 import { apiFetch } from '../../api';
 import { owners } from '../../libs/utils';
+import UrlField from '../../components/UrlField/UrlField';
 
 export function Component(): JSX.Element {
 	const [loading, setLoading] = useState<boolean>(false);
@@ -30,8 +31,16 @@ export function Component(): JSX.Element {
 		for (const [key, value] of formData.entries()) {
 			if (key === 'type' || !value) continue;
 
+			if (key === 'urls') {
+				const urls = JSON.parse(value as string);
+
+				body.urls = urls.filter((url: string) => url !== '');
+
+				continue;
+			}
+
 			if (key === 'file' && value instanceof File) {
-				body['file'] = value.name;
+				body.file = value.name;
 				continue;
 			}
 
@@ -126,10 +135,7 @@ export function Component(): JSX.Element {
 				) : (
 					<>
 						<div className={styles.row}>
-							<Form.Group>
-								<Form.Label>URL</Form.Label>
-								<Form.Control name="url" required />
-							</Form.Group>
+							<UrlField defaultValue={['']} name="urls" />
 						</div>
 
 						<div className={styles.row}>

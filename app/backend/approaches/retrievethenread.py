@@ -1,6 +1,9 @@
 from typing import Any, Optional
 
+import os
+import logging
 import openai
+from azure.identity import DefaultAzureCredential
 from azure.search.documents.aio import SearchClient
 from azure.search.documents.models import QueryType
 
@@ -45,6 +48,12 @@ info4.pdf: In-network institutions include Overlake, Swedish and others in the r
         embedding_deployment: Optional[str],  # Not needed for non-Azure OpenAI or for retrieval_mode="text"
         embedding_model: str,
     ):
+        azure_credential = DefaultAzureCredential(logging_level=logging.ERROR)
+        search_client = SearchClient(
+            endpoint=f"https://{os.environ['AZURE_SEARCH_SERVICE']}.search.windows.net",
+            index_name=os.environ["AZURE_SEARCH_INDEX"],
+            credential=azure_credential,
+        )
         self.search_client = search_client
         self.openai_host = openai_host
         self.chatgpt_deployment = chatgpt_deployment

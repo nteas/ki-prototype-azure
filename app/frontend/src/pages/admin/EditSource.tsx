@@ -17,6 +17,7 @@ import {
 } from '../../api';
 import DocModal from '../../components/Modal/DocModal';
 import { formatDate, owners } from '../../libs/utils';
+import UrlField from '../../components/UrlField/UrlField';
 
 export function Component(): JSX.Element {
 	const [loading, setLoading] = useState<boolean>(true);
@@ -74,6 +75,14 @@ export function Component(): JSX.Element {
 		const body: any = { type: isFile ? 'pdf' : 'web' };
 		for (const [key, value] of formData.entries()) {
 			if (!value || key === 'type') continue;
+
+			if (key === 'urls') {
+				const urls = JSON.parse(value as string);
+
+				body.urls = urls.filter((url: string) => url !== '');
+
+				continue;
+			}
 
 			if (data && key in data) {
 				body[key] = value;
@@ -194,14 +203,10 @@ export function Component(): JSX.Element {
 					) : (
 						<>
 							<div className={styles.row}>
-								<Form.Group>
-									<Form.Label>URL</Form.Label>
-									<Form.Control
-										name="url"
-										defaultValue={data?.url}
-										required
-									/>
-								</Form.Group>
+								<UrlField
+									defaultValue={data?.urls}
+									name="urls"
+								/>
 							</div>
 
 							<div className={styles.row}>
@@ -279,20 +284,18 @@ export function Component(): JSX.Element {
 					</div>
 
 					<div className={styles.actions}>
-						<Button
-							variant="outline-primary"
-							type="button"
-							onClick={() => {
-								if (data?.type?.includes('pdf')) {
+						{isFile && (
+							<Button
+								variant="outline-primary"
+								type="button"
+								onClick={() => {
 									setViewDocument(true);
 									return;
-								}
-
-								window.open(data?.url, '_blank');
-							}}
-							icon={<FontAwesomeIcon icon={faEye} />}>
-							Se kilde
-						</Button>
+								}}
+								icon={<FontAwesomeIcon icon={faEye} />}>
+								Se kilde
+							</Button>
+						)}
 
 						<Button
 							variant="outline-danger"

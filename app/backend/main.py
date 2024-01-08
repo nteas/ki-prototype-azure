@@ -1,4 +1,3 @@
-import asyncio
 import io
 import json
 import logging
@@ -20,6 +19,7 @@ from approaches.retrievethenread import RetrieveThenReadApproach
 from routers.documents import document_router
 from core.authentication import AuthenticationHelper
 from core.db import close_db_connect, connect_and_init_db
+from core.utilities import migrate_data
 from core.logger import logger
 from worker import worker
 
@@ -68,6 +68,8 @@ def startup_event():
         tenant_id=os.getenv("AZURE_TENANT_ID"),
         token_cache_path=os.getenv("TOKEN_CACHE_PATH"),
     )
+
+    # migrate_data()
 
     if os.getenv("AZURE_ENVIRONMENT", "production") != "development":
         worker_cron.add_job(worker, "cron", hour=4)
@@ -176,7 +178,6 @@ async def chat(request: Request):
         request_json = await request.json()
 
         impl = ChatReadRetrieveReadApproach(
-            request.app.search_client,
             OPENAI_HOST,
             AZURE_OPENAI_CHATGPT_DEPLOYMENT,
             OPENAI_CHATGPT_MODEL,
@@ -212,7 +213,6 @@ async def chat_stream(request: Request):
         auth_claims = await request.app.auth_helper.get_auth_claims_if_enabled(request.headers)
 
         impl = ChatReadRetrieveReadApproach(
-            request.app.search_client,
             OPENAI_HOST,
             AZURE_OPENAI_CHATGPT_DEPLOYMENT,
             OPENAI_CHATGPT_MODEL,

@@ -101,7 +101,7 @@ export type Document = {
 	file?: string;
 	flagged_pages: string[];
 	file_pages: string[];
-	url?: string;
+	urls?: string[];
 	created_at: Date;
 	updated_at: Date;
 	status?: string;

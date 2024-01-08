@@ -33,6 +33,33 @@ class Log(BaseModel):
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
 
 
+class UrlDocument(BaseModel):
+    url: str = None
+    title: str = None
+    hash: Optional[str] = Field(default=None)
+
+    def __init__(self, **data):
+        if data.get("url") is not None and data.get("title") is None:
+            data["title"] = get_title_from_url(data["url"])
+
+        super().__init__(**data)
+
+
+# web url to title
+def get_title_from_url(url):
+    if "//" in url:
+        url = url.split("//")[1]
+
+    # remove trailing slash and query params
+    url = url.split("?")[0].rstrip("/")
+
+    return url
+
+
+def is_list_of_strings(lst):
+    return all(isinstance(item, str) for item in lst)
+
+
 class Document(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     title: str = Field(default=None)
@@ -44,7 +71,7 @@ class Document(BaseModel):
     type: str = Field(default="pdf")
     file: Optional[str] = Field(default=None)
     file_pages: List[str] = Field(default=[])
-    url: Optional[str] = Field(default=None)
+    urls: Optional[List[UrlDocument]] = Field(default=[])
     hash: Optional[str] = Field(default=None)
     status: Optional[str] = Field(default=Status.done.value)
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
@@ -55,7 +82,18 @@ class Document(BaseModel):
         if data.get("title") is None and data.get("file") is not None:
             data["title"] = os.path.basename(data["file"])
 
+        # if data.get("urls") is a list of strings, convert to list of UrlDocuments
+        if data.get("urls") is not None and is_list_of_strings(data["urls"]):
+            data["urls"] = [UrlDocument(url=url) for url in data["urls"]]
+
         super().__init__(**data)
+
+    # prepare data for client
+    def client_data(self):
+        data = self.model_dump()
+        if data.get("urls") is not None:
+            data["urls"] = [url["url"] for url in data["urls"]]
+        return data
 
     class Config:
         extra = "allow"
