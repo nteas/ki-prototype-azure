@@ -90,6 +90,12 @@ export type Log = {
 	created_at: Date;
 };
 
+type UrlDocument = {
+	url: string;
+	title?: string;
+	hash?: string;
+};
+
 export type Document = {
 	id: string;
 	title?: string;
@@ -101,7 +107,7 @@ export type Document = {
 	file?: string;
 	flagged_pages: string[];
 	file_pages: string[];
-	urls?: string[];
+	urls?: UrlDocument[];
 	created_at: Date;
 	updated_at: Date;
 	status?: string;

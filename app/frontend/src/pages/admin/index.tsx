@@ -408,7 +408,11 @@ function ItemRow({
 									return;
 								}
 
-								window.open(item.url, '_blank');
+								item.urls &&
+									window.open(
+										item.urls[0].url ?? '',
+										'_blank'
+									);
 							}}
 							title="Åpne">
 							<FontAwesomeIcon icon={faEye} />

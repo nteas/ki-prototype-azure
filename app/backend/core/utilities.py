@@ -78,11 +78,11 @@ def migrate_data():
         url = doc.get("url")
         hash = doc.get("hash") or None
 
-        doc["urls"] = [UrlDocument(url=url, hash=hash)]
+        doc["urls"] = [UrlDocument(url=url, hash=hash).model_dump()]
 
         del doc["url"]
 
-        db.documents.update_one({"_id": doc["_id"]}, {"$set": doc, "$unset": {"url": ""}})
+        db.documents.update_one({"id": doc["id"]}, {"$set": doc, "$unset": {"url": ""}})
 
     logger.info(f"Migrated {len(docs)} documents")
     logger.info("Done migrating data")

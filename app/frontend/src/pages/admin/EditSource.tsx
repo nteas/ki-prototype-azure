@@ -204,7 +204,7 @@ export function Component(): JSX.Element {
 						<>
 							<div className={styles.row}>
 								<UrlField
-									defaultValue={data?.urls}
+									defaultValue={data?.urls?.map(u => u.url)}
 									name="urls"
 								/>
 							</div>
