@@ -23,7 +23,7 @@ const Layout = ({ logoSuffix, headerActions, children, className }: Props) => {
 							className={styles.headerLogo}
 						/>
 
-						<span>| KS BETA {logoSuffix}</span>
+						<span>| Kundeservice Telekom {logoSuffix}</span>
 					</Link>
 
 					<nav className={styles.headerNav}>

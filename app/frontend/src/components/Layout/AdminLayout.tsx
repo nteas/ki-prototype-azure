@@ -37,7 +37,7 @@ const AdminLayout = ({
 							className={styles.headerLogo}
 						/>
 
-						<span>| KS BETA ADMIN</span>
+						<span>| Kundeservice Telekom </span>
 					</Link>
 
 					<nav className={styles.headerNav}>
