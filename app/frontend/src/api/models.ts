@@ -90,12 +90,6 @@ export type Log = {
 	created_at: Date;
 };
 
-type UrlDocument = {
-	url: string;
-	title?: string;
-	hash?: string;
-};
-
 export type Document = {
 	id: string;
 	title?: string;
