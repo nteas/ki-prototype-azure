@@ -222,10 +222,12 @@ async def update_document(id: str, request: Request, background_tasks: Backgroun
         doc = Document(**doc)
         update_data = doc.model_dump()
 
-        stored_urls = copy.copy(update_data["urls"])
-        logger.info("Stored urls: {}".format(stored_urls))
+        db_doc_urls = copy.copy(update_data["urls"])
 
-        stored_urls = [url["url"] for url in stored_urls]
+        stored_urls = []
+        for url in db_doc_urls:
+            if url.get("url") and url.get("hash"):
+                stored_urls.append(url["url"])
 
         data = await request.json()
         for key, value in data.items():
@@ -237,11 +239,15 @@ async def update_document(id: str, request: Request, background_tasks: Backgroun
             update_data["file"] = ""
             update_data["file_pages"] = []
 
-            should_reindex = False
-            for index, url in enumerate(data["urls"]):
-                if url != stored_urls[index]:
-                    should_reindex = True
-                    break
+            should_reindex = len(stored_urls) != len(data["urls"])
+
+            if not should_reindex:
+                for index, url in enumerate(data["urls"]):
+                    logger.info(url)
+                    logger.info(stored_urls[index])
+                    if url != stored_urls[index]:
+                        should_reindex = True
+                        break
 
             if should_reindex:
                 logger.info("-------------add job - process web-------------")

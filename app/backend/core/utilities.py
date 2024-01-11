@@ -482,9 +482,9 @@ def scrape_url(url):
 
         text = selector_markup.get_text()
 
+        logger.info("Done scraping content from url")
         return text
 
-        logger.info("Done scraping content from url")
     except Exception as ex:
         logger.exception("Error in scrape_url: {}".format(ex))
         raise ex
@@ -541,6 +541,7 @@ def process_web(id, search_client):
                 db.documents.update_one({"id": id}, {"$set": {"urls.{}.hash".format(index): hashed_text}})
                 continue
 
+            doc.urls[index].hash = hashed_text
             hasChanges = True
 
             remove_from_index(url.url, search_client)

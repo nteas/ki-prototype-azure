@@ -72,7 +72,6 @@ class Document(BaseModel):
     file: Optional[str] = Field(default=None)
     file_pages: List[str] = Field(default=[])
     urls: Optional[List[UrlDocument]] = Field(default=[])
-    hash: Optional[str] = Field(default=None)
     status: Optional[str] = Field(default=Status.done.value)
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
     updated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
