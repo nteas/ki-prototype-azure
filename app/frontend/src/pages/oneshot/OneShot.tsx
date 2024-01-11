@@ -242,10 +242,7 @@ export function Component(): JSX.Element {
 						/>
 					)}
 
-					<SettingsButton
-						className={styles.settingsButton}
-						onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
-					/>
+					<SettingsButton className={styles.settingsButton} />
 				</>
 			}>
 			<div className={styles.oneshotTopSection}>

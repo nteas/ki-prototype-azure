@@ -383,10 +383,7 @@ const Chat = () => {
 						/>
 					)}
 
-					<SettingsButton
-						className={styles.commandButton}
-						onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
-					/>
+					<SettingsButton className={styles.commandButton} />
 				</>
 			}>
 			<div className={styles.chatContainer}>
