@@ -113,6 +113,7 @@ const Chat = () => {
 		try {
 			setIsStreaming(true);
 			for await (const event of readNDJSONStream(responseBody)) {
+				console.log(event);
 				if (
 					event['choices'] &&
 					event['choices'][0]['extra_args'] &&
@@ -166,37 +167,11 @@ const Chat = () => {
 		setActiveCitation(undefined);
 		setActiveAnalysisPanelTab(undefined);
 
-		const token = client ? await getToken(client) : undefined;
-
 		try {
-			const history: ChatTurn[] = answers.map(a => ({
-				user: a[0],
-				bot: a[1].choices[0].message.content,
-			}));
-			const request: ChatRequest = {
-				history: [...history, { user: question, bot: undefined }],
-				shouldStream: shouldStream,
-				overrides: {
-					promptTemplate:
-						promptTemplate.length === 0
-							? undefined
-							: promptTemplate,
-					excludeCategory:
-						excludeCategory.length === 0
-							? undefined
-							: excludeCategory,
-					top: retrieveCount,
-					retrievalMode: retrievalMode,
-					semanticRanker: useSemanticRanker,
-					semanticCaptions: useSemanticCaptions,
-					suggestFollowupQuestions: useSuggestFollowupQuestions,
-					useOidSecurityFilter: useOidSecurityFilter,
-					useGroupsSecurityFilter: useGroupsSecurityFilter,
-				},
-				idToken: token?.accessToken,
-			};
+			const response = await chatApi(question);
 
-			const response = await chatApi(request);
+			console.log(response);
+
 			if (!response.body) {
 				throw Error('No response body');
 			}

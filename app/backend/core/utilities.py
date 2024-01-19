@@ -342,7 +342,7 @@ def before_retry_sleep(retry_state):
 
 
 @retry(
-    retry=retry_if_exception_type(openai.error.RateLimitError),
+    retry=retry_if_exception_type(openai.RateLimitError),
     wait=wait_random_exponential(min=15, max=60),
     stop=stop_after_attempt(15),
     before_sleep=before_retry_sleep,
@@ -359,7 +359,7 @@ def compute_embedding(text):
 
 
 @retry(
-    retry=retry_if_exception_type(openai.error.RateLimitError),
+    retry=retry_if_exception_type(openai.RateLimitError),
     wait=wait_random_exponential(min=15, max=60),
     stop=stop_after_attempt(15),
     before_sleep=before_retry_sleep,

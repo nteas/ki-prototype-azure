@@ -19,8 +19,8 @@ from approaches.retrievethenread import RetrieveThenReadApproach
 from routers.documents import document_router
 from core.authentication import AuthenticationHelper
 from core.db import close_db_connect, connect_and_init_db
-from core.utilities import migrate_data
 from core.logger import logger
+from core.openai_agent import get_engine, index_web_documents
 from worker import worker
 
 
@@ -69,7 +69,7 @@ def startup_event():
         token_cache_path=os.getenv("TOKEN_CACHE_PATH"),
     )
 
-    # migrate_data()
+    # index_web_documents()
 
     if os.getenv("AZURE_ENVIRONMENT", "production") != "development":
         worker_cron.add_job(worker, "cron", hour=4)
@@ -203,27 +203,18 @@ async def format_as_ndjson(r: AsyncGenerator[dict, None]) -> AsyncGenerator[str,
 @api_router.post("/chat_stream")
 async def chat_stream(request: Request):
     try:
-        if request is None:
-            raise HTTPException(status_code=400, detail="Request must not be None")
-
-        if request.headers.get("Content-Type") != "application/json":
-            raise HTTPException(status_code=415, detail="Request must be JSON")
-
         request_json = await request.json()
-        auth_claims = await request.app.auth_helper.get_auth_claims_if_enabled(request.headers)
 
-        impl = ChatReadRetrieveReadApproach(
-            OPENAI_HOST,
-            AZURE_OPENAI_CHATGPT_DEPLOYMENT,
-            OPENAI_CHATGPT_MODEL,
-            AZURE_OPENAI_EMB_DEPLOYMENT,
-            OPENAI_EMB_MODEL,
-        )
-        response_generator = impl.run_with_streaming(
-            request_json["history"], request_json.get("overrides", {}), auth_claims
-        )
+        chat_engine = get_engine()
 
-        return StreamingResponse(format_as_ndjson(response_generator), media_type="application/x-ndjson")
+        streaming_response = chat_engine.query(request_json["question"])
+
+        for text in streaming_response.response_gen:
+            if not text:
+                logger.warning("Empty text received from response generator")
+            else:
+                logger.info(f"Response: {text}")
+
     except Exception as e:
         logger.exception("Exception in /chat")
         return {"error": str(e)}, 500

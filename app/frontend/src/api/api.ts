@@ -54,30 +54,12 @@ export async function askApi(options: AskRequest): Promise<ChatAppResponse> {
 	return parsedResponse as ChatAppResponse;
 }
 
-export async function chatApi(options: ChatRequest): Promise<Response> {
-	const url = options.shouldStream ? 'chat_stream' : 'chat';
-	return await fetch(`${BACKEND_URI}/${url}`, {
+export async function chatApi(question: string): Promise<Response> {
+	return await fetch(`${BACKEND_URI}/chat_stream`, {
 		method: 'POST',
-		headers: getHeaders(options.idToken),
+		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({
-			history: options.history,
-			overrides: {
-				retrieval_mode: options.overrides?.retrievalMode,
-				semantic_ranker: options.overrides?.semanticRanker,
-				semantic_captions: options.overrides?.semanticCaptions,
-				top: options.overrides?.top,
-				temperature: options.overrides?.temperature,
-				prompt_template: options.overrides?.promptTemplate,
-				prompt_template_prefix: options.overrides?.promptTemplatePrefix,
-				prompt_template_suffix: options.overrides?.promptTemplateSuffix,
-				exclude_category: options.overrides?.excludeCategory,
-				suggest_followup_questions:
-					options.overrides?.suggestFollowupQuestions,
-				use_oid_security_filter:
-					options.overrides?.useOidSecurityFilter,
-				use_groups_security_filter:
-					options.overrides?.useGroupsSecurityFilter,
-			},
+			question,
 		}),
 	});
 }

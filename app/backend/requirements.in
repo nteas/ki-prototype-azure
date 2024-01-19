@@ -5,10 +5,9 @@ azure-ai-formrecognizer
 azure-storage-file-datalake
 msal
 msal-extensions
-openai[datalib]
 tiktoken
 tenacity
-uvicorn[standard]
+uvicorn
 aiohttp
 pymongo
 fastapi
@@ -19,3 +18,6 @@ bs4
 apscheduler
 selenium
 sse-starlette
+llama-index
+openai
+redis
