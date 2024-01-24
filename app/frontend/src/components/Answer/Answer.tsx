@@ -10,23 +10,26 @@ import {
 import {
 	faFlag as flagOutline,
 	faClipboard,
-	faLightbulb,
 	faStar,
 } from '@fortawesome/pro-regular-svg-icons';
 
 import styles from './Answer.module.scss';
 
-import { ChatAppResponse, apiFetch, getCitationFilePath } from '../../api';
+import { apiFetch, getCitationFilePath } from '../../api';
 import { parseAnswerToHtml } from './AnswerParser';
 import analytics from '../../libs/analytics';
 
+export interface ChatResponse {
+	user: string;
+	response: string;
+}
+
 interface Props {
-	answer: ChatAppResponse;
+	answer: string;
 	isSelected?: boolean;
 	isStreaming: boolean;
-	onCitationClicked: (filePath: string) => void;
-	onThoughtProcessClicked: () => void;
-	onSupportingContentClicked: () => void;
+	onCitationClicked?: (filePath: string) => void;
+	onSupportingContentClicked?: () => void;
 	onFollowupQuestionClicked?: (question: string) => void;
 	showFollowupQuestions?: boolean;
 }
@@ -35,8 +38,7 @@ export const Answer = ({
 	answer,
 	isSelected,
 	isStreaming,
-	onCitationClicked,
-	onThoughtProcessClicked,
+	onCitationClicked = () => {},
 	onSupportingContentClicked,
 	onFollowupQuestionClicked,
 	showFollowupQuestions,
@@ -45,7 +47,7 @@ export const Answer = ({
 	const [flaggedCitations, setFlaggedCitations] = useState<string[]>([]);
 	const isFeedbackGiven = useRef<boolean>(false);
 	const commentRef = useRef<HTMLInputElement>(null);
-	const messageContent = answer.choices[0].message.content;
+	const messageContent = answer;
 	const parsedAnswer = useMemo(
 		() => parseAnswerToHtml(messageContent, isStreaming, onCitationClicked),
 		[answer]
@@ -82,21 +84,13 @@ export const Answer = ({
 				<div className={styles.answerActionIcons}>
 					<button
 						className={styles.answerActionIcon}
-						title="Show thought process"
-						onClick={() => onThoughtProcessClicked()}
-						disabled={
-							!answer.choices[0].extra_args.thoughts?.length
-						}>
-						<FontAwesomeIcon icon={faLightbulb} />
-					</button>
-
-					<button
-						className={styles.answerActionIcon}
 						title="Show supporting content"
-						onClick={() => onSupportingContentClicked()}
-						disabled={
-							!answer.choices[0].extra_args.data_points?.length
-						}>
+						onClick={
+							onSupportingContentClicked
+								? () => onSupportingContentClicked()
+								: undefined
+						}
+						disabled={!answer?.length}>
 						<FontAwesomeIcon icon={faClipboard} />
 					</button>
 				</div>
@@ -106,8 +100,6 @@ export const Answer = ({
 				className={styles.answerText}
 				dangerouslySetInnerHTML={{
 					__html: sanitizedAnswerHtml,
-					// .replace(/\n /g, '<br/>&nbsp;')
-					// .replace(/\n/g, '<br/>'),
 				}}></div>
 
 			{!!parsedAnswer.citations.length && (
@@ -125,7 +117,8 @@ export const Answer = ({
 								onCitationClick={() =>
 									isWeb
 										? window.open(x, '_blank')
-										: onCitationClicked(path)
+										: onCitationClicked &&
+										  onCitationClicked(path)
 								}
 								updateFlags={() => updateFlaggedCitations(x)}
 								isFlagged={flaggedCitations.includes(x)}
@@ -266,7 +259,7 @@ function Citation({
 	}, []);
 
 	const label = citation.startsWith('http')
-		? citation.split('//').pop()
+		? citation.split('//').pop().split('/')[0]
 		: citation;
 
 	return (

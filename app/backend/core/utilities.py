@@ -21,7 +21,7 @@ from tenacity import (
 
 from core.logger import logger
 from core.db import get_db
-from core.types import Document, Log, Status, UrlDocument, get_title_from_url
+from core.types import Document, Log, Status, get_title_from_url
 
 adls_gen2_creds = None
 storage_creds = None
@@ -75,14 +75,16 @@ def migrate_data():
     docs = list(docs)
 
     for doc in docs:
-        url = doc.get("url")
-        hash = doc.get("hash") or None
+        urls = doc.get("urls")
 
-        doc["urls"] = [UrlDocument(url=url, hash=hash).model_dump()]
+        if urls is None:
+            continue
 
-        del doc["url"]
+        updated_urls = []
+        for url in urls:
+            updated_urls.append({"url": url["url"]})
 
-        db.documents.update_one({"id": doc["id"]}, {"$set": doc, "$unset": {"url": ""}})
+        db.documents.update_one({"id": doc["id"]}, {"$set": {"urls": updated_urls}})
 
     logger.info(f"Migrated {len(docs)} documents")
     logger.info("Done migrating data")
@@ -451,7 +453,7 @@ def scrape_url(url):
         driver.get(url)
 
         # Wait for the page to be fully loaded
-        time.sleep(5)
+        time.sleep(3)
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
 
         page_source = driver.page_source

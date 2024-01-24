@@ -33,18 +33,6 @@ class Log(BaseModel):
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
 
 
-class UrlDocument(BaseModel):
-    url: str = None
-    title: str = None
-    hash: Optional[str] = Field(default=None)
-
-    def __init__(self, **data):
-        if data.get("url") is not None and data.get("title") is None:
-            data["title"] = get_title_from_url(data["url"])
-
-        super().__init__(**data)
-
-
 # web url to title
 def get_title_from_url(url):
     if "//" in url:
@@ -71,7 +59,7 @@ class Document(BaseModel):
     type: str = Field(default="pdf")
     file: Optional[str] = Field(default=None)
     file_pages: List[str] = Field(default=[])
-    urls: Optional[List[UrlDocument]] = Field(default=[])
+    urls: Optional[List[str]] = Field(default=[])
     status: Optional[str] = Field(default=Status.done.value)
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
     updated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
@@ -80,10 +68,6 @@ class Document(BaseModel):
         data.pop("_id", None)  # Remove _id from the data if it exists
         if data.get("title") is None and data.get("file") is not None:
             data["title"] = os.path.basename(data["file"])
-
-        # if data.get("urls") is a list of strings, convert to list of UrlDocuments
-        if data.get("urls") is not None and is_list_of_strings(data["urls"]):
-            data["urls"] = [UrlDocument(url=url) for url in data["urls"]]
 
         super().__init__(**data)
 

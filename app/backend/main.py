@@ -209,12 +209,12 @@ async def chat_stream(request: Request):
 
         streaming_response = chat_engine.query(request_json["question"])
 
-        for text in streaming_response.response_gen:
-            if not text:
-                logger.warning("Empty text received from response generator")
-            else:
+        def generator():
+            for text in streaming_response.response_gen:
                 logger.info(f"Response: {text}")
+                yield text
 
+        return StreamingResponse(generator(), media_type="text/plain")
     except Exception as e:
         logger.exception("Exception in /chat")
         return {"error": str(e)}, 500

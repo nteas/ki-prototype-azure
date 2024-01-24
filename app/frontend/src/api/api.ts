@@ -1,9 +1,4 @@
-import {
-	AskRequest,
-	ChatAppResponse,
-	ChatAppResponseOrError,
-	ChatRequest,
-} from './models';
+import { AskRequest, ChatAppResponse, ChatAppResponseOrError } from './models';
 import { useLogin } from '../authConfig';
 import { Log as TrackLog } from '../pages/logs/Logs';
 const BACKEND_URI = '/api';
