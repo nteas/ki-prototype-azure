@@ -12,7 +12,6 @@ aiohttp
 pymongo
 fastapi
 pypdf
-python-multipart
 opencensus-ext-azure
 bs4
 apscheduler

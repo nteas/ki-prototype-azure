@@ -50,10 +50,6 @@ def startup_event():
 def shutdown_event():
     close_db_connect()
 
-    app.search_client.close()
-    app.blob_container_client.close()
-    app.azure_credential.close()
-
     if worker_cron.running:
         worker_cron.shutdown()
 
@@ -101,12 +97,6 @@ async def content_file(path, request: Request):
     except Exception as e:
         logger.exception("Exception in /content")
         return {"error": str(e)}, 500
-
-
-# Send MSAL.js settings to the client UI
-@api_router.get("/auth_setup")
-def auth_setup(request: Request):
-    return request.app.auth_helper.get_auth_setup_for_client()
 
 
 @api_router.post("/chat_stream")

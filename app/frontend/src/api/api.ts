@@ -1,18 +1,11 @@
 import { AskRequest, ChatAppResponse, ChatAppResponseOrError } from './models';
-import { useLogin } from '../authConfig';
 import { Log as TrackLog } from '../pages/logs/Logs';
 const BACKEND_URI = '/api';
 
-function getHeaders(idToken: string | undefined): Record<string, string> {
+function getHeaders(): Record<string, string> {
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
 	};
-	// If using login, add the id token of the logged in account as the authorization
-	if (useLogin) {
-		if (idToken) {
-			headers['Authorization'] = `Bearer ${idToken}`;
-		}
-	}
 
 	return headers;
 }
@@ -20,7 +13,7 @@ function getHeaders(idToken: string | undefined): Record<string, string> {
 export async function askApi(options: AskRequest): Promise<ChatAppResponse> {
 	const response = await fetch(`${BACKEND_URI}/ask`, {
 		method: 'POST',
-		headers: getHeaders(options.idToken),
+		headers: getHeaders(),
 		body: JSON.stringify({
 			question: options.question,
 			overrides: {
