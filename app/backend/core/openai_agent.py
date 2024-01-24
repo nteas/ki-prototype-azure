@@ -13,6 +13,7 @@ from llama_index.storage.docstore import RedisDocumentStore
 from llama_index.vector_stores import RedisVectorStore
 from redis.client import Redis
 
+from core.types import Status
 from core.utilities import scrape_url
 from core.db import get_db
 from core.logger import logger
@@ -62,6 +63,10 @@ embed_model = AzureOpenAIEmbedding(
 
 REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
 REDIS_PORT = os.getenv("REDIS_PORT", 6379)
+
+
+def get_redis():
+    return Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
 
 def get_vector_store():
@@ -120,9 +125,21 @@ def index_web_documents():
     VectorStoreIndex.from_documents(documents, storage_context=storage_context)
 
 
-def index_web_document(doc):
+def index_web_document(id, urls=[]):
+    db = get_db()
+
+    doc = db.documents.find_one({"id": id})
+
+    if doc is None:
+        print("No documents found")
+        raise Exception("No documents found")
+
+    db.documents.update_one({"id": id}, {"$set": {"status": Status.processing.value}})
+
+    index_urls = doc["urls"] if len(urls) == 0 else urls
+
     documents = []
-    for url in doc["urls"]:
+    for url in index_urls:
         text = scrape_url(url)
 
         documents.append(
@@ -133,15 +150,17 @@ def index_web_document(doc):
 
     VectorStoreIndex.from_documents(documents, storage_context=storage_context)
 
+    doc = db.documents.update_one({"id": id}, {"$set": {"status": Status.done.value}})
 
-def get_documents_from_index(doc_id):
-    r = Redis.from_url("redis://localhost:6379", decode_responses=True)
+
+def get_index_documents_by_field(field="ref_id", value=None):
+    r = get_redis()
 
     matches = []
     for key in r.scan_iter():  # Iterate over all keys
         if r.type(key) != "hash":
             continue
-        if r.hget(key, "ref_id") != doc_id:
+        if r.hget(key, field) != value:
             continue
 
         values = r.hmget(key, ["doc_id", "ref_id", "url"])
@@ -149,6 +168,12 @@ def get_documents_from_index(doc_id):
         matches.append({"name": key, "doc_id": values[0], "ref_id": values[1], "url": values[2]})
 
     return matches
+
+
+def remove_document_from_index(doc_id):
+    r = get_redis()
+
+    r.delete(doc_id)
 
 
 def get_engine():

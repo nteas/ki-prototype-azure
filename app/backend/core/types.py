@@ -71,12 +71,5 @@ class Document(BaseModel):
 
         super().__init__(**data)
 
-    # prepare data for client
-    def client_data(self):
-        data = self.model_dump()
-        if data.get("urls") is not None:
-            data["urls"] = [url["url"] for url in data["urls"]]
-        return data
-
     class Config:
         extra = "allow"

@@ -72,6 +72,19 @@ const Chat = () => {
 									},
 								]);
 
+								analytics.track('Question Replied', {
+									reply: accumulatedResponse,
+									timestamp: Math.round(
+										new Date().getTime() / 1000
+									),
+									responseTime: Math.round(
+										new Date().getTime() / 1000 -
+											timer.current
+									),
+								});
+
+								timer.current = 0;
+
 								setStreamedAnswer(undefined);
 
 								setIsLoading(false);

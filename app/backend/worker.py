@@ -1,33 +1,13 @@
 import datetime
-import openai
-import os
-import logging
 
 from core.types import Frequency, Log
 from core.db import get_db
-from core.utilities import process_web
-
+from core.openai_agent import index_web_document
 from core.logger import logger
-from azure.search.documents import SearchClient
-from azure.identity import DefaultAzureCredential
 
 
 def worker():
-    azure_credential = DefaultAzureCredential(logging_level=logging.ERROR)
-    search_client = SearchClient(
-        endpoint=f"https://{os.environ['AZURE_SEARCH_SERVICE']}.search.windows.net",
-        index_name=os.environ["AZURE_SEARCH_INDEX"],
-        credential=azure_credential,
-    )
-
     try:
-        AZURE_OPENAI_SERVICE = os.environ["AZURE_OPENAI_SERVICE"]
-        openai_token = azure_credential.get_token("https://cognitiveservices.azure.com/.default")
-        openai.api_key = openai_token.token
-        openai.api_type = "azure_ad"
-        openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
-        openai.api_version = "2023-07-01-preview"
-
         db = get_db()
 
         documents = []
@@ -88,7 +68,7 @@ def worker():
         print(f"Found {len(documents)} documents")
 
         for document in documents:
-            process_web(document["id"], search_client=search_client)
+            index_web_document(document["id"], document["urls"])
 
             user = "worker"
             change = "scraped"
@@ -104,5 +84,3 @@ def worker():
 
     except Exception as e:
         logger.exception(e)
-    finally:
-        azure_credential.close()
