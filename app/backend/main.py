@@ -38,7 +38,7 @@ def startup_event():
     logger.info("Starting up the api and worker")
     app.db = connect_and_init_db()
 
-    index_web_documents()
+    # index_web_documents()
     # migrate_data()
 
     if os.getenv("AZURE_ENVIRONMENT", "production") != "development":
