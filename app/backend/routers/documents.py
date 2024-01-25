@@ -351,7 +351,7 @@ async def delete_document(id, request: Request):
         if not doc:
             raise HTTPException(status_code=404, detail="Document not found")
 
-        remove_document_from_index(doc.id)
+        remove_document_from_index(id)
 
         if doc.file_pages:
             request.app.blob_container_client.delete_blobs(*doc.file_pages)

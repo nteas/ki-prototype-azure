@@ -153,7 +153,7 @@ def index_web_document(id, urls=[]):
     doc = db.documents.update_one({"id": id}, {"$set": {"status": Status.done.value}})
 
 
-def get_index_documents_by_field(field="ref_id", value=None):
+def get_index_documents_by_field(value=None, field="ref_id"):
     r = get_redis()
 
     matches = []
@@ -173,7 +173,10 @@ def get_index_documents_by_field(field="ref_id", value=None):
 def remove_document_from_index(doc_id):
     r = get_redis()
 
-    r.delete(doc_id)
+    docs = get_index_documents_by_field(doc_id)
+
+    for doc in docs:
+        r.delete(doc["name"])
 
 
 def get_engine():
