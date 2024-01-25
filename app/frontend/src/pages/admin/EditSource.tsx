@@ -145,7 +145,7 @@ export function Component(): JSX.Element {
 
 			{!loading && (
 				<Form onSubmit={updateDocument}>
-					<div className={styles.row}>
+					{/* <div className={styles.row}>
 						<div style={{ display: 'flex', gap: '24px' }}>
 							<Form.Check
 								type="radio"
@@ -163,6 +163,17 @@ export function Component(): JSX.Element {
 								onChange={() => setIsFile(false)}
 							/>
 						</div>
+					</div> */}
+
+					<div className={styles.row}>
+						<Form.Group>
+							<Form.Label>Tittel</Form.Label>
+							<Form.Control
+								name="title"
+								defaultValue={data?.title}
+								required
+							/>
+						</Form.Group>
 					</div>
 
 					{isFile ? (
@@ -230,17 +241,6 @@ export function Component(): JSX.Element {
 							</div>
 						</>
 					)}
-
-					<div className={styles.row}>
-						<Form.Group>
-							<Form.Label>Tittel</Form.Label>
-							<Form.Control
-								name="title"
-								defaultValue={data?.title}
-								required
-							/>
-						</Form.Group>
-					</div>
 
 					<div className={styles.row}>
 						<Form.Group>

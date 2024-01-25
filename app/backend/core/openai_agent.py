@@ -9,7 +9,6 @@ from llama_index import (
 from llama_index.node_parser import SimpleFileNodeParser, SentenceSplitter
 from llama_index.llms import AzureOpenAI
 from llama_index.embeddings import AzureOpenAIEmbedding
-from llama_index.storage.docstore import RedisDocumentStore
 from llama_index.vector_stores import RedisVectorStore
 from redis.client import Redis
 
@@ -69,17 +68,22 @@ def get_redis():
     return Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
 
-def get_vector_store():
-    return RedisVectorStore(
+def get_redis_store():
+    redis_store = RedisVectorStore(
         index_name="documents",
-        index_prefix="vector_store",
+        index_prefix="redis_store",
         redis_url="redis://localhost:6379",  # Default
-        overwrite=True,
     )
+    return redis_store
+
+
+def get_vector_store():
+    vector_store = get_redis_store()
+    return VectorStoreIndex.from_vector_store(vector_store=vector_store)
 
 
 def get_storage_context():
-    vector_store = get_vector_store()
+    vector_store = get_redis_store()
 
     storage_context = StorageContext.from_defaults(
         vector_store=vector_store,
@@ -138,17 +142,14 @@ def index_web_document(id, urls=[]):
 
     index_urls = doc["urls"] if len(urls) == 0 else urls
 
-    documents = []
+    index = get_vector_store()
     for url in index_urls:
         text = scrape_url(url)
 
-        documents.append(
-            Document(text=text, metadata={"url": url, "ref_id": doc["id"], "title": doc["title"], "type": "web"})
+        new_document = Document(
+            text=text, metadata={"url": url, "ref_id": doc["id"], "title": doc["title"], "type": "web"}
         )
-
-    storage_context = get_storage_context()
-
-    VectorStoreIndex.from_documents(documents, storage_context=storage_context)
+        index.insert(document=new_document)
 
     doc = db.documents.update_one({"id": id}, {"$set": {"status": Status.done.value}})
 
@@ -157,31 +158,40 @@ def get_index_documents_by_field(value=None, field="ref_id"):
     r = get_redis()
 
     matches = []
-    for key in r.scan_iter():  # Iterate over all keys
-        if r.type(key) != "hash":
-            continue
-        if r.hget(key, field) != value:
-            continue
 
-        values = r.hmget(key, ["doc_id", "ref_id", "url"])
+    if field == "key":
+        values = r.hmget(value, ["doc_id"])
 
-        matches.append({"name": key, "doc_id": values[0], "ref_id": values[1], "url": values[2]})
+        matches.append(values[0])
+
+    else:
+        for key in r.scan_iter():  # Iterate over all keys
+            if r.type(key) != "hash":
+                continue
+            if r.hget(key, field) != value:
+                continue
+
+            values = r.hmget(key, ["doc_id"])
+
+            matches.append(values[0])
 
     return matches
 
 
-def remove_document_from_index(doc_id):
-    r = get_redis()
+def remove_document_from_index(value=None, field="ref_id"):
+    index = get_vector_store()
 
-    docs = get_index_documents_by_field(doc_id)
+    if field == "doc_id":
+        index.delete_ref_doc(value)
+        return
 
-    for doc in docs:
-        r.delete(doc["name"])
+    docs_ids = get_index_documents_by_field(value=value, field=field)
+
+    for doc_id in docs_ids:
+        index.delete_ref_doc(doc_id)
 
 
 def get_engine():
-    vector_store = get_vector_store()
-
-    index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
+    index = get_vector_store()
 
     return index.as_query_engine(streaming=True)

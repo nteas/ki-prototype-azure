@@ -15,7 +15,7 @@ import UrlField from '../../components/UrlField/UrlField';
 
 export function Component(): JSX.Element {
 	const [loading, setLoading] = useState<boolean>(false);
-	const [isFile, setIsFile] = useState<boolean>(true);
+	const [isFile, setIsFile] = useState<boolean>(false);
 	const [fileName, setFileName] = useState<string>('');
 	const navigate = useNavigate();
 
@@ -92,7 +92,7 @@ export function Component(): JSX.Element {
 			<h2 className={styles.title}>Legg til kilde</h2>
 
 			<Form onSubmit={createDocument}>
-				<div className={styles.row}>
+				{/* <div className={styles.row}>
 					<div style={{ display: 'flex', gap: '24px' }}>
 						<Form.Check
 							type="radio"
@@ -110,6 +110,17 @@ export function Component(): JSX.Element {
 							onChange={() => setIsFile(false)}
 						/>
 					</div>
+				</div> */}
+
+				<div className={styles.row}>
+					<Form.Group>
+						<Form.Label>Tittel</Form.Label>
+						<Form.Control
+							name="title"
+							defaultValue={fileName}
+							required
+						/>
+					</Form.Group>
 				</div>
 
 				{isFile ? (
@@ -154,17 +165,6 @@ export function Component(): JSX.Element {
 						</div>
 					</>
 				)}
-
-				<div className={styles.row}>
-					<Form.Group>
-						<Form.Label>Tittel</Form.Label>
-						<Form.Control
-							name="title"
-							defaultValue={fileName}
-							required
-						/>
-					</Form.Group>
-				</div>
 
 				<div className={styles.row}>
 					<Form.Group>

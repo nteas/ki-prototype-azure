@@ -10,7 +10,7 @@ from fastapi import HTTPException
 from pypdf import PdfReader, PdfWriter
 
 
-from core.openai_agent import get_index_documents_by_field, index_web_document, remove_document_from_index
+from core.openai_agent import index_web_document, remove_document_from_index
 from core.types import Document, Log, Status
 from core.logger import logger
 from core.utilities import (
@@ -238,15 +238,13 @@ async def update_document(id: str, request: Request, background_tasks: Backgroun
             update_data["file_pages"] = []
 
             removed_urls = list(set(stored_urls) - set(updated_urls))
+            logger.info(removed_urls)
             if removed_urls:
-                delete_index_docs = []
                 for url in removed_urls:
-                    found_delete_docs = get_index_documents_by_field(field="url", value=url)
-                    delete_index_docs.extend(found_delete_docs)
-                for delete_doc in delete_index_docs:
-                    remove_document_from_index(delete_doc["doc_id"])
+                    remove_document_from_index(url, field="url")
 
             new_urls = list(set(updated_urls) - set(stored_urls))
+            logger.info(new_urls)
             if new_urls:
                 logger.info("-------------add job - process web-------------")
                 background_tasks.add_task(index_web_document, id, new_urls)
