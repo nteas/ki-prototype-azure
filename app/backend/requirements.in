@@ -1,14 +1,4 @@
-azure-identity
-azure-search-documents==11.4.0b6
-azure-storage-blob
-azure-ai-formrecognizer
-azure-storage-file-datalake
-msal
-msal-extensions
-tiktoken
-tenacity
 uvicorn
-aiohttp
 pymongo
 fastapi
 pypdf
@@ -18,5 +8,4 @@ apscheduler
 selenium
 sse-starlette
 llama-index
-openai
 redis

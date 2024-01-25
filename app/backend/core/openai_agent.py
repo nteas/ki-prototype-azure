@@ -70,9 +70,7 @@ def get_redis():
 
 def get_redis_store():
     redis_store = RedisVectorStore(
-        index_name="documents",
-        index_prefix="redis_store",
-        redis_url="redis://localhost:6379",  # Default
+        index_name="documents", index_prefix="vector_store", redis_url=f"redis://{REDIS_HOST}:{REDIS_PORT}"
     )
     return redis_store
 
