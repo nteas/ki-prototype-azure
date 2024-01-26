@@ -6,15 +6,14 @@ from llama_index import (
     VectorStoreIndex,
     set_global_service_context,
 )
-from llama_index.node_parser import SimpleFileNodeParser, SentenceSplitter
+from llama_index.node_parser import SentenceSplitter
 from llama_index.llms import AzureOpenAI
 from llama_index.embeddings import AzureOpenAIEmbedding
-from llama_index.vector_stores import RedisVectorStore
-from redis.client import Redis
+from llama_index.vector_stores import MongoDBAtlasVectorSearch
 
 from core.types import Status
 from core.utilities import scrape_url
-from core.db import get_db
+from core.db import get_db, get_db_client
 from core.logger import logger
 
 api_key = os.getenv("AZURE_OPENAI_API_KEY")
@@ -60,28 +59,21 @@ embed_model = AzureOpenAIEmbedding(
 )
 
 
-REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
-REDIS_PORT = os.getenv("REDIS_PORT", 6379)
-
-
-def get_redis():
-    return Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
-
-
-def get_redis_store():
-    redis_store = RedisVectorStore(
-        index_name="documents", index_prefix="vector_store", redis_url=f"redis://{REDIS_HOST}:{REDIS_PORT}"
+def get_mongo_store():
+    db_client = get_db_client()
+    mongo_store = MongoDBAtlasVectorSearch(
+        mongodb_client=db_client, db_name="ki-prototype", index_name="vector_store", collection_name="vector-store"
     )
-    return redis_store
+    return mongo_store
 
 
 def get_vector_store():
-    vector_store = get_redis_store()
+    vector_store = get_mongo_store()
     return VectorStoreIndex.from_vector_store(vector_store=vector_store)
 
 
 def get_storage_context():
-    vector_store = get_redis_store()
+    vector_store = get_mongo_store()
 
     storage_context = StorageContext.from_defaults(
         vector_store=vector_store,
@@ -102,12 +94,7 @@ set_global_service_context(service_context)
 def index_web_documents():
     db = get_db()
 
-    db_docs = db.documents.find(
-        {
-            "type": "web",
-            "deleted": {"$ne": True},
-        }
-    )
+    db_docs = db.documents.find({"type": "web", "deleted": {"$ne": True}, "urls": {"$exists": True, "$ne": []}})
 
     if db_docs is None:
         print("No documents found")
@@ -140,53 +127,42 @@ def index_web_document(id, urls=[]):
 
     index_urls = doc["urls"] if len(urls) == 0 else urls
 
-    index = get_vector_store()
+    documents = []
     for url in index_urls:
         text = scrape_url(url)
 
-        new_document = Document(
-            text=text, metadata={"url": url, "ref_id": doc["id"], "title": doc["title"], "type": "web"}
-        )
-        index.insert(document=new_document)
+        document = Document(text=text, metadata={"url": url, "ref_id": doc["id"], "title": doc["title"], "type": "web"})
+
+        documents.append(document)
+
+    node_parser = SentenceSplitter.from_defaults(chunk_size=max_tokens)
+    nodes = node_parser.get_nodes_from_documents(documents)
+
+    index = get_vector_store()
+    index.add(nodes)
 
     doc = db.documents.update_one({"id": id}, {"$set": {"status": Status.done.value}})
 
 
 def get_index_documents_by_field(value=None, field="ref_id"):
-    r = get_redis()
+    index = get_mongo_store()
 
-    matches = []
-
-    if field == "key":
-        values = r.hmget(value, ["doc_id"])
-
-        matches.append(values[0])
-
-    else:
-        for key in r.scan_iter():  # Iterate over all keys
-            if r.type(key) != "hash":
-                continue
-            if r.hget(key, field) != value:
-                continue
-
-            values = r.hmget(key, ["doc_id"])
-
-            matches.append(values[0])
+    matches = index._collection.find({f"metadata.{field}": value}).to_list(None)
 
     return matches
 
 
 def remove_document_from_index(value=None, field="ref_id"):
-    index = get_vector_store()
+    index = get_mongo_store()
 
     if field == "doc_id":
-        index.delete_ref_doc(value)
+        index.delete(value)
         return
 
     docs_ids = get_index_documents_by_field(value=value, field=field)
 
     for doc_id in docs_ids:
-        index.delete_ref_doc(doc_id)
+        index.delete(doc_id)
 
 
 def get_engine():

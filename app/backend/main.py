@@ -8,7 +8,7 @@ from starlette.responses import StreamingResponse, FileResponse, JSONResponse
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from routers.documents import document_router
-from core.db import close_db_connect, connect_and_init_db
+from core.db import close_db_connect, connect_and_init_db, get_db
 from core.logger import logger
 from core.openai_agent import get_engine, index_web_documents
 from worker import worker
@@ -31,6 +31,33 @@ app.mount("/assets", StaticFiles(directory="static/assets", html=True), name="as
 
 # Set up worker
 worker_cron = BackgroundScheduler()
+
+
+def migrate_data():
+    db = get_db()
+
+    docs = db.documents.find({"type": "web", "deleted": {"$ne": True}})
+
+    if docs is None:
+        print("No daily documents found")
+        return
+
+    docs = list(docs)
+
+    for doc in docs:
+        urls = doc.get("urls")
+
+        if urls is None:
+            continue
+
+        updated_urls = []
+        for url in urls:
+            updated_urls.append(url["url"])
+
+        db.documents.update_one({"id": doc["id"]}, {"$set": {"urls": updated_urls}})
+
+    logger.info(f"Migrated {len(docs)} documents")
+    logger.info("Done migrating data")
 
 
 @app.on_event("startup")
