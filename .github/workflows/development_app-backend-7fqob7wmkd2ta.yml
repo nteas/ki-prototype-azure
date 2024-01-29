@@ -12,7 +12,6 @@ on:
 
 env:
     VITE_SEGMENT_WRITE_KEY: Meqq3oEiI4z16z7CuBDyUGzDvw97LkOA
-    NODE_VERSION: "18.x"
 
 jobs:
     build:
@@ -24,9 +23,9 @@ jobs:
             - name: Use nodejs
               uses: actions/setup-node@v4
               with:
-                  node-version: ${{ env.NODE_VERSION }}
+                  node-version: 20
 
-            - name: Install and build frontend
+            - name: Build frontend
               working-directory: app/frontend
               run: |
                   npm install
@@ -34,7 +33,7 @@ jobs:
 
             - name: Zip artifact for deployment
               working-directory: app/backend
-              run: zip release.zip ./* -r
+              run: zip -r release.zip ./* -x \*venv\*
 
             - name: Upload artifact for deployment jobs
               uses: actions/upload-artifact@v3
