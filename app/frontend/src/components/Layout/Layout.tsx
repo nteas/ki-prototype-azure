@@ -1,4 +1,4 @@
-import { NavLink, Link, useNavigate } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 
 import styles from './Layout.module.scss';
 
@@ -10,8 +10,6 @@ interface Props {
 }
 
 const Layout = ({ logoSuffix, headerActions, children, className }: Props) => {
-	const navigate = useNavigate();
-
 	return (
 		<div className={`${className} ${styles.layout}`}>
 			<header className={styles.header} role="banner">
@@ -23,7 +21,7 @@ const Layout = ({ logoSuffix, headerActions, children, className }: Props) => {
 							className={styles.headerLogo}
 						/>
 
-						<span>| KS BETA {logoSuffix}</span>
+						<span>| Kundeservice Telekom {logoSuffix}</span>
 					</Link>
 
 					<nav className={styles.headerNav}>
@@ -36,7 +34,7 @@ const Layout = ({ logoSuffix, headerActions, children, className }: Props) => {
 							}>
 							Chat
 						</NavLink>
-						{' / '}
+						{/* {' / '}
 						<NavLink
 							to="/qa"
 							className={({ isActive }) =>
@@ -45,7 +43,7 @@ const Layout = ({ logoSuffix, headerActions, children, className }: Props) => {
 									: styles.headerNavPageLink
 							}>
 							FAQ
-						</NavLink>
+						</NavLink> */}
 					</nav>
 
 					<div className={styles.headerActions}>
@@ -55,12 +53,6 @@ const Layout = ({ logoSuffix, headerActions, children, className }: Props) => {
 			</header>
 
 			<main className={styles.main}>{children}</main>
-
-			<button
-				className={styles.piButton}
-				onClick={() => navigate('/admin')}>
-				&#120587;
-			</button>
 		</div>
 	);
 };

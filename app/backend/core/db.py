@@ -9,6 +9,10 @@ def get_db():
     return db_client["ki-prototype"]
 
 
+def get_db_client():
+    return db_client
+
+
 def connect_and_init_db():
     AZURE_MONGODB = os.getenv("AZURE_MONGODB")
 

@@ -37,7 +37,7 @@ const AdminLayout = ({
 							className={styles.headerLogo}
 						/>
 
-						<span>| KS BETA ADMIN</span>
+						<span>| Kundeservice Telekom </span>
 					</Link>
 
 					<nav className={styles.headerNav}>
@@ -50,7 +50,7 @@ const AdminLayout = ({
 							}>
 							Chat
 						</NavLink>
-						{' / '}
+						{/* {' / '}
 						<NavLink
 							to="/qa"
 							className={({ isActive }) =>
@@ -59,7 +59,7 @@ const AdminLayout = ({
 									: styles.headerNavPageLink
 							}>
 							FAQ
-						</NavLink>
+						</NavLink> */}
 					</nav>
 
 					<div className={styles.headerActions}>
@@ -109,12 +109,6 @@ const AdminLayout = ({
 					</div>
 				</div>
 			</footer>
-
-			<button
-				className={styles.piButton}
-				onClick={() => navigate('/admin')}>
-				&#120587;
-			</button>
 		</div>
 	);
 };
