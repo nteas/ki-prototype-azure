@@ -20,29 +20,17 @@ jobs:
 
         steps:
             - uses: actions/checkout@v4
+
             - name: Use nodejs
               uses: actions/setup-node@v4
               with:
                   node-version: ${{ env.NODE_VERSION }}
+
             - name: Install and build frontend
               working-directory: app/frontend
               run: |
-                  # Build and test the project, then
-                  # deploy to Azure Web App.
                   npm install
                   npm run build --if-present
-
-            - name: Set up Python version
-              uses: actions/setup-python@v1
-              with:
-                  python-version: "3.12"
-
-            - name: Create and start virtual environment and install deps
-              working-directory: app/backend
-              run: |
-                  python -m venv venv
-                  source venv/bin/activate
-                  pip install -r requirements.txt
 
             - name: Zip artifact for deployment
               working-directory: app/backend
