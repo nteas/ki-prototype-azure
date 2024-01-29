@@ -1,6 +1,7 @@
 uvicorn
 pymongo
 fastapi
+python-multipart
 pypdf
 opencensus-ext-azure
 bs4
