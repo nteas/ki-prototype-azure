@@ -3,6 +3,8 @@
 # More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
 
 name: Build and deploy Python app to Azure Web App - app-backend-5ig67zl4vi6sc
+env:
+    VITE_SEGMENT_WRITE_KEY: Meqq3oEiI4z16z7CuBDyUGzDvw97LkOA
 
 on:
     push:
