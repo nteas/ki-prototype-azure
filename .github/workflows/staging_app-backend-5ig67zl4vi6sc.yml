@@ -5,65 +5,52 @@
 name: Build and deploy Python app to Azure Web App - app-backend-5ig67zl4vi6sc
 
 on:
-  push:
-    branches:
-      - staging
-  workflow_dispatch:
+    push:
+        branches:
+            - staging
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+    build:
+        runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
+        steps:
+            - uses: actions/checkout@v4
 
-      - name: Set up Python version
-        uses: actions/setup-python@v1
-        with:
-          python-version: '3.10'
+            - name: Use nodejs
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
 
-      - name: Create and start virtual environment
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-      
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-        
-      # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
+            - name: Build frontend
+              working-directory: app/frontend
+              run: |
+                  npm install
+                  npm run build
 
-      - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
+            - name: Upload artifact for deployment jobs
+              uses: actions/upload-artifact@v4
+              with:
+                  name: python-app
+                  path: app/backend/
 
-      - name: Upload artifact for deployment jobs
-        uses: actions/upload-artifact@v3
-        with:
-          name: python-app
-          path: |
-            release.zip
-            !venv/
+    deploy:
+        runs-on: ubuntu-latest
+        needs: build
+        environment:
+            name: "Production"
+            url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: 'Production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-    
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v3
-        with:
-          name: python-app
+        steps:
+            - name: Download artifact from build job
+              uses: actions/download-artifact@v4
+              with:
+                  name: python-app
+                  path: .
 
-      - name: Unzip artifact for deployment
-        run: unzip release.zip
-
-      
-      - name: 'Deploy to Azure Web App'
-        uses: azure/webapps-deploy@v2
-        id: deploy-to-webapp
-        with:
-          app-name: 'app-backend-5ig67zl4vi6sc'
-          slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_4080EE14FA774752B22DE44221DB90D4 }}
+            - name: "Deploy to Azure Web App"
+              uses: azure/webapps-deploy@v2
+              id: deploy-to-webapp
+              with:
+                  app-name: "app-backend-5ig67zl4vi6sc"
+                  slot-name: "Production"
+                  publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_4080EE14FA774752B22DE44221DB90D4 }}
