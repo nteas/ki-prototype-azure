@@ -13,17 +13,6 @@ from core.logger import logger
 from core.openai_agent import get_engine, index_web_documents
 from worker import worker
 
-
-# Replace these with your own values, either in environment variables or directly here
-OPENAI_HOST = os.getenv("OPENAI_HOST", "azure")
-OPENAI_CHATGPT_MODEL = os.environ["AZURE_OPENAI_CHATGPT_MODEL"]
-OPENAI_EMB_MODEL = os.getenv("AZURE_OPENAI_EMB_MODEL_NAME", "text-embedding-ada-002")
-# Used with Azure OpenAI deployments
-AZURE_OPENAI_SERVICE = os.environ["AZURE_OPENAI_SERVICE"]
-AZURE_OPENAI_CHATGPT_DEPLOYMENT = os.environ["AZURE_OPENAI_CHATGPT_DEPLOYMENT"]
-AZURE_OPENAI_EMB_DEPLOYMENT = os.environ["AZURE_OPENAI_EMB_DEPLOYMENT"]
-
-
 env = os.getenv("AZURE_ENV_NAME", "dev")
 app = FastAPI(debug=env == "dev")
 app.mount("/assets", StaticFiles(directory="static/assets", html=True), name="assets")
