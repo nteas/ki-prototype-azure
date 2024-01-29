@@ -1,15 +1,16 @@
 import base64
 import os
 import re
-import time
+from bs4 import BeautifulSoup
+from llama_index import download_loader
 
 from typing import Any
-from bs4 import BeautifulSoup
-from selenium import webdriver
 
 from core.logger import logger
 from core.db import get_db
-from core.types import Document, Log, Status
+from core.types import Document, Log
+
+SimpleWebPageReader = download_loader("SimpleWebPageReader")
 
 adls_gen2_creds = None
 storage_creds = None
@@ -43,19 +44,12 @@ def scrape_url(url):
     try:
         logger.info("Begin scraping content from url")
 
-        options = webdriver.ChromeOptions()
-        options.add_argument("--no-sandbox")
-        options.add_argument("--headless")
-        options.add_argument("--disable-dev-shm-usage")
-        driver = webdriver.Chrome(options=options)
-        driver.get(url)
+        loader = SimpleWebPageReader()
+        documents = loader.load_data(urls=[url])
 
-        # Wait for the page to be fully loaded
-        time.sleep(3)
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-
-        page_source = driver.page_source
-        driver.quit()
+        page_source = ""
+        for doc in documents:
+            page_source += doc.text
 
         # Parse the HTML content of the response
         soup = BeautifulSoup(page_source, "html.parser")
@@ -83,6 +77,7 @@ def scrape_url(url):
         text = selector_markup.get_text()
 
         logger.info("Done scraping content from url")
+
         return text
 
     except Exception as ex:

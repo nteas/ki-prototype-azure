@@ -15,8 +15,8 @@ import UrlField from '../../components/UrlField/UrlField';
 
 export function Component(): JSX.Element {
 	const [loading, setLoading] = useState<boolean>(false);
-	const [isFile, setIsFile] = useState<boolean>(false);
-	const [fileName, setFileName] = useState<string>('');
+	// const [isFile, setIsFile] = useState<boolean>(false);
+	// const [fileName, setFileName] = useState<string>('');
 	const navigate = useNavigate();
 
 	async function createDocument(e: React.FormEvent<HTMLFormElement>) {
@@ -27,7 +27,8 @@ export function Component(): JSX.Element {
 		// put form values in an object only containing the values that have changed
 		const formData = new FormData(e.currentTarget);
 
-		const body: any = { type: isFile ? 'pdf' : 'web' };
+		// const body: any = { type: isFile ? 'pdf' : 'web' };
+		const body: any = { type: 'web' };
 		for (const [key, value] of formData.entries()) {
 			if (key === 'type' || !value) continue;
 
@@ -117,13 +118,14 @@ export function Component(): JSX.Element {
 						<Form.Label>Tittel</Form.Label>
 						<Form.Control
 							name="title"
-							defaultValue={fileName}
+							// defaultValue={fileName}
 							required
 						/>
 					</Form.Group>
 				</div>
 
-				{isFile ? (
+				{
+					/*isFile ? (
 					<div className={styles.row}>
 						<Form.Group>
 							<Form.Label>Fil</Form.Label>
@@ -143,8 +145,7 @@ export function Component(): JSX.Element {
 							/>
 						</Form.Group>
 					</div>
-				) : (
-					<>
+				) :*/ <>
 						<div className={styles.row}>
 							<UrlField defaultValue={['']} name="urls" />
 						</div>
@@ -164,7 +165,7 @@ export function Component(): JSX.Element {
 							</Form.Group>
 						</div>
 					</>
-				)}
+				}
 
 				<div className={styles.row}>
 					<Form.Group>

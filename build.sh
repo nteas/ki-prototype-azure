@@ -11,11 +11,15 @@ done <<EOF
 $(azd env get-values)
 EOF
 
+echo ""
+echo "Starting backend"
+echo ""
+
+cd app/backend
+
+./backend_env/bin/python3 main.py
 if [ $? -ne 0 ]; then
-    echo "Failed to load environment variables from azd environment"
+	kill -9 $(lsof -i:3000 | grep node | awk '{print $2}')
+    echo "Failed to start backend"
     exit $?
 fi
-
-docker build -t ai-prototype --build-arg segment=$VITE_SEGMENT_WRITE_KEY .
-
-docker tag ai-prototype:latest tazdkntecr.azurecr.io/ai-prototype

@@ -13,17 +13,6 @@ from core.logger import logger
 from core.openai_agent import get_engine, index_web_documents
 from worker import worker
 
-
-# Replace these with your own values, either in environment variables or directly here
-OPENAI_HOST = os.getenv("OPENAI_HOST", "azure")
-OPENAI_CHATGPT_MODEL = os.environ["AZURE_OPENAI_CHATGPT_MODEL"]
-OPENAI_EMB_MODEL = os.getenv("AZURE_OPENAI_EMB_MODEL_NAME", "text-embedding-ada-002")
-# Used with Azure OpenAI deployments
-AZURE_OPENAI_SERVICE = os.environ["AZURE_OPENAI_SERVICE"]
-AZURE_OPENAI_CHATGPT_DEPLOYMENT = os.environ["AZURE_OPENAI_CHATGPT_DEPLOYMENT"]
-AZURE_OPENAI_EMB_DEPLOYMENT = os.environ["AZURE_OPENAI_EMB_DEPLOYMENT"]
-
-
 env = os.getenv("AZURE_ENV_NAME", "dev")
 app = FastAPI(debug=env == "dev")
 app.mount("/assets", StaticFiles(directory="static/assets", html=True), name="assets")
@@ -62,13 +51,14 @@ def migrate_data():
 
 @app.on_event("startup")
 def startup_event():
-    logger.info("Starting up the api and worker")
+    logger.info("Starting the api")
     app.db = connect_and_init_db()
 
     # index_web_documents()
     # migrate_data()
 
     if os.getenv("AZURE_ENVIRONMENT", "production") != "development":
+        logger.info("Starting the worker")
         worker_cron.add_job(worker, "cron", hour=4)
         worker_cron.start()
 
@@ -172,3 +162,8 @@ if allowed_origin := os.getenv("ALLOWED_ORIGIN"):
         allow_headers=["*"],
     )
     logger.info("CORS enabled for %s", allowed_origin)
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)

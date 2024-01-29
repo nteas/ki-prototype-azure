@@ -1,11 +1,9 @@
 uvicorn
 pymongo
 fastapi
+python-multipart
 pypdf
-opencensus-ext-azure
 bs4
 apscheduler
-selenium
 sse-starlette
 llama-index
-redis
