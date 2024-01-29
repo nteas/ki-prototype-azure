@@ -162,3 +162,8 @@ if allowed_origin := os.getenv("ALLOWED_ORIGIN"):
         allow_headers=["*"],
     )
     logger.info("CORS enabled for %s", allowed_origin)
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)
