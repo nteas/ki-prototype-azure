@@ -8,7 +8,7 @@ from starlette.responses import StreamingResponse, FileResponse, JSONResponse
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from routers.documents import document_router
-from core.db import close_db_connect, connect_and_init_db, get_db
+from core.db import close_db_connect, connect_and_init_db
 from core.logger import logger
 from core.openai_agent import get_engine, index_web_documents
 from worker import worker
@@ -22,40 +22,13 @@ app.mount("/assets", StaticFiles(directory="static/assets", html=True), name="as
 worker_cron = BackgroundScheduler()
 
 
-def migrate_data():
-    db = get_db()
-
-    docs = db.documents.find({"type": "web", "deleted": {"$ne": True}})
-
-    if docs is None:
-        print("No daily documents found")
-        return
-
-    docs = list(docs)
-
-    for doc in docs:
-        urls = doc.get("urls")
-
-        if urls is None:
-            continue
-
-        updated_urls = []
-        for url in urls:
-            updated_urls.append(url["url"])
-
-        db.documents.update_one({"id": doc["id"]}, {"$set": {"urls": updated_urls}})
-
-    logger.info(f"Migrated {len(docs)} documents")
-    logger.info("Done migrating data")
-
-
 @app.on_event("startup")
 def startup_event():
     logger.info("Starting the api")
     app.db = connect_and_init_db()
 
-    # index_web_documents()
-    # migrate_data()
+    if not os.path.exists("storage"):
+        index_web_documents()
 
     if os.getenv("AZURE_ENVIRONMENT", "production") != "development":
         logger.info("Starting the worker")
@@ -95,9 +68,6 @@ async def index(path: str = ""):
 api_router = APIRouter()
 
 
-# # Serve content files from blob storage from within the app to keep the example self-contained.
-# # *** NOTE *** this assumes that the content files are public, or at least that all users of the app
-# # can access all the files. This is also slow and memory hungry.
 @api_router.get("/content/{path}")
 async def content_file(path, request: Request):
     try:

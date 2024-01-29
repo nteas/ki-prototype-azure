@@ -4,20 +4,21 @@ from llama_index import (
     ServiceContext,
     StorageContext,
     VectorStoreIndex,
+    load_index_from_storage,
     set_global_service_context,
 )
 from llama_index.node_parser import SentenceSplitter
 from llama_index.llms import AzureOpenAI
 from llama_index.embeddings import AzureOpenAIEmbedding
-from llama_index.vector_stores import MongoDBAtlasVectorSearch
+from llama_index.vector_stores.types import ExactMatchFilter, MetadataFilters
 
 from core.types import Status
 from core.utilities import scrape_url
-from core.db import get_db, get_db_client
+from core.db import get_db
 from core.logger import logger
 
 api_key = os.getenv("AZURE_OPENAI_API_KEY")
-azure_endpoint = os.getenv("ASURE_OPENAI_ENDPOINT")
+azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
 api_version = os.getenv("OPENAI_API_VERSION")
 
 MODELS_2_TOKEN_LIMITS = {
@@ -59,27 +60,12 @@ embed_model = AzureOpenAIEmbedding(
 )
 
 
-def get_mongo_store():
-    db_client = get_db_client()
-    mongo_store = MongoDBAtlasVectorSearch(
-        mongodb_client=db_client, db_name="ki-prototype", index_name="vector_store", collection_name="vector-store"
-    )
-    return mongo_store
+def get_index():
+    storage_context = StorageContext.from_defaults(persist_dir="storage")
 
+    index = load_index_from_storage(storage_context)
 
-def get_vector_store():
-    vector_store = get_mongo_store()
-    return VectorStoreIndex.from_vector_store(vector_store=vector_store)
-
-
-def get_storage_context():
-    vector_store = get_mongo_store()
-
-    storage_context = StorageContext.from_defaults(
-        vector_store=vector_store,
-    )
-
-    return storage_context
+    return index
 
 
 service_context = ServiceContext.from_defaults(
@@ -94,7 +80,9 @@ set_global_service_context(service_context)
 def index_web_documents():
     db = get_db()
 
-    db_docs = db.documents.find({"type": "web", "deleted": {"$ne": True}, "urls": {"$exists": True, "$ne": []}})
+    db_docs = db.documents.find(
+        {"type": "web", "deleted": {"$ne": True}, "urls": {"$exists": True, "$ne": []}}
+    )
 
     if db_docs is None:
         print("No documents found")
@@ -106,12 +94,20 @@ def index_web_documents():
             text = scrape_url(url)
 
             documents.append(
-                Document(text=text, metadata={"url": url, "ref_id": doc["id"], "title": doc["title"], "type": "web"})
+                Document(
+                    text=text,
+                    metadata={
+                        "url": url,
+                        "ref_id": doc["id"],
+                        "title": doc["title"],
+                        "type": "web",
+                    },
+                )
             )
 
-    storage_context = get_storage_context()
+    index = VectorStoreIndex.from_documents(documents)
 
-    VectorStoreIndex.from_documents(documents, storage_context=storage_context)
+    index.storage_context.persist(persist_dir="storage")
 
 
 def index_web_document(id, urls=[]):
@@ -124,7 +120,9 @@ def index_web_document(id, urls=[]):
             print("No documents found")
             raise Exception("No documents found")
 
-        db.documents.update_one({"id": id}, {"$set": {"status": Status.processing.value}})
+        db.documents.update_one(
+            {"id": id}, {"$set": {"status": Status.processing.value}}
+        )
 
         index_urls = doc["urls"] if len(urls) == 0 else urls
 
@@ -133,7 +131,13 @@ def index_web_document(id, urls=[]):
             text = scrape_url(url)
 
             document = Document(
-                text=text, metadata={"url": url, "ref_id": doc["id"], "title": doc["title"], "type": "web"}
+                text=text,
+                metadata={
+                    "url": url,
+                    "ref_id": doc["id"],
+                    "title": doc["title"],
+                    "type": "web",
+                },
             )
 
             documents.append(document)
@@ -141,7 +145,7 @@ def index_web_document(id, urls=[]):
         node_parser = SentenceSplitter.from_defaults(chunk_size=max_tokens)
         nodes = node_parser.get_nodes_from_documents(documents)
 
-        index = get_vector_store()
+        index = get_index()
         index.insert_nodes(nodes)
 
         db.documents.update_one({"id": id}, {"$set": {"status": Status.done.value}})
@@ -151,22 +155,21 @@ def index_web_document(id, urls=[]):
 
 
 def get_index_documents_by_field(value=None, field="ref_id"):
-    index = get_mongo_store()
+    index = get_index()
 
-    matches = index._collection.find({f"metadata.{field}": value})
+    matches = index.as_query_engine(
+        filters=MetadataFilters(filters=[ExactMatchFilter(key=field, value=value)])
+    )
 
     ids = []
     for match in matches:
-        del match["embedding"]
         ids.append(match["metadata"]["ref_doc_id"])
-
-    logger.info(ids)
 
     return ids
 
 
 def remove_document_from_index(value=None, field="ref_id"):
-    index = get_mongo_store()
+    index = get_index()
 
     if field == "doc_id":
         index.delete(value)
@@ -179,6 +182,6 @@ def remove_document_from_index(value=None, field="ref_id"):
 
 
 def get_engine():
-    index = get_vector_store()
+    index = get_index()
 
     return index.as_query_engine(streaming=True)
