@@ -7,4 +7,3 @@ bs4
 apscheduler
 sse-starlette
 llama-index
-redis

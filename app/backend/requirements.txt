@@ -20,9 +20,7 @@ anyio==3.7.1
 apscheduler==3.10.4
     # via -r ./app/backend/requirements.in
 async-timeout==4.0.3
-    # via
-    #   aiohttp
-    #   redis
+    # via aiohttp
 attrs==23.1.0
     # via aiohttp
 beautifulsoup4==4.12.2
@@ -126,8 +124,6 @@ pytz==2023.3.post1
     # via
     #   apscheduler
     #   pandas
-redis==5.0.1
-    # via -r ./app/backend/requirements.in
 regex==2023.8.8
     # via
     #   nltk
