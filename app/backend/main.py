@@ -62,13 +62,14 @@ def migrate_data():
 
 @app.on_event("startup")
 def startup_event():
-    logger.info("Starting up the api and worker")
+    logger.info("Starting the api")
     app.db = connect_and_init_db()
 
     # index_web_documents()
     # migrate_data()
 
     if os.getenv("AZURE_ENVIRONMENT", "production") != "development":
+        logger.info("Starting the worker")
         worker_cron.add_job(worker, "cron", hour=4)
         worker_cron.start()
 

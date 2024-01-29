@@ -115,41 +115,54 @@ def index_web_documents():
 
 
 def index_web_document(id, urls=[]):
-    db = get_db()
+    try:
+        db = get_db()
 
-    doc = db.documents.find_one({"id": id})
+        doc = db.documents.find_one({"id": id})
 
-    if doc is None:
-        print("No documents found")
-        raise Exception("No documents found")
+        if doc is None:
+            print("No documents found")
+            raise Exception("No documents found")
 
-    db.documents.update_one({"id": id}, {"$set": {"status": Status.processing.value}})
+        db.documents.update_one({"id": id}, {"$set": {"status": Status.processing.value}})
 
-    index_urls = doc["urls"] if len(urls) == 0 else urls
+        index_urls = doc["urls"] if len(urls) == 0 else urls
 
-    documents = []
-    for url in index_urls:
-        text = scrape_url(url)
+        documents = []
+        for url in index_urls:
+            text = scrape_url(url)
 
-        document = Document(text=text, metadata={"url": url, "ref_id": doc["id"], "title": doc["title"], "type": "web"})
+            document = Document(
+                text=text, metadata={"url": url, "ref_id": doc["id"], "title": doc["title"], "type": "web"}
+            )
 
-        documents.append(document)
+            documents.append(document)
 
-    node_parser = SentenceSplitter.from_defaults(chunk_size=max_tokens)
-    nodes = node_parser.get_nodes_from_documents(documents)
+        node_parser = SentenceSplitter.from_defaults(chunk_size=max_tokens)
+        nodes = node_parser.get_nodes_from_documents(documents)
 
-    index = get_vector_store()
-    index.add(nodes)
+        index = get_vector_store()
+        index.insert_nodes(nodes)
 
-    doc = db.documents.update_one({"id": id}, {"$set": {"status": Status.done.value}})
+        db.documents.update_one({"id": id}, {"$set": {"status": Status.done.value}})
+    except Exception as e:
+        logger.exception("Failed to index document: {}".format(e))
+        db.documents.update_one({"id": id}, {"$set": {"status": Status.error.value}})
 
 
 def get_index_documents_by_field(value=None, field="ref_id"):
     index = get_mongo_store()
 
-    matches = index._collection.find({f"metadata.{field}": value}).to_list(None)
+    matches = index._collection.find({f"metadata.{field}": value})
 
-    return matches
+    ids = []
+    for match in matches:
+        del match["embedding"]
+        ids.append(match["metadata"]["ref_doc_id"])
+
+    logger.info(ids)
+
+    return ids
 
 
 def remove_document_from_index(value=None, field="ref_id"):
