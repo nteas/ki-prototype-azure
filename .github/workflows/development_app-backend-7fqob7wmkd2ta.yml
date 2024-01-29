@@ -45,15 +45,14 @@ jobs:
                   pip install -r requirements.txt
 
             - name: Zip artifact for deployment
+              working-directory: app/backend
               run: zip release.zip ./* -r
 
             - name: Upload artifact for deployment jobs
               uses: actions/upload-artifact@v3
               with:
                   name: python-app
-                  path: |
-                      release.zip
-                      !venv/
+                  path: app/backend/release.zip
 
     deploy:
         runs-on: ubuntu-latest
