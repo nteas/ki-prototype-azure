@@ -24,7 +24,6 @@ jobs:
               uses: actions/setup-node@v3
               with:
                   node-version: "20"
-                  cache: "npm"
 
             - name: Build frontend
               working-directory: app/frontend
@@ -32,15 +31,11 @@ jobs:
                   npm install
                   npm run build --if-present
 
-            - name: Zip artifact for deployment
-              working-directory: app/backend
-              run: zip -r release.zip ./* -x \*venv\*
-
             - name: Upload artifact for deployment jobs
               uses: actions/upload-artifact@v3
               with:
                   name: python-app
-                  path: app/backend/release.zip
+                  path: app/backend
 
     deploy:
         runs-on: ubuntu-latest
@@ -54,9 +49,6 @@ jobs:
               uses: actions/download-artifact@v3
               with:
                   name: python-app
-
-            - name: Unzip artifact for deployment
-              run: unzip release.zip
 
             - name: "Deploy to Azure Web App"
               uses: azure/webapps-deploy@v2
