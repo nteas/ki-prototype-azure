@@ -4,22 +4,23 @@ from llama_index import (
     ServiceContext,
     StorageContext,
     VectorStoreIndex,
-    load_index_from_storage,
     set_global_service_context,
 )
 from llama_index.node_parser import SentenceSplitter
 from llama_index.llms import AzureOpenAI
 from llama_index.embeddings import AzureOpenAIEmbedding
-from llama_index.vector_stores.types import ExactMatchFilter, MetadataFilters
+from llama_index.vector_stores import PineconeVectorStore
+from pinecone import Pinecone, ServerlessSpec
 
 from core.types import Status
 from core.utilities import scrape_url
 from core.db import get_db
 from core.logger import logger
 
-api_key = os.getenv("AZURE_OPENAI_API_KEY")
-azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-api_version = os.getenv("OPENAI_API_VERSION")
+AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
+AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
+OPENAI_API_VERSION = os.getenv("OPENAI_API_VERSION")
+PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "vectors")
 
 MODELS_2_TOKEN_LIMITS = {
     "gpt-35-turbo": 4000,
@@ -35,9 +36,9 @@ max_tokens = MODELS_2_TOKEN_LIMITS[os.getenv("AZURE_OPENAI_CHATGPT_MODEL")]
 llm = AzureOpenAI(
     model=os.getenv("AZURE_OPENAI_CHATGPT_MODEL"),
     engine=os.getenv("AZURE_OPENAI_CHATGPT_DEPLOYMENT"),
-    api_key=api_key,
-    api_version=api_version,
-    azure_endpoint=azure_endpoint,
+    api_key=AZURE_OPENAI_API_KEY,
+    api_version=OPENAI_API_VERSION,
+    azure_endpoint=AZURE_OPENAI_ENDPOINT,
     max_retries=15,
     system_prompt="""
     You are a helpful assistant that helps customer support agents employeed at a telecom company. Questions will be related to customer support questions, and internal guidelines for customer support.
@@ -53,19 +54,58 @@ llm = AzureOpenAI(
 embed_model = AzureOpenAIEmbedding(
     model=os.getenv("AZURE_OPENAI_EMB_MODEL_NAME"),
     deployment_name=os.getenv("AZURE_OPENAI_EMB_DEPLOYMENT"),
-    api_key=api_key,
-    azure_endpoint=azure_endpoint,
-    api_version=api_version,
+    api_key=AZURE_OPENAI_API_KEY,
+    azure_endpoint=AZURE_OPENAI_ENDPOINT,
+    api_version=OPENAI_API_VERSION,
     max_retries=15,
 )
 
 
+def get_pinecone():
+    pc_api_key = os.getenv("PINECONE_API_KEY")
+
+    return Pinecone(api_key=pc_api_key)
+
+
+def initialize_pinecone():
+    pinecone_client = get_pinecone()
+
+    if PINECONE_INDEX_NAME not in pinecone_client.list_indexes().names():
+        print("Index does not exist, creating...")
+        pinecone_client.create_index(
+            name=PINECONE_INDEX_NAME,
+            dimension=1536,
+            metric="cosine",
+            spec=ServerlessSpec(cloud="aws", region="us-west-2"),
+        )
+
+
+def get_pinecone_index():
+    pc = get_pinecone()
+
+    return pc.Index(PINECONE_INDEX_NAME)
+
+
+def get_vector_store():
+    pinecone_index = get_pinecone_index()
+    vector_store = PineconeVectorStore(pinecone_index=pinecone_index)
+    return vector_store
+
+
 def get_index():
-    storage_context = StorageContext.from_defaults(persist_dir="storage")
+    vector_store = get_vector_store()
 
-    index = load_index_from_storage(storage_context)
+    return VectorStoreIndex.from_vector_store(vector_store=vector_store)
 
-    return index
+
+def get_storage_context():
+    vector_store = get_vector_store()
+
+    storage_context = StorageContext.from_defaults(
+        vector_store=vector_store,
+    )
+
+    return storage_context
 
 
 service_context = ServiceContext.from_defaults(
@@ -105,9 +145,9 @@ def index_web_documents():
                 )
             )
 
-    index = VectorStoreIndex.from_documents(documents)
+    storage_context = get_storage_context()
 
-    index.storage_context.persist(persist_dir="storage")
+    VectorStoreIndex.from_documents(documents, storage_context=storage_context)
 
 
 def index_web_document(id, urls=[]):
@@ -126,7 +166,7 @@ def index_web_document(id, urls=[]):
 
         index_urls = doc["urls"] if len(urls) == 0 else urls
 
-        documents = []
+        index = get_index()
         for url in index_urls:
             text = scrape_url(url)
 
@@ -140,13 +180,7 @@ def index_web_document(id, urls=[]):
                 },
             )
 
-            documents.append(document)
-
-        node_parser = SentenceSplitter.from_defaults(chunk_size=max_tokens)
-        nodes = node_parser.get_nodes_from_documents(documents)
-
-        index = get_index()
-        index.insert_nodes(nodes)
+            index.insert(document=document)
 
         db.documents.update_one({"id": id}, {"$set": {"status": Status.done.value}})
     except Exception as e:
@@ -155,30 +189,30 @@ def index_web_document(id, urls=[]):
 
 
 def get_index_documents_by_field(value=None, field="ref_id"):
-    index = get_index()
-
-    matches = index.as_query_engine(
-        filters=MetadataFilters(filters=[ExactMatchFilter(key=field, value=value)])
+    pinecone_index = get_pinecone_index()
+    matches = pinecone_index.query(
+        vector=[0.0] * 1536,  # [0.0, 0.0, 0.0, 0.0, 0.0
+        top_k=1,
+        filter={field: value},
     )
 
-    ids = []
-    for match in matches:
-        ids.append(match["metadata"]["ref_doc_id"])
+    if len(matches["matches"]) == 0:
+        return []
 
-    return ids
+    docs_ids = [match.id for match in matches["matches"]]
+
+    return docs_ids
 
 
 def remove_document_from_index(value=None, field="ref_id"):
-    index = get_index()
+    doc_ids = get_index_documents_by_field(value=value, field=field)
 
-    if field == "doc_id":
-        index.delete(value)
+    if len(doc_ids) == 0:
         return
 
-    docs_ids = get_index_documents_by_field(value=value, field=field)
+    index = get_pinecone_index()
 
-    for doc_id in docs_ids:
-        index.delete(doc_id)
+    index.delete(ids=doc_ids)
 
 
 def get_engine():

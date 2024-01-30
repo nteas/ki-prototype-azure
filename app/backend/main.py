@@ -10,7 +10,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from routers.documents import document_router
 from core.db import close_db_connect, connect_and_init_db
 from core.logger import logger
-from core.openai_agent import get_engine, index_web_documents
+from core.openai_agent import get_engine, index_web_documents, initialize_pinecone
 from worker import worker
 
 env = os.getenv("AZURE_ENV_NAME", "dev")
@@ -27,8 +27,8 @@ def startup_event():
     logger.info("Starting the api")
     app.db = connect_and_init_db()
 
-    if not os.path.exists("storage"):
-        index_web_documents()
+    initialize_pinecone()
+    # index_web_documents()
 
     if os.getenv("AZURE_ENVIRONMENT", "production") != "development":
         logger.info("Starting the worker")
