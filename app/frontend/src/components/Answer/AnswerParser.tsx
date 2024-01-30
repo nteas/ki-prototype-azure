@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { getCitationFilePath } from '../../api';
-import { marked } from 'marked';
+import { Marked } from '@ts-stack/markdown';
 
 type HtmlParsedAnswer = {
 	answerHtml: string;
@@ -44,7 +44,7 @@ export function parseAnswerToHtml(
 
 	const fragments: string[] = parts.map((part, index) => {
 		if (index % 2 === 0) {
-			return marked(part);
+			return Marked.parse(part);
 		} else {
 			let citationIndex: number;
 			if (citations.indexOf(part) !== -1) {
