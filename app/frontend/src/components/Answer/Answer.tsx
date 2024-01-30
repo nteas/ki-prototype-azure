@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Input } from '@fluentui/react-components';
-import DOMPurify from 'dompurify';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
 	faFlag,
@@ -53,8 +52,6 @@ export const Answer = ({
 		[answer]
 	);
 
-	const sanitizedAnswerHtml = DOMPurify.sanitize(parsedAnswer.answerHtml);
-
 	function updateFlaggedCitations(citation: string) {
 		if (flaggedCitations.includes(citation)) {
 			setFlaggedCitations(prev => prev.filter(x => x !== citation));
@@ -99,7 +96,7 @@ export const Answer = ({
 			<div
 				className={styles.answerText}
 				dangerouslySetInnerHTML={{
-					__html: sanitizedAnswerHtml,
+					__html: parsedAnswer.answerHtml,
 				}}></div>
 
 			{!!parsedAnswer.citations.length && (
