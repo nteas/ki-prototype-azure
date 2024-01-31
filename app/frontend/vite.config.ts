@@ -5,7 +5,7 @@ import eslint from 'vite-plugin-eslint';
 // https://vitejs.dev/config/
 export default defineConfig({
 	clearScreen: false,
-	plugins: [react(), eslint()],
+	plugins: [react(), eslint({ lintOnStart: true })],
 	build: {
 		outDir: '../backend/static',
 		emptyOutDir: true,
