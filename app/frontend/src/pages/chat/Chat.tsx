@@ -11,7 +11,6 @@ import {
 import { QuestionInput } from '../../components/QuestionInput';
 import { ExampleList } from '../../components/Example';
 import { UserChatMessage } from '../../components/UserChatMessage';
-import { AnalysisPanelTabs } from '../../components/AnalysisPanel';
 import { SettingsButton } from '../../components/SettingsButton';
 import Layout from '../../components/Layout/Layout';
 import analytics from '../../libs/analytics';
@@ -148,10 +147,6 @@ const Chat = () => {
 		setSelectedAnswer(index);
 	};
 
-	const onToggleTab = (tab: AnalysisPanelTabs, index: number) => {
-		setSelectedAnswer(index);
-	};
-
 	return (
 		<Layout
 			headerActions={
@@ -195,12 +190,7 @@ const Chat = () => {
 										onCitationClicked={c =>
 											onShowCitation(c, index)
 										}
-										onSupportingContentClicked={() =>
-											onToggleTab(
-												AnalysisPanelTabs.SupportingContentTab,
-												index
-											)
-										}
+										onSupportingContentClicked={() => {}}
 										onFollowupQuestionClicked={q =>
 											makeApiRequest(q)
 										}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Input } from '@fluentui/react-components';
+import Form from 'react-bootstrap/Form';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
 	faFlag,
@@ -202,7 +202,7 @@ export const Answer = ({
 								setFeedback(0);
 							}}>
 							<div className={styles.inputWrapper}>
-								<Input
+								<Form.Control
 									ref={commentRef}
 									name="comment"
 									placeholder="Skriv en kommentar"

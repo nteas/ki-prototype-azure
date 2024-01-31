@@ -175,8 +175,9 @@
 }
 .inputWrapper {
 	flex: 1;
-	background-color: white;
-	padding: 0 10px;
+	input {
+		border: none;
+	}
 }
 
 .submitButton {

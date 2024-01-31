@@ -15,6 +15,8 @@ export default defineConfig({
 				manualChunks: id => {
 					if (id.includes('@fluentui/react')) {
 						return 'fluentui-react';
+					} else if (id.includes('bootstrap')) {
+						return 'react-bootstrap';
 					} else if (id.includes('node_modules')) {
 						return 'vendor';
 					}
