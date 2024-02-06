@@ -1,7 +1,9 @@
 #!/bin/bash
 
+
 echo 'Creating python virtual environment ".venv"'
-python3 -m venv .venv --prompt ai_hr
+cd app
+python3 -m venv .venv
 
 echo 'Activate python virtual environment ".venv"'
 source ./.venv/bin/activate
@@ -20,7 +22,7 @@ echo ""
 echo "Restoring frontend npm packages"
 echo ""
 
-cd frontend
+cd ../frontend
 npm install
 if [ $? -ne 0 ]; then
     echo "Failed to restore frontend npm packages"

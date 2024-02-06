@@ -1,6 +1,5 @@
 dump/
 data/
-backend/.env
 poetry.lock
 # temporary db
 .idea
@@ -15,7 +14,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-app/backend/storage
 
 # C extensions
 *.so
