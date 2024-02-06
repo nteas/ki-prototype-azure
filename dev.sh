@@ -11,7 +11,7 @@ echo ""
 echo "Restoring backend python packages"
 echo ""
 
-./.venv/bin/python -m pip install -r requirements.txt
+./.venv/bin/python -m pip install -r app/requirements.txt
 if [ $? -ne 0 ]; then
     echo "Failed to restore backend python packages"
     exit $?
