@@ -34,7 +34,7 @@ jobs:
               with:
                   name: python-app
                   path: |
-                      app
+                      app/
                       requirements.txt
 
     deploy:

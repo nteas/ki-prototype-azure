@@ -1,6 +1,0 @@
-name: ki-prototype-azure
-services:
-    backend:
-        project: .
-        language: py
-        host: appservice
