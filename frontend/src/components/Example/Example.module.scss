@@ -1,0 +1,40 @@
+.examplesNavList {
+	list-style: none;
+	padding: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 20px;
+	flex: 1;
+	justify-content: center;
+	margin: 0;
+}
+
+.examplesListItem {
+	flex: 1;
+	background: #ceecf9;
+	padding: 20px;
+	border-radius: 5px;
+	position: relative;
+	cursor: pointer;
+}
+
+.example {
+}
+
+.exampleText {
+	color: #056089;
+	font-family: Roboto;
+	font-size: 17px;
+	font-weight: 500;
+	line-height: 23px; /* 135.294% */
+	max-width: calc(100% - 40px);
+	margin: 0;
+}
+
+.chatIcon {
+	position: absolute;
+	top: 20px;
+	right: 20px;
+	color: #056089;
+	width: 17px;
+}

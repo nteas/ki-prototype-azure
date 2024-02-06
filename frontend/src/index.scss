@@ -1,0 +1,52 @@
+* {
+	box-sizing: border-box;
+	font-family: 'Roboto', sans-serif;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+body {
+	min-height: 100vh;
+	margin: 0;
+	padding: 0;
+	background: #f6f6f6;
+	color: #28292c;
+}
+
+#root {
+	min-height: 100vh;
+	display: flex;
+	justify-content: center;
+}
+
+:root,
+[data-bs-theme='light'] {
+	--green: #5ba070;
+	--coral: #fadcd5;
+	--blue: #0079ad !important;
+	--bs-blue: #0079ad !important;
+	--red: #c84e46;
+	--bs-link-opacity: 1;
+	--bs-form-check-bg: var(--blue);
+	--bs-border-color: var(--blue);
+	--bs-primary-rgb: 0, 121, 173;
+	--bs-link-color-rgb: var(--bs-primary-rgb);
+	--bs-bg-opacity: 1 !important;
+}
+
+.btn-primary {
+	--bs-btn-bg: var(--blue);
+	--bs-btn-hover-bg: #094462;
+	--bs-btn-hover-border-color: var(--bs-btn-hover-bg);
+}
+.btn-danger {
+	--bs-btn-bg: var(--red);
+}
+.btn-outline-primary {
+	--bs-btn-color: var(--blue);
+	--bs-btn-border-color: var(--blue);
+}
+.form-check-input:checked {
+	background-color: var(--blue);
+	border-color: var(--blue);
+}

@@ -1,0 +1,40 @@
+.questionInputContainer {
+	border-radius: 5px;
+	border: 1px solid #d6d6d6;
+	background: #fff;
+	display: flex;
+	padding: 20px;
+	align-items: center;
+	gap: 20px;
+	width: 100%;
+}
+
+.questionInputTextArea {
+	width: 100%;
+	color: #28292c;
+	font-size: 17px;
+	font-weight: 400;
+	line-height: 28.9px; /* 170% */
+}
+
+.questionInputButtonsContainer button {
+	display: flex;
+	align-items: center;
+	padding: 15px;
+	width: 53px;
+	border-radius: 5px;
+	max-width: none;
+	background: var(--blue);
+}
+
+.questionInputButtonsContainer button:disabled {
+	background: #b5b7bb;
+}
+
+.questionInputButtonsContainer button:hover {
+	background: var(--blue);
+}
+
+.questionInputButtonsContainer button svg path {
+	fill: white;
+}
