@@ -1,30 +1,16 @@
-#!/bin/sh
+#!/bin/bash
 
-echo ""
-echo "Loading azd .env file from current environment"
-echo ""
+echo 'Creating python virtual environment ".venv"'
+python3 -m venv .venv --prompt ai_hr
 
-while IFS='=' read -r key value; do
-    value=$(echo "$value" | sed 's/^"//' | sed 's/"$//')
-    export "$key=$value"
-done <<EOF
-$(azd env get-values)
-EOF
-
-if [ $? -ne 0 ]; then
-    echo "Failed to load environment variables from azd environment"
-    exit $?
-fi
-
-cd app/backend
-echo 'Creating python virtual environment "backend_env"'
-python3 -m venv backend_env
+echo 'Activate python virtual environment ".venv"'
+source ./.venv/bin/activate
 
 echo ""
 echo "Restoring backend python packages"
 echo ""
 
-./backend_env/bin/python -m pip install -r requirements.txt
+./.venv/bin/python -m pip install -r requirements.txt
 if [ $? -ne 0 ]; then
     echo "Failed to restore backend python packages"
     exit $?
@@ -34,7 +20,7 @@ echo ""
 echo "Restoring frontend npm packages"
 echo ""
 
-cd ../frontend
+cd frontend
 npm install
 if [ $? -ne 0 ]; then
     echo "Failed to restore frontend npm packages"
@@ -55,11 +41,11 @@ echo ""
 echo "Starting backend"
 echo ""
 
-cd ../backend
+cd ../app
 
 port=50505
 host=localhost
-./backend_env/bin/python3 -m uvicorn main:app --port "$port" --host "$host" --workers 4 --reload
+python3 -m uvicorn main:app --port "$port" --host "$host" --workers 4 --reload
 if [ $? -ne 0 ]; then
 	kill -9 $(lsof -i:3000 | grep node | awk '{print $2}')
     echo "Failed to start backend"
