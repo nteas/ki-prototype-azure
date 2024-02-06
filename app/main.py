@@ -95,9 +95,11 @@ async def chat_stream(request: Request):
     try:
         request_json = await request.json()
 
+        messages = request_json.get("messages", [])
+
         chat_engine = get_engine()
 
-        streaming_response = chat_engine.query(request_json["question"])
+        streaming_response = chat_engine.stream_chat(request_json.get("question"))
 
         def generator():
             for text in streaming_response.response_gen:

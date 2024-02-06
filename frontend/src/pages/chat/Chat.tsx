@@ -45,6 +45,17 @@ const Chat = () => {
 		setIsLoading(true);
 		setActiveCitation(undefined);
 
+		const lastFiveAnswers = answers.slice(-5);
+		const messages: { role: string; content: string }[] =
+			lastFiveAnswers.reduce<{ role: string; content: string }[]>(
+				(acc, curr) => {
+					acc.push({ role: 'user', content: curr.user });
+					acc.push({ role: 'assistant', content: curr.response });
+					return acc;
+				},
+				[]
+			);
+
 		fetch('/api/chat_stream', {
 			method: 'POST',
 			headers: {
@@ -53,6 +64,7 @@ const Chat = () => {
 			},
 			body: JSON.stringify({
 				question,
+				messages,
 			}),
 		})
 			.then(response => {

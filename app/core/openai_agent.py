@@ -7,9 +7,11 @@ from llama_index import (
     set_global_service_context,
 )
 from llama_index.node_parser import SentenceSplitter
-from llama_index.llms import AzureOpenAI
+from llama_index.llms import AzureOpenAI, ChatMessage, MessageRole
 from llama_index.embeddings import AzureOpenAIEmbedding
 from llama_index.vector_stores import PineconeVectorStore
+from llama_index.prompts import PromptTemplate
+from llama_index.chat_engine.condense_question import CondenseQuestionChatEngine
 from pinecone import Pinecone, ServerlessSpec
 
 from core.types import Status
@@ -215,7 +217,16 @@ def remove_document_from_index(value=None, field="ref_id"):
     index.delete(ids=doc_ids)
 
 
-def get_engine():
+def get_engine(messages=[]):
     index = get_index()
 
-    return index.as_query_engine(streaming=True)
+    custom_chat_history = []
+    for message in messages:
+        role = MessageRole.USER if message["role"] == "user" else MessageRole.ASSISTANT
+        chat_message = ChatMessage(
+            text=message["content"],
+            role=role,
+        )
+        custom_chat_history.append(chat_message)
+
+    return index.as_chat_engine(chat_mode="context", chat_history=custom_chat_history)
