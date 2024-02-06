@@ -27,6 +27,11 @@ if [ $? -ne 0 ]; then
     exit $?
 fi
 
+if [ ! -d "../app/static" ]; then
+	echo "Building frontend for the first time"
+	npm run build
+fi
+
 echo ""
 echo "Building frontend"
 echo ""
