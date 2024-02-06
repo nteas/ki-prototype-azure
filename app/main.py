@@ -97,7 +97,7 @@ async def chat_stream(request: Request):
 
         messages = request_json.get("messages", [])
 
-        chat_engine = get_engine()
+        chat_engine = get_engine(messages)
 
         streaming_response = chat_engine.stream_chat(request_json.get("question"))
 

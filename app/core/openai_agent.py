@@ -222,10 +222,11 @@ def get_engine(messages=[]):
 
     custom_chat_history = []
     for message in messages:
-        role = MessageRole.USER if message["role"] == "user" else MessageRole.ASSISTANT
         chat_message = ChatMessage(
-            text=message["content"],
-            role=role,
+            role=(
+                MessageRole.USER if message["role"] == "user" else MessageRole.ASSISTANT
+            ),
+            content=message["content"],
         )
         custom_chat_history.append(chat_message)
 
