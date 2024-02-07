@@ -9,7 +9,8 @@ from llama_index import (
     download_loader,
 )
 from llama_index.node_parser import SentenceSplitter
-from llama_index.llms import AzureOpenAI, ChatMessage, MessageRole
+from llama_index.llms import AzureOpenAI, MessageRole, ChatMessage
+from llama_index.chat_engine import ContextChatEngine
 from llama_index.embeddings import AzureOpenAIEmbedding
 from llama_index.vector_stores import PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
@@ -45,15 +46,6 @@ llm = AzureOpenAI(
     api_version=OPENAI_API_VERSION,
     azure_endpoint=AZURE_OPENAI_ENDPOINT,
     max_retries=15,
-    system_prompt="""
-    You are a helpful assistant that helps customer support agents employeed at a telecom company. Questions will be related to customer support questions, and internal guidelines for customer support.
-    Be brief in your answers.
-    Always answer all questions in norwegian.
-    Answer ONLY with the facts listed in your sources. If there isn't enough information in the sources, just say you don't know the answer. Do not generate answers that don't use the sources. If asking a clarifying question would help then ask the question.
-    Return the response as markdown, excluding the sources.
-    Each source has metadata attached to it. If you use the source, you must include it in the bottom of the answer.
-    Use square brackets to reference the source, e.g. [filename.pdf]. Don't combine sources, list each source separately, e.g. [filename-1.pdf][filename-2.pdf]. If it has a web url use the complete url as the source name, e.g. [https://www.example.com].
-    """,
 )
 
 embed_model = AzureOpenAIEmbedding(
@@ -323,9 +315,9 @@ def remove_document_from_index(value=None, field="ref_id"):
 
 
 def get_engine(messages=[]):
-    index = get_index()
+    vector_store_index = get_index()
 
-    custom_chat_history = []
+    chat_history = []
     for message in messages:
         chat_message = ChatMessage(
             role=(
@@ -333,6 +325,19 @@ def get_engine(messages=[]):
             ),
             content=message["content"],
         )
-        custom_chat_history.append(chat_message)
+        chat_history.append(chat_message)
 
-    return index.as_chat_engine(chat_mode="context", chat_history=custom_chat_history)
+    return ContextChatEngine.from_defaults(
+        retriever=vector_store_index.as_retriever(),
+        chat_history=chat_history,
+        verbose=True,
+        system_prompt="""
+            You are a helpful assistant that helps customer support agents employeed at a telecom company. Questions will be related to customer support questions, and internal guidelines for customer support.
+            Be brief in your answers.
+            Always answer all questions in norwegian.
+            Answer ONLY with the facts listed in your sources. If there isn't enough information in the sources, just say you don't know the answer. Do not generate answers that don't use the sources. If asking a clarifying question would help then ask the question.
+            Return the response as markdown, excluding the sources.
+            If you use a source, you must include it in the bottom of the answer.
+            All sources have a url in the metadata so use the complete url as the source name and use square brackets to reference the source, e.g. [https://www.example.com]. Don't combine sources, list each source separately, e.g. [https://www.example-one.com][https://www.example-two.com].
+        """,
+    )

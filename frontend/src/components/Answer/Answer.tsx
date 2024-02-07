@@ -258,6 +258,7 @@ function Citation({
 	const label = citation.startsWith('http')
 		? citation.split('//').pop().split('/')[0]
 		: citation;
+	const isDocument = citation.split('/').pop().includes('.');
 
 	return (
 		<div className={styles.citationWrapper}>
@@ -268,14 +269,16 @@ function Citation({
 				{`${++index}. ${label}`}
 			</button>
 
-			<button
-				className={`${styles.citationFlag} ${
-					isFlagged && styles.citationFlagged
-				}`}
-				onClick={() => updateFlags(citation)}
-				disabled={isFeedbackGiven.current}>
-				<FontAwesomeIcon icon={isFlagged ? faFlag : flagOutline} />
-			</button>
+			{!isDocument && (
+				<button
+					className={`${styles.citationFlag} ${
+						isFlagged && styles.citationFlagged
+					}`}
+					onClick={() => updateFlags(citation)}
+					disabled={isFeedbackGiven.current}>
+					<FontAwesomeIcon icon={isFlagged ? faFlag : flagOutline} />
+				</button>
+			)}
 		</div>
 	);
 }
