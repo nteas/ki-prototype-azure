@@ -52,7 +52,7 @@ llm = AzureOpenAI(
     Answer ONLY with the facts listed in your sources. If there isn't enough information in the sources, just say you don't know the answer. Do not generate answers that don't use the sources. If asking a clarifying question would help then ask the question.
     Return the response as markdown, excluding the sources.
     Each source has metadata attached to it. If you use the source, you must include it in the bottom of the answer.
-    Use square brackets to reference the source, e.g. [filename.pdf]. Don't combine sources, list each source separately, e.g. [filename-1.pdf][filename-2.pdf]. If it is a web url use the complete url as the source name, e.g. [https://www.example.com].
+    Use square brackets to reference the source, e.g. [filename.pdf]. Don't combine sources, list each source separately, e.g. [filename-1.pdf][filename-2.pdf]. If it has a web url use the complete url as the source name, e.g. [https://www.example.com].
     """,
 )
 
