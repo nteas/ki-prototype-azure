@@ -15,6 +15,7 @@ import {
 	faGlobe,
 	faTrash,
 	faSpinnerThird,
+	faRotate,
 } from '@fortawesome/pro-solid-svg-icons';
 
 import AdminLayout from '../../components/Layout/AdminLayout';
@@ -43,7 +44,9 @@ const DEFAULT_LIMIT = 20;
 
 export function Component(): JSX.Element {
 	const [loading, setLoading] = useState<boolean>(true);
+	const [fileSyncRunning, setFilesSyncRunning] = useState<boolean>(false);
 	const [viewDocument, setViewDocument] = useState<Document | null>(null);
+	const navigate = useNavigate();
 
 	const [data, setData] = useState<PaginateDocuments>({
 		documents: [],
@@ -58,6 +61,41 @@ export function Component(): JSX.Element {
 		order_by: 'updated_at',
 		order: 'desc',
 	});
+
+	useEffect(() => {
+		getDocuments();
+	}, [
+		filters.flagged,
+		filters.pdf,
+		filters.web,
+		filters.limit,
+		filters.order_by,
+		filters.order,
+	]);
+
+	useEffect(() => {
+		const sse = new EventSource('/api/file-sync/status');
+		sse.onmessage = e => {
+			if (e.data === 'working' && !fileSyncRunning) {
+				setFilesSyncRunning(true);
+				return;
+			}
+			if (e.data === 'done' && fileSyncRunning) {
+				setFilesSyncRunning(false);
+				console.log('done: event disconnect');
+				sse.close();
+			}
+		};
+		sse.onerror = () => {
+			console.log('error: event disconnect');
+			setFilesSyncRunning(false);
+			sse.close();
+		};
+		return () => {
+			console.log('render: event disconnect');
+			sse.close();
+		};
+	}, [fileSyncRunning]);
 
 	const filterKeys = [
 		'type',
@@ -84,19 +122,6 @@ export function Component(): JSX.Element {
 		setFilters(prev => ({ ...prev, [key]: value }));
 	};
 
-	const navigate = useNavigate();
-
-	useEffect(() => {
-		getDocuments();
-	}, [
-		filters.flagged,
-		filters.pdf,
-		filters.web,
-		filters.limit,
-		filters.order_by,
-		filters.order,
-	]);
-
 	// get all documents from /documents
 	async function getDocuments(): Promise<void> {
 		setLoading(true);
@@ -122,9 +147,26 @@ export function Component(): JSX.Element {
 		});
 	};
 
+	const handleSyncFiles = () => {
+		// if (!confirm('Er du sikker på at du starte synkronisering av filer?'))
+		// 	return;
+
+		setFilesSyncRunning(true);
+
+		apiFetch('/api/file-sync/start');
+	};
+
 	return (
 		<AdminLayout className={styles.layout} loading={loading}>
 			<div className={styles.header}>
+				<Button
+					disabled={fileSyncRunning}
+					className={styles.button + ' ' + styles.syncButton}
+					icon={<FontAwesomeIcon icon={faRotate} />}
+					onClick={handleSyncFiles}>
+					Synkroniser filer
+				</Button>
+
 				<Button
 					className={styles.button}
 					icon={<FontAwesomeIcon icon={faCloudArrowUp} />}
@@ -156,21 +198,21 @@ export function Component(): JSX.Element {
 					onChange={e => updateFilters('flagged', e.target.checked)}
 				/>
 
-				<Form.Check
+				{/* <Form.Check
 					className={styles.check}
 					type="switch"
 					label="Vis PDF-kilder"
 					defaultChecked={true}
 					onChange={e => updateFilters('pdf', e.target.checked)}
-				/>
+				/> */}
 
-				<Form.Check
+				{/* <Form.Check
 					className={styles.check}
 					type="switch"
 					label="Vis web-kilder"
 					defaultChecked={true}
 					onChange={e => updateFilters('web', e.target.checked)}
-				/>
+				/> */}
 			</div>
 
 			<div className={styles.head}>
@@ -338,6 +380,8 @@ function ItemRow({
 		const sse = new EventSource(`/api/documents/status/${item.id}`);
 
 		sse.onmessage = e => {
+			console.log(e.data);
+
 			if (e.data !== 'processing') {
 				console.log('item processing');
 				setStatus(e.data);

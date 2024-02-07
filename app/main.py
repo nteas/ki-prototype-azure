@@ -1,3 +1,4 @@
+import time
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -5,16 +6,22 @@ load_dotenv()
 import io
 import mimetypes
 import os
-from fastapi import FastAPI, APIRouter, Request
+from fastapi import BackgroundTasks, FastAPI, APIRouter, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse, FileResponse, JSONResponse
 from apscheduler.schedulers.background import BackgroundScheduler
+from sse_starlette.sse import EventSourceResponse
 
 from routers.documents import document_router
 from core.db import close_db_connect, connect_and_init_db
 from core.logger import logger
-from core.openai_agent import get_engine, index_web_documents, initialize_pinecone
+from core.openai_agent import (
+    fetch_and_index_files,
+    get_engine,
+    index_web_documents,
+    initialize_pinecone,
+)
 from worker import worker
 
 env = os.getenv("AZURE_ENV_NAME", "dev")
@@ -110,6 +117,43 @@ async def chat_stream(request: Request):
     except Exception as e:
         logger.exception("Exception in /chat")
         return {"error": str(e)}, 500
+
+
+@api_router.get("/file-sync/start")
+async def files_sync(request: Request, background_tasks: BackgroundTasks):
+    try:
+        db = request.app.db
+        job = db.jobs.find_one()
+
+        if job:
+            return {"message": "Files sync already in progress"}
+
+        background_tasks.add_task(fetch_and_index_files)
+
+        return {"message": "Files sync started"}
+    except Exception as e:
+        logger.exception("Exception in /files-sync/start")
+        return str(e)
+
+
+@api_router.get("/file-sync/status")
+async def files_sync(request: Request):
+    db = request.app.db
+
+    def event_generator():
+        while True:
+            job = db.jobs.find_one()
+
+            if job is None:
+                yield {"data": "done"}
+                break
+
+            yield {"data": "working"}
+
+            # Wait for a short time before checking again
+            time.sleep(5)
+
+    return EventSourceResponse(event_generator())
 
 
 @app.middleware("http")

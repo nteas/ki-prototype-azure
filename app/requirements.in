@@ -8,4 +8,8 @@ bs4
 apscheduler
 sse-starlette
 llama-index
+llama-hub
 pinecone-client
+Office365-REST-Python-Client
+docx2txt
+python-pptx

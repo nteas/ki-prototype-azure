@@ -8,6 +8,7 @@ interface Props {
 	icon?: JSX.Element;
 	onClick?: () => void;
 	type?: 'button' | 'submit' | 'reset';
+	disabled?: boolean;
 }
 
 export default function Component({
@@ -17,13 +18,15 @@ export default function Component({
 	icon,
 	onClick,
 	type = 'submit',
+	disabled = false,
 }: Props): JSX.Element {
 	return (
 		<Button
 			className={`${styles.button} ${className}`}
 			onClick={onClick}
 			variant={variant}
-			type={type}>
+			type={type}
+			disabled={disabled}>
 			<span className={styles.label}>{children}</span>
 
 			{icon && <span className={styles.icon}>{icon}</span>}
