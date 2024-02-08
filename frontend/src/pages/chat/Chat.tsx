@@ -31,6 +31,7 @@ const Chat = () => {
 
 	const makeApiRequest = async (question: string) => {
 		await analytics.track('Question Asked', {
+			source: 'bot-kundesenter',
 			question,
 			timestamp: Math.round(new Date().getTime() / 1000),
 		});
@@ -84,6 +85,7 @@ const Chat = () => {
 								]);
 
 								analytics.track('Question Replied', {
+									source: 'bot-kundesenter',
 									reply: accumulatedResponse,
 									timestamp: Math.round(
 										new Date().getTime() / 1000
@@ -266,7 +268,7 @@ const Chat = () => {
 				<div className={styles.chatInput}>
 					<QuestionInput
 						clearOnSend
-						placeholder="Skriv et nytt spørsmål. For eksempel “Er det bindingstid på Spotpris?”"
+						placeholder="Skriv et nytt spørsmål. For eksempel “Hva koster Netflix?”"
 						disabled={isLoading}
 						onSend={question => makeApiRequest(question)}
 					/>

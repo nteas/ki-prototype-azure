@@ -14,7 +14,7 @@ import {
 
 import styles from './Answer.module.scss';
 
-import { apiFetch, getCitationFilePath } from '../../api';
+import { apiFetch } from '../../api';
 import { parseAnswerToHtml } from './AnswerParser';
 import analytics from '../../libs/analytics';
 
@@ -104,19 +104,12 @@ export const Answer = ({
 					<span className={styles.citationLearnMore}>Kilder:</span>
 
 					{parsedAnswer.citations.map((x, i) => {
-						const isWeb = x.startsWith('http');
-						const path = isWeb ? x : getCitationFilePath(x);
 						return (
 							<Citation
 								key={i}
 								index={i}
 								citation={x}
-								onCitationClick={() =>
-									isWeb
-										? window.open(x, '_blank')
-										: onCitationClicked &&
-										  onCitationClicked(path)
-								}
+								onCitationClick={() => window.open(x, '_blank')}
 								updateFlags={() => updateFlaggedCitations(x)}
 								isFlagged={flaggedCitations.includes(x)}
 								isFeedbackGiven={isFeedbackGiven}
@@ -180,6 +173,7 @@ export const Answer = ({
 								e.preventDefault();
 
 								analytics.track('Feedback Given', {
+									source: 'bot-kundesenter',
 									answer: messageContent,
 									result:
 										feedback === 0
@@ -255,13 +249,18 @@ function Citation({
 			.catch(err => console.error(err));
 	}, []);
 
-	const label = citation.startsWith('http')
+	const isDocument = citation.split('/').pop().includes('.');
+	const label = isDocument
+		? citation.split('/').pop()
+		: citation.startsWith('http')
 		? citation.split('//').pop().split('/')[0]
 		: citation;
-	const isDocument = citation.split('/').pop().includes('.');
 
 	return (
-		<div className={styles.citationWrapper}>
+		<div
+			className={`${styles.citationWrapper} ${
+				isDocument && styles.citationWrapperDoc
+			}`}>
 			<button
 				className={styles.citation}
 				title={label}
