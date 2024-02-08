@@ -81,9 +81,7 @@ def initialize_service_context():
 
 
 def get_pinecone():
-    pc_api_key = os.getenv("PINECONE_API_KEY")
-
-    return Pinecone(api_key=pc_api_key)
+    return Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
 
 
 def initialize_pinecone():
@@ -331,7 +329,7 @@ def remove_document_from_index(value=None, field="ref_id"):
 
 
 def get_engine(messages=[]):
-    vector_store_index = get_index()
+    index = get_index()
 
     chat_history = []
     for message in messages:
@@ -343,8 +341,8 @@ def get_engine(messages=[]):
         )
         chat_history.append(chat_message)
 
-    return ContextChatEngine.from_defaults(
-        retriever=vector_store_index.as_retriever(),
+    return index.as_chat_engine(
+        chat_mode="context",
         chat_history=chat_history,
         system_prompt=SYSTEM_PROMPT,
     )

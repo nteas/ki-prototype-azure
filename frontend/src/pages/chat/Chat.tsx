@@ -76,6 +76,10 @@ const Chat = () => {
 					start(controller) {
 						reader?.read().then(function process({ done, value }) {
 							if (done) {
+								if (!accumulatedResponse) {
+									accumulatedResponse =
+										'Beklager, jeg klarte ikke å finne svar på spørsmålet ditt. Kan du prøve å stille det på en annen måte?';
+								}
 								setAnswers(prev => [
 									...prev,
 									{
