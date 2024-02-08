@@ -68,6 +68,18 @@ embed_model = AzureOpenAIEmbedding(
 )
 
 
+def initialize_service_context():
+    logger.info("Initializing service context")
+
+    service_context = ServiceContext.from_defaults(
+        llm=llm,
+        embed_model=embed_model,
+        node_parser=SentenceSplitter(chunk_size=max_tokens),
+    )
+
+    set_global_service_context(service_context)
+
+
 def get_pinecone():
     pc_api_key = os.getenv("PINECONE_API_KEY")
 
@@ -85,6 +97,8 @@ def initialize_pinecone():
             metric="cosine",
             spec=ServerlessSpec(cloud="aws", region="us-west-2"),
         )
+
+    initialize_service_context()
 
 
 def get_pinecone_index():
@@ -114,14 +128,6 @@ def get_storage_context():
 
     return storage_context
 
-
-service_context = ServiceContext.from_defaults(
-    llm=llm,
-    embed_model=embed_model,
-    node_parser=SentenceSplitter(chunk_size=max_tokens),
-)
-
-set_global_service_context(service_context)
 
 TENANT_ID = os.getenv("AZURE_TENANT_ID")
 CLIENT_ID = os.getenv("SHAREPOINT_CLIENT_ID")
@@ -184,8 +190,10 @@ def fetch_and_index_files():
 
             logger.info("file downloaded")
             docs = []
+            url = file.linking_uri
             temp_file = open(temp_file.name, "rb")
             if filetype == "pdf":
+                url = f"{RESOURCE}{file.properties['ServerRelativeUrl']}"
                 docs = pdf_loader.load_data(temp_file)
             elif filetype == "docx":
                 docs = docx_loader.load_data(temp_file)
@@ -201,9 +209,7 @@ def fetch_and_index_files():
                 doc.metadata["title"] = str(file)
                 doc.metadata["ref_id"] = "sharepoint"
                 doc.metadata["type"] = "file"
-                doc.metadata["url"] = (
-                    f"{RESOURCE}{file.properties['ServerRelativeUrl']}"
-                )
+                doc.metadata["url"] = url
                 count_indexed_nodes += 1
                 # add document to the index
                 index.insert(document=doc)
@@ -340,6 +346,5 @@ def get_engine(messages=[]):
     return ContextChatEngine.from_defaults(
         retriever=vector_store_index.as_retriever(),
         chat_history=chat_history,
-        verbose=True,
         system_prompt=SYSTEM_PROMPT,
     )

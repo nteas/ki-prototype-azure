@@ -250,8 +250,10 @@ function Citation({
 	}, []);
 
 	const isDocument = citation.split('/').pop().includes('.');
+	const url = new URL(citation);
+
 	const label = isDocument
-		? citation.split('/').pop()
+		? decodeURIComponent(url.pathname.split('/').pop() ?? '')
 		: citation.startsWith('http')
 		? citation.split('//').pop().split('/')[0]
 		: citation;
