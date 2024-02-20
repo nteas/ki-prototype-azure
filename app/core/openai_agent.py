@@ -10,7 +10,7 @@ from llama_index import (
 )
 from llama_index.node_parser import SentenceSplitter
 from llama_index.llms import AzureOpenAI, MessageRole, ChatMessage
-from llama_index.chat_engine import ContextChatEngine
+from llama_index.chat_engine import CondenseQuestionChatEngine
 from llama_index.embeddings import AzureOpenAIEmbedding
 from llama_index.vector_stores import PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
@@ -52,6 +52,7 @@ max_tokens = MODELS_2_TOKEN_LIMITS[os.getenv("AZURE_OPENAI_CHATGPT_MODEL")]
 llm = AzureOpenAI(
     model=os.getenv("AZURE_OPENAI_CHATGPT_MODEL"),
     engine=os.getenv("AZURE_OPENAI_CHATGPT_DEPLOYMENT"),
+    temperature=0,
     api_key=AZURE_OPENAI_API_KEY,
     api_version=OPENAI_API_VERSION,
     azure_endpoint=AZURE_OPENAI_ENDPOINT,
@@ -332,17 +333,21 @@ def get_engine(messages=[]):
     index = get_index()
 
     chat_history = []
-    for message in messages:
-        chat_message = ChatMessage(
-            role=(
-                MessageRole.USER if message["role"] == "user" else MessageRole.ASSISTANT
-            ),
-            content=message["content"],
-        )
-        chat_history.append(chat_message)
 
+    if len(messages) > 0:
+        logger.info(messages)
+        for message in messages:
+            chat_message = ChatMessage(
+                role=(
+                    MessageRole.USER
+                    if message["role"] == "user"
+                    else MessageRole.ASSISTANT
+                ),
+                content=message["content"],
+            )
+            chat_history.append(chat_message)
     return index.as_chat_engine(
-        chat_mode="context",
+        chat_mode="condense_plus_context",
         chat_history=chat_history,
         system_prompt=SYSTEM_PROMPT,
     )
