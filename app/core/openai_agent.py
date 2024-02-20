@@ -10,9 +10,10 @@ from llama_index import (
 )
 from llama_index.node_parser import SentenceSplitter
 from llama_index.llms import AzureOpenAI, MessageRole, ChatMessage
-from llama_index.chat_engine import CondenseQuestionChatEngine
 from llama_index.embeddings import AzureOpenAIEmbedding
 from llama_index.vector_stores import PineconeVectorStore
+from llama_index.agent import ReActAgent
+from llama_index.tools.query_engine import QueryEngineTool
 from pinecone import Pinecone, ServerlessSpec
 from office365.runtime.auth.client_credential import ClientCredential
 from office365.sharepoint.client_context import ClientContext
@@ -29,13 +30,13 @@ OPENAI_API_VERSION = os.getenv("OPENAI_API_VERSION")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "vectors")
 
 SYSTEM_PROMPT = """
-            You are a helpful assistant that helps customer support agents employeed at a telecom company. Questions will be related to customer support questions, and internal guidelines for customer support.
+            You are a helpful assistant that helps customer support agents employeed at NTE which is a norwegian telecom company. Questions will be related to customer support questions, and internal guidelines for customer support.
             Be brief in your answers.
             Always answer all questions in norwegian.
-            Answer ONLY with the facts listed in your sources. If there isn't enough information in the sources, just say you don't know the answer. Do not generate answers that don't use the sources. If asking a clarifying question would help then ask the question.
+            Answer ONLY with the facts listed in your sources. If asking a clarifying question would help then ask the question.
             Return the response as markdown, excluding the sources.
             If you use a source, you must include it in the bottom of the answer.
-            All sources have a url in the metadata so use the complete url as the source name and use square brackets to reference the source, e.g. [https://www.example.com]. Don't combine sources, list each source separately, e.g. [https://www.example-one.com][https://www.example-two.com].
+            All sources have a url in the metadata so use the complete url as the source name and use square brackets to reference the source, e.g. [https://www.example.com]. Do not combine sources, list each source separately, e.g. [https://www.example-one.com][https://www.example-two.com].
         """
 
 MODELS_2_TOKEN_LIMITS = {
@@ -57,6 +58,7 @@ llm = AzureOpenAI(
     api_version=OPENAI_API_VERSION,
     azure_endpoint=AZURE_OPENAI_ENDPOINT,
     max_retries=15,
+    system_prompt=SYSTEM_PROMPT,
 )
 
 embed_model = AzureOpenAIEmbedding(
@@ -346,8 +348,15 @@ def get_engine(messages=[]):
                 content=message["content"],
             )
             chat_history.append(chat_message)
-    return index.as_chat_engine(
-        chat_mode="condense_plus_context",
+
+    query_engine_tool = QueryEngineTool.from_defaults(
+        query_engine=index.as_query_engine(),
+    )
+
+    return ReActAgent.from_tools(
+        tools=[query_engine_tool],
+        llm=llm,
+        verbose=True,
         chat_history=chat_history,
-        system_prompt=SYSTEM_PROMPT,
+        context=SYSTEM_PROMPT,
     )

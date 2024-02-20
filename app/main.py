@@ -116,6 +116,8 @@ async def chat_stream(request: Request):
             for text in streaming_response.response_gen:
                 logger.info(f"Response: {text}")
                 yield text
+            for source_node in streaming_response.source_nodes:
+                yield f"[{source_node.node.metadata['url']}]\n"
 
         return StreamingResponse(generator(), media_type="text/plain")
     except Exception as e:
