@@ -46,6 +46,9 @@ export function parseAnswerToHtml(
 		if (index % 2 === 0) {
 			return Marked.parse(part);
 		} else {
+			if (!part.includes('http')) {
+				return '';
+			}
 			let citationIndex: number;
 			if (citations.indexOf(part) !== -1) {
 				citationIndex = citations.indexOf(part) + 1;

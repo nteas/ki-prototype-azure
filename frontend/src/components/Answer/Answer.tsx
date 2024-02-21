@@ -104,6 +104,8 @@ export const Answer = ({
 					<span className={styles.citationLearnMore}>Kilder:</span>
 
 					{parsedAnswer.citations.map((x, i) => {
+						if (!x.includes('http')) return null;
+
 						return (
 							<Citation
 								key={i}

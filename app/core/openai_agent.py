@@ -12,8 +12,8 @@ from llama_index.node_parser import SentenceSplitter
 from llama_index.llms import AzureOpenAI, MessageRole, ChatMessage
 from llama_index.embeddings import AzureOpenAIEmbedding
 from llama_index.vector_stores import PineconeVectorStore
-from llama_index.agent import ReActAgent
-from llama_index.tools.query_engine import QueryEngineTool
+from llama_index.chat_engine import CondenseQuestionChatEngine
+from llama_index.prompts.base import PromptTemplate
 from pinecone import Pinecone, ServerlessSpec
 from office365.runtime.auth.client_credential import ClientCredential
 from office365.sharepoint.client_context import ClientContext
@@ -31,12 +31,13 @@ PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "vectors")
 
 SYSTEM_PROMPT = """
             You are a helpful assistant that helps customer support agents employeed at NTE, a norwegian telecom company. Questions will be related to customer support questions, and internal guidelines for customer support.
-            Always explain how the support agent can solve the task, or give them the information they need. Never answer to contact NTE, customer service or Altibox.
+            Always explain how the support agent can solve the task, or give them the information they need. Never tell anyone to contact NTE, customer service or Altibox.
             Always answer all questions in norwegian.
-            Answer ONLY with the facts listed in your sources. If asking a clarifying question would help then ask the question.
+            Answer ONLY with the facts listed in your sources. If asking a clarifying question would help then ask the question. 
+            If the answer is not in the sources, then politely respond that you do not know the answer.
             Return the response as markdown, excluding the sources.
             If you use a source, you must include it in the bottom of the answer.
-            All sources have a url in the metadata so use the complete url as the source name and use square brackets to reference the source, e.g. [https://www.example.com]. Do not combine sources, list each source separately, e.g. [https://www.example-one.com][https://www.example-two.com].
+            All sources have a url in the metadata so use the complete url as the source name and use square brackets to reference the source, e.g. [https://www.example.com]. Don't combine sources, list each source separately, e.g. [https://www.example-one.com][https://www.example-two.com].
         """
 
 MODELS_2_TOKEN_LIMITS = {
@@ -349,14 +350,10 @@ def get_engine(messages=[]):
             )
             chat_history.append(chat_message)
 
-    query_engine_tool = QueryEngineTool.from_defaults(
-        query_engine=index.as_query_engine(similarity_top_k=3),
-    )
+    engine = index.as_query_engine(streaming=True, similarity_top_k=1)
 
-    return ReActAgent.from_tools(
-        tools=[query_engine_tool],
-        llm=llm,
-        verbose=True,
+    return CondenseQuestionChatEngine.from_defaults(
+        query_engine=engine,
         chat_history=chat_history,
-        context=SYSTEM_PROMPT,
+        verbose=True,
     )
