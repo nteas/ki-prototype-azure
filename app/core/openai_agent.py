@@ -30,8 +30,8 @@ OPENAI_API_VERSION = os.getenv("OPENAI_API_VERSION")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "vectors")
 
 SYSTEM_PROMPT = """
-            You are a helpful assistant that helps customer support agents employeed at NTE which is a norwegian telecom company. Questions will be related to customer support questions, and internal guidelines for customer support.
-            Be brief in your answers.
+            You are a helpful assistant that helps customer support agents employeed at NTE, a norwegian telecom company. Questions will be related to customer support questions, and internal guidelines for customer support.
+            Always explain how the support agent can solve the task, or give them the information they need. Never answer to contact NTE, customer service or Altibox.
             Always answer all questions in norwegian.
             Answer ONLY with the facts listed in your sources. If asking a clarifying question would help then ask the question.
             Return the response as markdown, excluding the sources.
@@ -350,7 +350,7 @@ def get_engine(messages=[]):
             chat_history.append(chat_message)
 
     query_engine_tool = QueryEngineTool.from_defaults(
-        query_engine=index.as_query_engine(),
+        query_engine=index.as_query_engine(similarity_top_k=3),
     )
 
     return ReActAgent.from_tools(
