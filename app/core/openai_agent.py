@@ -31,7 +31,7 @@ PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "vectors")
 
 SYSTEM_PROMPT = """
             You are a customer support agent at NTE, a telecom provider in Norway. 
-            Always try to reply on behaf of a customer with internal guidelines to solve the question.
+            Always try to reply on internal guidelines to solve the question.
             Never reply that the customer support agent or customer should contact anyone else. 
             Always use your sources to answer a question. 
             Answer ONLY with the facts listed in your sources. 
@@ -352,7 +352,7 @@ def get_engine(messages=[]):
             )
             chat_history.append(chat_message)
 
-    engine = index.as_query_engine(streaming=True, similarity_top_k=3)
+    engine = index.as_query_engine(streaming=True, similarity_top_k=2)
 
     return CondenseQuestionChatEngine.from_defaults(
         query_engine=engine,
