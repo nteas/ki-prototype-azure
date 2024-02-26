@@ -37,7 +37,6 @@ export const Answer = ({
 	answer,
 	isSelected,
 	isStreaming,
-	onCitationClicked = () => {},
 	onSupportingContentClicked,
 	onFollowupQuestionClicked,
 	showFollowupQuestions,
@@ -48,7 +47,7 @@ export const Answer = ({
 	const commentRef = useRef<HTMLInputElement>(null);
 	const messageContent = answer;
 	const parsedAnswer = useMemo(
-		() => parseAnswerToHtml(messageContent, isStreaming, onCitationClicked),
+		() => parseAnswerToHtml(messageContent, isStreaming),
 		[answer]
 	);
 
@@ -104,16 +103,20 @@ export const Answer = ({
 					<span className={styles.citationLearnMore}>Kilder:</span>
 
 					{parsedAnswer.citations.map((x, i) => {
-						if (!x.includes('http')) return null;
+						if (!x.url.includes('http')) return null;
 
 						return (
 							<Citation
 								key={i}
 								index={i}
 								citation={x}
-								onCitationClick={() => window.open(x, '_blank')}
-								updateFlags={() => updateFlaggedCitations(x)}
-								isFlagged={flaggedCitations.includes(x)}
+								onCitationClick={() =>
+									window.open(x.url, '_blank')
+								}
+								updateFlags={() =>
+									updateFlaggedCitations(x.url)
+								}
+								isFlagged={flaggedCitations.includes(x.url)}
 								isFeedbackGiven={isFeedbackGiven}
 							/>
 						);
@@ -240,25 +243,18 @@ function Citation({
 	useEffect(() => {
 		if (isFlagged || isFlagChecked.current) return;
 
-		apiFetch(`/api/documents/flag/?citation=${citation}`)
+		apiFetch(`/api/documents/flag/?citation=${citation.url}`)
 			.then(res => res.json())
 			.then(res => {
 				isFlagChecked.current = true;
 				if (!res.flagged) return;
 				isFeedbackGiven.current = true;
-				updateFlags(citation);
+				updateFlags(citation.url);
 			})
 			.catch(err => console.error(err));
 	}, []);
 
-	const isDocument = citation.split('/').pop().includes('.');
-	const url = new URL(citation);
-
-	const label = isDocument
-		? decodeURIComponent(url.pathname.split('/').pop() ?? '')
-		: citation.startsWith('http')
-		? citation.split('//').pop().split('/')[0]
-		: citation;
+	const isDocument = citation.url.split('/').pop().includes('.');
 
 	return (
 		<div
@@ -267,9 +263,9 @@ function Citation({
 			}`}>
 			<button
 				className={styles.citation}
-				title={label}
+				title={citation.title}
 				onClick={onCitationClick}>
-				{`${++index}. ${label}`}
+				{`${++index}. ${citation.title}`}
 			</button>
 
 			{!isDocument && (
@@ -277,7 +273,7 @@ function Citation({
 					className={`${styles.citationFlag} ${
 						isFlagged && styles.citationFlagged
 					}`}
-					onClick={() => updateFlags(citation)}
+					onClick={() => updateFlags(citation.url)}
 					disabled={isFeedbackGiven.current}>
 					<FontAwesomeIcon icon={isFlagged ? faFlag : flagOutline} />
 				</button>

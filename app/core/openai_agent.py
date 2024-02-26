@@ -35,9 +35,8 @@ SYSTEM_PROMPT = """
             If the answer is not in the sources, then politely respond that you do not know the answer.
             Always give detailed and helpful information.
             Always answer all questions in norwegian.
-            Return the response as markdown, excluding the sources.
-            If you use a source, you must include it in the bottom of the answer.
-            All sources have a url in the metadata so use the complete url as the source name and use square brackets to reference the source, e.g. [https://www.example.com]. Don't combine sources, list each source separately, e.g. [https://www.example-one.com][https://www.example-two.com].
+            Return the response as markdown.
+            Do not list the sources in the response.
         """
 
 MODELS_2_TOKEN_LIMITS = {
@@ -338,7 +337,6 @@ def get_engine(messages=[]):
     chat_history = []
 
     if len(messages) > 0:
-        logger.info(messages)
         for message in messages:
             chat_message = ChatMessage(
                 role=(
@@ -350,10 +348,9 @@ def get_engine(messages=[]):
             )
             chat_history.append(chat_message)
 
-    engine = index.as_query_engine(streaming=True, similarity_top_k=1)
+    engine = index.as_query_engine(streaming=True, similarity_top_k=3)
 
     return CondenseQuestionChatEngine.from_defaults(
         query_engine=engine,
         chat_history=chat_history,
-        verbose=True,
     )

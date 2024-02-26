@@ -1,19 +1,21 @@
-import { renderToStaticMarkup } from 'react-dom/server';
-import { getCitationFilePath } from '../../api';
 import { Marked } from '@ts-stack/markdown';
+
+type Citation = {
+	title: string;
+	url: string;
+};
 
 type HtmlParsedAnswer = {
 	answerHtml: string;
-	citations: string[];
+	citations: Citation[];
 	followupQuestions: string[];
 };
 
 export function parseAnswerToHtml(
 	answer: string,
-	isStreaming: boolean,
-	onCitationClicked: (citationFilePath: string) => void
+	isStreaming: boolean
 ): HtmlParsedAnswer {
-	const citations: string[] = [];
+	const citations: Citation[] = [];
 	const followupQuestions: string[] = [];
 
 	// Extract any follow-up questions that might be in the answer
@@ -40,38 +42,19 @@ export function parseAnswerToHtml(
 		parsedAnswer = truncatedAnswer;
 	}
 
-	const parts = parsedAnswer.split(/\[([^\]]+)\]/g);
+	const parts = parsedAnswer.split('separator');
 
-	const fragments: string[] = parts.map((part, index) => {
-		if (index % 2 === 0) {
-			return Marked.parse(part);
-		} else {
-			if (!part.includes('http')) {
-				return '';
-			}
-			let citationIndex: number;
-			if (citations.indexOf(part) !== -1) {
-				citationIndex = citations.indexOf(part) + 1;
-			} else {
-				citations.push(part);
-				citationIndex = citations.length;
-			}
-
-			const path = getCitationFilePath(part);
-
-			return renderToStaticMarkup(
-				<a
-					className="supContainer"
-					title={part}
-					onClick={() => onCitationClicked(path)}>
-					<sup>{citationIndex}</sup>
-				</a>
-			);
-		}
-	});
+	// a list of citations in the format [title](url). the title might contain parentheses, so we need to handle that
+	const citationRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+	let citationMatch;
+	while ((citationMatch = citationRegex.exec(parts[1]))) {
+		const title = citationMatch[1];
+		const url = citationMatch[2];
+		citations.push({ title, url });
+	}
 
 	return {
-		answerHtml: fragments.join(''),
+		answerHtml: Marked.parse(parts[0]),
 		citations,
 		followupQuestions,
 	};
