@@ -13,7 +13,10 @@ from llama_index.llms import AzureOpenAI, MessageRole, ChatMessage
 from llama_index.embeddings import AzureOpenAIEmbedding
 from llama_index.vector_stores import PineconeVectorStore
 from llama_index.chat_engine import CondenseQuestionChatEngine
-from llama_index.prompts.base import PromptTemplate
+from llama_index.schema import MetadataMode
+from llama_index.extractors import (
+    QuestionsAnsweredExtractor,
+)
 from pinecone import Pinecone, ServerlessSpec
 from office365.runtime.auth.client_credential import ClientCredential
 from office365.sharepoint.client_context import ClientContext
@@ -78,6 +81,13 @@ def initialize_service_context():
         llm=llm,
         embed_model=embed_model,
         node_parser=SentenceSplitter(chunk_size=max_tokens),
+        transformations=[
+            QuestionsAnsweredExtractor(
+                questions=3,
+                metadata_mode=MetadataMode.EMBED,
+                llm=llm,
+            )
+        ],
     )
 
     set_global_service_context(service_context)
@@ -201,11 +211,9 @@ def fetch_and_index_files():
             elif filetype == "pptx":
                 docs = pptx_loader.load_data(temp_file)
 
-            file_pages = []
             for doc in docs:
                 if doc.text is None or len(doc.text) == 0:
                     continue
-                file_pages.append(doc.get_doc_id())
                 # add metadata to the document
                 doc.metadata["title"] = str(file)
                 doc.metadata["ref_id"] = "sharepoint"

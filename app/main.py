@@ -19,8 +19,8 @@ from core.logger import logger
 from core.openai_agent import (
     fetch_and_index_files,
     get_engine,
-    index_web_documents,
     initialize_pinecone,
+    index_web_documents,
 )
 from worker import worker
 
@@ -114,7 +114,6 @@ async def chat_stream(request: Request):
 
         def generator():
             for text in streaming_response.response_gen:
-                logger.info(f"Response: {text}")
                 yield text
 
             yield "separator"
