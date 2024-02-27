@@ -350,7 +350,7 @@ def get_engine(messages=[]):
             )
             chat_history.append(chat_message)
 
-    engine = index.as_query_engine(streaming=True, similarity_top_k=2)
+    engine = index.as_query_engine(streaming=True, similarity_top_k=1)
 
     return CondenseQuestionChatEngine.from_defaults(
         query_engine=engine,
