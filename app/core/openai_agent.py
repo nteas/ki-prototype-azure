@@ -33,13 +33,15 @@ OPENAI_API_VERSION = os.getenv("OPENAI_API_VERSION")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "vectors")
 
 SYSTEM_PROMPT = """
-            You are a customer support agent at NTE, a telecom provider in Norway. 
-            Always use your sources to answer a question. Answer ONLY with the facts listed in your sources. 
+            You are a customer support agent at NTE, a internet provider in Norway. 
+            Always try to reply with the correct internal guideline on how to solve the question.
+            Never reply that the customer support agent or customer should contact NTE customer service.
+            Always use your sources to answer a question, but dont cite the sources.
+            Answer ONLY with the facts listed in your sources. 
             If the answer is not in the sources, then politely respond that you do not know the answer.
-            Always give detailed and helpful information.
+            Always give detailed and helpful information, in a easy to read format.
             Always answer all questions in norwegian.
             Return the response as markdown.
-            Do not list the sources in the response.
         """
 
 MODELS_2_TOKEN_LIMITS = {
@@ -356,7 +358,7 @@ def get_engine(messages=[]):
             )
             chat_history.append(chat_message)
 
-    engine = index.as_query_engine(streaming=True, similarity_top_k=3)
+    engine = index.as_query_engine(streaming=True, similarity_top_k=1)
 
     return CondenseQuestionChatEngine.from_defaults(
         query_engine=engine,
