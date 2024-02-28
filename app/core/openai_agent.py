@@ -14,9 +14,7 @@ from llama_index.embeddings import AzureOpenAIEmbedding
 from llama_index.vector_stores import PineconeVectorStore
 from llama_index.chat_engine import CondenseQuestionChatEngine
 from llama_index.schema import MetadataMode
-from llama_index.extractors import (
-    QuestionsAnsweredExtractor,
-)
+from llama_index.extractors import QuestionsAnsweredExtractor
 from pinecone import Pinecone, ServerlessSpec
 from office365.runtime.auth.client_credential import ClientCredential
 from office365.sharepoint.client_context import ClientContext
@@ -82,13 +80,13 @@ def initialize_service_context():
     service_context = ServiceContext.from_defaults(
         llm=llm,
         embed_model=embed_model,
-        node_parser=SentenceSplitter(chunk_size=max_tokens),
         transformations=[
+            SentenceSplitter(chunk_size=max_tokens),
             QuestionsAnsweredExtractor(
                 questions=3,
                 metadata_mode=MetadataMode.EMBED,
                 llm=llm,
-            )
+            ),
         ],
     )
 
@@ -250,26 +248,24 @@ def index_web_documents():
             logger.info("No documents found")
             raise Exception("No documents found")
 
-        documents = []
+        remove_document_from_index(value="web", field="type")
+
+        index = get_index()
         for doc in db_docs:
             for url in doc["urls"]:
                 text = scrape_url(url)
 
-                documents.append(
-                    Document(
-                        text=text,
-                        metadata={
-                            "url": url,
-                            "ref_id": doc["id"],
-                            "title": doc["title"],
-                            "type": "web",
-                        },
-                    )
+                document = Document(
+                    text=text,
+                    metadata={
+                        "title": doc["title"],
+                        "ref_id": doc["id"],
+                        "type": "web",
+                        "url": url,
+                    },
                 )
+                index.insert(document=document)
 
-        storage_context = get_storage_context()
-
-        VectorStoreIndex.from_documents(documents, storage_context=storage_context)
     except Exception as e:
         logger.exception("Failed to index documents: {}".format(e))
         raise e

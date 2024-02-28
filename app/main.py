@@ -39,7 +39,6 @@ def startup_event():
     app.db = connect_and_init_db()
 
     initialize_pinecone()
-    # index_web_documents()
 
     if os.getenv("AZURE_ENVIRONMENT", "production") != "development":
         logger.info("Starting the worker")
