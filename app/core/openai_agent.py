@@ -1,20 +1,35 @@
 import os
 import tempfile
-from llama_index import (
+from llama_index.core import (
     Document,
     ServiceContext,
     StorageContext,
     VectorStoreIndex,
     set_global_service_context,
-    download_loader,
 )
-from llama_index.node_parser import SentenceSplitter
-from llama_index.llms import AzureOpenAI, MessageRole, ChatMessage
-from llama_index.embeddings import AzureOpenAIEmbedding
-from llama_index.vector_stores import PineconeVectorStore
-from llama_index.chat_engine import CondenseQuestionChatEngine
-from llama_index.schema import MetadataMode
-from llama_index.extractors import QuestionsAnsweredExtractor
+from llama_index.core.readers import download_loader
+from llama_index.core.text_splitter import SentenceSplitter
+from llama_index.llms.azure_openai import AzureOpenAI
+from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
+from llama_index.core.base.llms.types import ChatMessage, MessageRole
+from llama_index.core.base.llms.generic_utils import messages_to_prompt
+from llama_index.core.indices.query.schema import QueryBundle
+from llama_index.vector_stores.pinecone import PineconeVectorStore
+from llama_index.core.schema import MetadataMode
+from llama_index.core.extractors.metadata_extractors import QuestionsAnsweredExtractor
+from llama_index.core.postprocessor.rankGPT_rerank import RankGPTRerank
+from llama_index.core.response_synthesizers.factory import (
+    ResponseMode,
+    get_response_synthesizer,
+)
+from llama_index.core.indices.query.query_transform.base import (
+    StepDecomposeQueryTransform,
+)
+from llama_index.core.response_synthesizers import TreeSummarize
+from llama_index.core.query_engine.multistep_query_engine import MultiStepQueryEngine
+from llama_index.core.chat_engine import CondenseQuestionChatEngine
+from llama_index.core.prompts.base import PromptTemplate, ChatPromptTemplate
+from llama_index.core.query_pipeline import QueryPipeline
 from pinecone import Pinecone, ServerlessSpec
 from office365.runtime.auth.client_credential import ClientCredential
 from office365.sharepoint.client_context import ClientContext
@@ -31,9 +46,9 @@ OPENAI_API_VERSION = os.getenv("OPENAI_API_VERSION")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "vectors")
 
 SYSTEM_PROMPT = """
-            You are a customer support agent at NTE, a internet provider in Norway. 
+            You are a customer support agent helping other support agents at NTE, a internet provider in Norway. 
             Always try to reply with the correct routine description on how to solve the question.
-            Never reply that the customer support agent or customer should contact NTE customer service.
+            Never tell anyone to contact customer service.
             Always use your sources to answer a question, but dont cite the sources.
             Answer ONLY with the facts listed in your sources. 
             If the answer is not in the sources, then politely respond that you do not know the answer.
@@ -337,9 +352,7 @@ def remove_document_from_index(value=None, field="ref_id"):
     index.delete(ids=doc_ids)
 
 
-def get_engine(messages=[]):
-    index = get_index()
-
+def get_chat_history(messages=[]):
     chat_history = []
 
     if len(messages) > 0:
@@ -354,9 +367,29 @@ def get_engine(messages=[]):
             )
             chat_history.append(chat_message)
 
-    engine = index.as_query_engine(streaming=True, similarity_top_k=1)
+    return chat_history
+
+
+def get_engine(messages=[]):
+    index = get_index()
+
+    chat_history = get_chat_history(messages)
+
+    query_engine = index.as_query_engine(
+        similarity_top_k=5,
+        node_postprocessors=[
+            RankGPTRerank(
+                top_n=2,
+                llm=llm,
+                verbose=True,
+            ),
+        ],
+        streaming=True,
+        verbose=True,
+    )
 
     return CondenseQuestionChatEngine.from_defaults(
-        query_engine=engine,
+        query_engine=query_engine,
         chat_history=chat_history,
+        verbose=True,
     )

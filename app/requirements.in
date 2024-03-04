@@ -7,8 +7,10 @@ pypdf
 bs4
 apscheduler
 sse-starlette
-llama-hub==0.0.76
-llama-index==0.9.33
+llama-index
+llama-index-llms-azure-openai
+llama-index-embeddings-azure-openai
+llama-index-vector-stores-pinecone
 pinecone-client
 Office365-REST-Python-Client
 docx2txt

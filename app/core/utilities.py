@@ -2,7 +2,7 @@ import base64
 import os
 import re
 from bs4 import BeautifulSoup
-from llama_index import download_loader
+from llama_index.core.readers import download_loader
 
 from typing import Any
 
@@ -27,7 +27,9 @@ CACHE_KEY_CREATED_TIME = "created_time"
 CACHE_KEY_TOKEN_TYPE = "token_type"
 
 # Embedding batch support section
-SUPPORTED_BATCH_AOAI_MODEL = {"text-embedding-ada-002": {"token_limit": 8100, "max_batch_size": 16}}
+SUPPORTED_BATCH_AOAI_MODEL = {
+    "text-embedding-ada-002": {"token_limit": 8100, "max_batch_size": 16}
+}
 
 
 def blob_name_from_file_page(filename, page=0):
@@ -55,11 +57,25 @@ def scrape_url(url):
         soup = BeautifulSoup(page_source, "html.parser")
 
         for tag in soup(
-            ["header", "footer", "a", "button", "img", "script", "style", "noscript", "form", "input", "svg"]
+            [
+                "header",
+                "footer",
+                "a",
+                "button",
+                "img",
+                "script",
+                "style",
+                "noscript",
+                "form",
+                "input",
+                "svg",
+            ]
         ):
             tag.decompose()
 
-        for tag in soup.select("[class*=breadcrumbs], [class*=tags], [id*=chat], [class*=related]"):
+        for tag in soup.select(
+            "[class*=breadcrumbs], [class*=tags], [id*=chat], [class*=related]"
+        ):
             tag.decompose()
 
         # Extract the text of the HTML body
@@ -105,7 +121,9 @@ def process_file(id, file_data):
         # update document
         doc.file = filename
         doc.file_pages = file_data["file_pages"]
-        doc.logs.append(Log(user=doc.owner, change="update_file", message="File updated"))
+        doc.logs.append(
+            Log(user=doc.owner, change="update_file", message="File updated")
+        )
 
         db.documents.update_one({"id": id}, {"$set": doc.model_dump()})
 
