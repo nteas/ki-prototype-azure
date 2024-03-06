@@ -12,24 +12,11 @@ from llama_index.core.text_splitter import SentenceSplitter
 from llama_index.llms.azure_openai import AzureOpenAI
 from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
-from llama_index.core.base.llms.generic_utils import messages_to_prompt
-from llama_index.core.indices.query.schema import QueryBundle
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 from llama_index.core.schema import MetadataMode
 from llama_index.core.extractors.metadata_extractors import QuestionsAnsweredExtractor
 from llama_index.core.postprocessor.rankGPT_rerank import RankGPTRerank
-from llama_index.core.response_synthesizers.factory import (
-    ResponseMode,
-    get_response_synthesizer,
-)
-from llama_index.core.indices.query.query_transform.base import (
-    StepDecomposeQueryTransform,
-)
-from llama_index.core.response_synthesizers import TreeSummarize
-from llama_index.core.query_engine.multistep_query_engine import MultiStepQueryEngine
 from llama_index.core.chat_engine import CondenseQuestionChatEngine
-from llama_index.core.prompts.base import PromptTemplate, ChatPromptTemplate
-from llama_index.core.query_pipeline import QueryPipeline
 from pinecone import Pinecone, ServerlessSpec
 from office365.runtime.auth.client_credential import ClientCredential
 from office365.sharepoint.client_context import ClientContext
@@ -71,7 +58,6 @@ max_tokens = MODELS_2_TOKEN_LIMITS[os.getenv("AZURE_OPENAI_CHATGPT_MODEL")]
 llm = AzureOpenAI(
     model=os.getenv("AZURE_OPENAI_CHATGPT_MODEL"),
     engine=os.getenv("AZURE_OPENAI_CHATGPT_DEPLOYMENT"),
-    temperature=0,
     api_key=AZURE_OPENAI_API_KEY,
     api_version=OPENAI_API_VERSION,
     azure_endpoint=AZURE_OPENAI_ENDPOINT,
