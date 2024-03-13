@@ -13,5 +13,3 @@ llama-index-embeddings-azure-openai
 llama-index-vector-stores-pinecone
 pinecone-client
 Office365-REST-Python-Client
-docx2txt
-python-pptx

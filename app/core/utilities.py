@@ -94,7 +94,7 @@ def scrape_url(url):
 
         logger.info("Done scraping content from url")
 
-        return text
+        return text.replace("\n", " ").replace("\t", " ").replace("\r", " ")
 
     except Exception as ex:
         logger.exception("Error in scrape_url: {}".format(ex))

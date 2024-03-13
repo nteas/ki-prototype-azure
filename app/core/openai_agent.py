@@ -1,22 +1,24 @@
 import os
 import tempfile
+from typing import List, Optional
 from llama_index.core import (
     Document,
     ServiceContext,
     StorageContext,
     VectorStoreIndex,
     set_global_service_context,
+    QueryBundle,
 )
 from llama_index.core.readers import download_loader
 from llama_index.core.text_splitter import SentenceSplitter
 from llama_index.llms.azure_openai import AzureOpenAI
 from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
-from llama_index.core.base.llms.types import ChatMessage, MessageRole
+from llama_index.core.base.llms.types import MessageRole
 from llama_index.vector_stores.pinecone import PineconeVectorStore
-from llama_index.core.schema import MetadataMode
+from llama_index.core.schema import MetadataMode, NodeWithScore
 from llama_index.core.extractors.metadata_extractors import QuestionsAnsweredExtractor
 from llama_index.core.postprocessor.rankGPT_rerank import RankGPTRerank
-from llama_index.core.chat_engine import CondenseQuestionChatEngine
+from llama_index.core.postprocessor.types import BaseNodePostprocessor
 from pinecone import Pinecone, ServerlessSpec
 from office365.runtime.auth.client_credential import ClientCredential
 from office365.sharepoint.client_context import ClientContext
@@ -26,6 +28,19 @@ from core.types import Status
 from core.utilities import scrape_url
 from core.db import get_db
 from core.logger import logger
+
+
+class NodePostprocessor(BaseNodePostprocessor):
+    def _postprocess_nodes(
+        self, nodes: List[NodeWithScore], query_bundle: Optional[QueryBundle]
+    ) -> List[NodeWithScore]:
+        # remove nodes with empty text
+        usable_nodes = [node for node in nodes if len(node.text) > 100]
+
+        logger.info(f"Usable nodes: {len(usable_nodes)}")
+
+        return usable_nodes
+
 
 AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
 AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
@@ -343,39 +358,75 @@ def get_chat_history(messages=[]):
 
     if len(messages) > 0:
         for message in messages:
-            chat_message = ChatMessage(
-                role=(
-                    MessageRole.USER
+            chat_message = {
+                "role": (
+                    MessageRole.USER.value
                     if message["role"] == "user"
-                    else MessageRole.ASSISTANT
+                    else MessageRole.ASSISTANT.value
                 ),
-                content=message["content"],
-            )
+                "content": message["content"],
+            }
             chat_history.append(chat_message)
 
     return chat_history
 
 
-def get_engine(messages=[]):
+def get_engine(question, messages=[]):
     index = get_index()
 
     chat_history = get_chat_history(messages)
 
-    query_engine = index.as_query_engine(
-        similarity_top_k=5,
-        node_postprocessors=[
-            RankGPTRerank(
-                top_n=2,
-                llm=llm,
-                verbose=True,
-            ),
-        ],
-        streaming=True,
+    from llama_index.core.response_synthesizers import TreeSummarize
+    from llama_index.core.query_pipeline import QueryPipeline
+    from llama_index.core.prompts import PromptTemplate
+
+    prompt_str = """
+        First generate a standalone question from conversation context and last message,
+        then query the query engine for a response.
+        Answer ONLY with the facts listed in your sources. If the question is not in the sources, then politely respond that you do not know the answer. 
+        Below is the chat history and the user's question.
+        
+        <chat_history>
+        {chat_history}
+
+        <question>
+        {question}
+
+        <standalone_question>
+    """
+    prompt_tmpl = PromptTemplate(
+        prompt_str,
+    ).partial_format(chat_history=chat_history)
+
+    retriever = index.as_retriever(similarity_top_k=5, retriever_mode="dense")
+    reranker = RankGPTRerank(
+        top_n=2,
+        llm=llm,
         verbose=True,
+    )
+    postprocessor = NodePostprocessor().as_query_component(streaming=True)
+    llm_c = llm.as_query_component(streaming=True)
+    summarizer = TreeSummarize(llm=llm, streaming=True)
+
+    # define query pipeline
+    p = QueryPipeline(verbose=True)
+    p.add_modules(
+        {
+            "llm": llm_c,
+            "prompt_tmpl": prompt_tmpl,
+            "retriever": retriever,
+            "postprocessor": postprocessor,
+            "summarizer": summarizer,
+            "reranker": reranker,
+        }
     )
 
-    return CondenseQuestionChatEngine.from_defaults(
-        query_engine=query_engine,
-        chat_history=chat_history,
-        verbose=True,
-    )
+    p.add_link("prompt_tmpl", "llm")
+    p.add_link("llm", "retriever")
+    p.add_link("retriever", "postprocessor", dest_key="nodes")
+    p.add_link("postprocessor", "reranker", dest_key="nodes")
+    p.add_link("llm", "reranker", dest_key="query_str")
+    p.add_link("reranker", "summarizer", dest_key="nodes")
+    p.add_link("llm", "summarizer", dest_key="query_str")
+
+    return p
