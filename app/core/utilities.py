@@ -2,7 +2,7 @@ import base64
 import os
 import re
 from bs4 import BeautifulSoup
-from llama_index.core.readers import download_loader
+from llama_index import download_loader
 
 from typing import Any
 

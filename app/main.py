@@ -109,7 +109,11 @@ async def chat_stream(request: Request):
 
         chat_engine = get_engine(messages)
 
+<<<<<<< Updated upstream
         streaming_response = chat_engine.stream_chat(question)
+=======
+        streaming_response = engine.stream_chat(question)
+>>>>>>> Stashed changes
 
         def generator():
             for text in streaming_response.response_gen:

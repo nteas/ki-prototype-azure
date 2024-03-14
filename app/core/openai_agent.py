@@ -1,11 +1,17 @@
 import os
 import tempfile
+<<<<<<< Updated upstream
 from llama_index.core import (
+=======
+from typing import List, Optional
+from llama_index import (
+>>>>>>> Stashed changes
     Document,
     ServiceContext,
     StorageContext,
     VectorStoreIndex,
     set_global_service_context,
+<<<<<<< Updated upstream
 )
 from llama_index.core.readers import download_loader
 from llama_index.core.text_splitter import SentenceSplitter
@@ -17,6 +23,21 @@ from llama_index.core.schema import MetadataMode
 from llama_index.core.extractors.metadata_extractors import QuestionsAnsweredExtractor
 from llama_index.core.postprocessor.rankGPT_rerank import RankGPTRerank
 from llama_index.core.chat_engine import CondenseQuestionChatEngine
+=======
+    QueryBundle,
+    download_loader,
+)
+from llama_index.node_parser import SentenceSplitter
+from llama_index.llms import AzureOpenAI, MessageRole, ChatMessage
+from llama_index.embeddings import AzureOpenAIEmbedding
+from llama_index.vector_stores import PineconeVectorStore
+from llama_index.schema import MetadataMode, NodeWithScore
+from llama_index.extractors import QuestionsAnsweredExtractor
+from llama_index.postprocessor.types import BaseNodePostprocessor
+from llama_index.postprocessor.rankGPT_rerank import RankGPTRerank
+from llama_index.chat_engine import CondenseQuestionChatEngine
+
+>>>>>>> Stashed changes
 from pinecone import Pinecone, ServerlessSpec
 from office365.runtime.auth.client_credential import ClientCredential
 from office365.sharepoint.client_context import ClientContext
@@ -328,10 +349,14 @@ def get_index_documents_by_field(value=None, field="ref_id"):
 
 
 def remove_document_from_index(value=None, field="ref_id"):
+    logger.info(f"Removing documents from index with {field}={value}")
+
     doc_ids = get_index_documents_by_field(value=value, field=field)
 
     if len(doc_ids) == 0:
         return
+
+    logger.info(f"Removing {len(doc_ids)} documents from index")
 
     index = get_pinecone_index()
 
