@@ -106,3 +106,8 @@ export type Document = {
 	updated_at: Date;
 	status?: string;
 };
+
+export type File = {
+	title: string;
+	url: string;
+};

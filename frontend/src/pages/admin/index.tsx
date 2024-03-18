@@ -148,8 +148,8 @@ export function Component(): JSX.Element {
 	};
 
 	const handleSyncFiles = () => {
-		// if (!confirm('Er du sikker på at du starte synkronisering av filer?'))
-		// 	return;
+		if (!confirm('Er du sikker på at du starte synkronisering av filer?'))
+			return;
 
 		setFilesSyncRunning(true);
 
@@ -159,13 +159,23 @@ export function Component(): JSX.Element {
 	return (
 		<AdminLayout className={styles.layout} loading={loading}>
 			<div className={styles.header}>
-				<Button
-					disabled={fileSyncRunning}
-					className={styles.button + ' ' + styles.syncButton}
-					icon={<FontAwesomeIcon icon={faRotate} />}
-					onClick={handleSyncFiles}>
-					Synkroniser filer
-				</Button>
+				<div style={{ display: 'flex', gap: '10px' }}>
+					<Button
+						disabled={fileSyncRunning}
+						className={styles.button + ' ' + styles.syncButton}
+						icon={<FontAwesomeIcon icon={faRotate} />}
+						onClick={handleSyncFiles}>
+						Synkroniser filer
+					</Button>
+
+					{!fileSyncRunning && (
+						<Button
+							className={styles.button}
+							onClick={() => navigate('files')}>
+							Se indekserte filer
+						</Button>
+					)}
+				</div>
 
 				<Button
 					className={styles.button}

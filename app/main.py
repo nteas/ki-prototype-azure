@@ -6,7 +6,7 @@ import io
 import os
 import time
 import mimetypes
-from fastapi import BackgroundTasks, FastAPI, APIRouter, Request
+from fastapi import BackgroundTasks, FastAPI, APIRouter, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse, FileResponse, JSONResponse
@@ -19,6 +19,7 @@ from core.logger import logger
 from core.openai_agent import (
     fetch_and_index_files,
     get_engine,
+    get_pinecone_index,
     initialize_pinecone,
     index_web_documents,
 )
@@ -129,6 +130,33 @@ async def chat_stream(request: Request):
     except Exception as e:
         logger.exception("Exception in /chat")
         return {"error": str(e)}, 500
+
+
+@api_router.get("/file-index")
+async def get_file_index():
+    try:
+        pinecone_index = get_pinecone_index()
+
+        matches = pinecone_index.query(
+            vector=[0.0] * 1536,  # [0.0, 0.0, 0.0, 0.0, 0.0
+            top_k=1000,
+            filter={"ref_id": "sharepoint"},
+            include_metadata=True,
+        )
+
+        files = []
+        unique_files = set()
+        for match in matches["matches"]:
+            if match.metadata["url"] not in unique_files:
+                unique_files.add(match.metadata["url"])
+                files.append(
+                    {"title": match.metadata["title"], "url": match.metadata["url"]}
+                )
+
+        return {"files": files}
+    except Exception as e:
+        logger.exception("Exception in /file-index")
+        return HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.get("/file-sync/start")

@@ -33,10 +33,10 @@ const router = createBrowserRouter([
 						path: 'edit/:id',
 						lazy: () => import('./pages/admin/EditSource'),
 					},
-					// {
-					// 	path: 'delete',
-					// 	lazy: () => import('./pages/admin/DeleteSource'),
-					// },
+					{
+						path: 'files',
+						lazy: () => import('./pages/admin/Files'),
+					},
 				],
 			},
 			{
