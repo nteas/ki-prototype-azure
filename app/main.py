@@ -153,6 +153,9 @@ async def get_file_index():
                     {"title": match.metadata["title"], "url": match.metadata["url"]}
                 )
 
+        # sort by title
+        files = sorted(files, key=lambda x: x["title"])
+
         return {"files": files}
     except Exception as e:
         logger.exception("Exception in /file-index")
