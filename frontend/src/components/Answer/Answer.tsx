@@ -60,12 +60,16 @@ export const Answer = ({
 	}
 
 	async function flagCitations(message: string) {
+		const documentCitations = flaggedCitations.filter(
+			citation => !citation.split('/').pop()?.includes('.')
+		);
+
 		return await apiFetch('/api/documents/flag', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 			},
-			body: JSON.stringify({ citations: flaggedCitations, message }),
+			body: JSON.stringify({ citations: documentCitations, message }),
 		});
 	}
 
@@ -188,6 +192,29 @@ export const Answer = ({
 								});
 
 								if (flaggedCitations?.length > 0) {
+									// flag files
+									flaggedCitations.forEach(async citation => {
+										const isDocument = citation
+											? citation
+													.split('/')
+													.pop()
+													?.includes('.')
+											: false;
+
+										if (!isDocument) return;
+
+										await apiFetch('/api/files/flag', {
+											method: 'POST',
+											headers: {
+												'Content-Type':
+													'application/json',
+											},
+											body: JSON.stringify({
+												url: citation,
+											}),
+										});
+									});
+
 									await flagCitations(
 										e?.currentTarget?.comment?.value
 									);
@@ -239,11 +266,16 @@ function Citation({
 	isFeedbackGiven,
 }: CitationProps) {
 	const isFlagChecked = useRef<boolean>(false);
+	const isDocument = citation.url.split('/').pop().includes('.');
 
 	useEffect(() => {
 		if (isFlagged || isFlagChecked.current) return;
 
-		apiFetch(`/api/documents/flag/?citation=${citation.url}`)
+		const url = isDocument
+			? `/api/files/flag/?url=${citation.url}`
+			: `/api/documents/flag/?citation=${citation.url}`;
+
+		apiFetch(url)
 			.then(res => res.json())
 			.then(res => {
 				isFlagChecked.current = true;
@@ -254,13 +286,8 @@ function Citation({
 			.catch(err => console.error(err));
 	}, []);
 
-	const isDocument = citation.url.split('/').pop().includes('.');
-
 	return (
-		<div
-			className={`${styles.citationWrapper} ${
-				isDocument && styles.citationWrapperDoc
-			}`}>
+		<div className={styles.citationWrapper}>
 			<button
 				className={styles.citation}
 				title={citation.title}
@@ -268,16 +295,14 @@ function Citation({
 				{`${++index}. ${citation.title}`}
 			</button>
 
-			{!isDocument && (
-				<button
-					className={`${styles.citationFlag} ${
-						isFlagged && styles.citationFlagged
-					}`}
-					onClick={() => updateFlags(citation.url)}
-					disabled={isFeedbackGiven.current}>
-					<FontAwesomeIcon icon={isFlagged ? faFlag : flagOutline} />
-				</button>
-			)}
+			<button
+				className={`${styles.citationFlag} ${
+					isFlagged && styles.citationFlagged
+				}`}
+				onClick={() => updateFlags(citation.url)}
+				disabled={isFeedbackGiven.current}>
+				<FontAwesomeIcon icon={isFlagged ? faFlag : flagOutline} />
+			</button>
 		</div>
 	);
 }

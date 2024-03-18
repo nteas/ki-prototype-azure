@@ -110,4 +110,5 @@ export type Document = {
 export type File = {
 	title: string;
 	url: string;
+	flagged: boolean;
 };

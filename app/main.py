@@ -6,7 +6,7 @@ import io
 import os
 import time
 import mimetypes
-from fastapi import BackgroundTasks, FastAPI, APIRouter, Request, HTTPException
+from fastapi import BackgroundTasks, FastAPI, APIRouter, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse, FileResponse, JSONResponse
@@ -14,12 +14,12 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from sse_starlette.sse import EventSourceResponse
 
 from routers.documents import document_router
+from routers.files import files_router
 from core.db import close_db_connect, connect_and_init_db
 from core.logger import logger
 from core.openai_agent import (
     fetch_and_index_files,
     get_engine,
-    get_pinecone_index,
     initialize_pinecone,
     index_web_documents,
 )
@@ -121,45 +121,15 @@ async def chat_stream(request: Request):
             used_sources = set()
             if streaming_response.source_nodes:
                 for source_node in streaming_response.source_nodes:
-                    if source_node.node.node_id in used_sources:
+                    if source_node.node.metadata["title"] in used_sources:
                         continue
-                    used_sources.add(source_node.node.node_id)
+                    used_sources.add(source_node.node.metadata["title"])
                     yield f"[{source_node.node.metadata['title']}]({source_node.node.metadata['url']})\n"
 
         return StreamingResponse(generator(), media_type="text/plain")
     except Exception as e:
         logger.exception("Exception in /chat")
         return {"error": str(e)}, 500
-
-
-@api_router.get("/file-index")
-async def get_file_index():
-    try:
-        pinecone_index = get_pinecone_index()
-
-        matches = pinecone_index.query(
-            vector=[0.0] * 1536,  # [0.0, 0.0, 0.0, 0.0, 0.0
-            top_k=1000,
-            filter={"ref_id": "sharepoint"},
-            include_metadata=True,
-        )
-
-        files = []
-        unique_files = set()
-        for match in matches["matches"]:
-            if match.metadata["url"] not in unique_files:
-                unique_files.add(match.metadata["url"])
-                files.append(
-                    {"title": match.metadata["title"], "url": match.metadata["url"]}
-                )
-
-        # sort by title
-        files = sorted(files, key=lambda x: x["title"])
-
-        return {"files": files}
-    except Exception as e:
-        logger.exception("Exception in /file-index")
-        return HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.get("/file-sync/start")
@@ -214,6 +184,7 @@ async def before_request(request: Request, call_next):
 
 app.include_router(api_router, prefix="/api")
 app.include_router(document_router, prefix="/api/documents")
+app.include_router(files_router, prefix="/api/files")
 app.include_router(root_router)
 
 if allowed_origin := os.getenv("ALLOWED_ORIGIN"):
