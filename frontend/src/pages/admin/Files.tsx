@@ -104,10 +104,7 @@ function ItemRow({
 
 				<button
 					className={styles.open}
-					onClick={() => {
-						navigator.clipboard.writeText(item.url);
-						// window.open(item.url, '_blank');
-					}}
+					onClick={() => window.open(item.url, '_blank')}
 					title="Åpne">
 					<FontAwesomeIcon icon={faEye} />
 				</button>
