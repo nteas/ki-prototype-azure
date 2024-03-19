@@ -1,24 +1,20 @@
 import os
 import tempfile
-from typing import List, Optional
 from llama_index import (
     Document,
     ServiceContext,
     StorageContext,
     VectorStoreIndex,
     set_global_service_context,
-    QueryBundle,
     download_loader,
 )
 from llama_index.node_parser import SentenceSplitter
 from llama_index.llms import AzureOpenAI, MessageRole, ChatMessage
 from llama_index.embeddings import AzureOpenAIEmbedding
 from llama_index.vector_stores import PineconeVectorStore
-from llama_index.schema import MetadataMode, NodeWithScore
+from llama_index.schema import MetadataMode
 from llama_index.extractors import QuestionsAnsweredExtractor
-from llama_index.postprocessor.types import BaseNodePostprocessor
 from llama_index.postprocessor.rankGPT_rerank import RankGPTRerank
-from llama_index.chat_engine import CondenseQuestionChatEngine
 
 from pinecone import Pinecone, ServerlessSpec
 from office365.runtime.auth.client_credential import ClientCredential
@@ -368,8 +364,8 @@ def get_engine(messages=[]):
 
     chat_history = get_chat_history(messages)
 
-    query_engine = index.as_query_engine(
-        similarity_top_k=5,
+    return index.as_chat_engine(
+        chat_mode="condense_plus_context",
         node_postprocessors=[
             RankGPTRerank(
                 top_n=2,
@@ -377,12 +373,5 @@ def get_engine(messages=[]):
                 verbose=True,
             ),
         ],
-        streaming=True,
-        verbose=True,
-    )
-
-    return CondenseQuestionChatEngine.from_defaults(
-        query_engine=query_engine,
         chat_history=chat_history,
-        verbose=True,
     )
